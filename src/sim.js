@@ -363,7 +363,7 @@ const Sim = (() => {
   }
   function hitChance(s,p,tx,ty){
     const st=ST(gun(p))||{acc:0,fall:.035}, d=Math.hypot(tx-p.x,ty-p.y);
-    const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<15||p.water<15)) c-=.06;
+    const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<8||p.water<8)) c-=.05;
     if(st.close&&d<3) c-=st.close;
     c-= p.hp.rarm<=0?.35:(1-p.hp.rarm/p.max.rarm)*.15;
     c-= p.hp.larm<=0?.12:0;
@@ -732,9 +732,9 @@ const Sim = (() => {
   function vitals(s){
     for(const e of s.ents){
       if(!e.alive) continue; CTX=e.kind==="player"?e.id:null; if(e.stimT>0) e.stimT--;
-      if(e.kind==="player"&&e.food!=null){ const hf=e.food, hw=e.water; e.food=Math.max(0,+(e.food-.12).toFixed(2)); e.water=Math.max(0,+(e.water-.2).toFixed(2));
-        if(hf>=20&&e.food<20) say(s,"Your stomach knots. You need to eat.","warn"); if(hw>=20&&e.water<20) say(s,"Your mouth is dry. You need to drink.","warn");
-        if((e.food<=0||e.water<=0)&&s.turn%3===0){ e.blood-=2; if(s.turn%15===0) say(s,e.water<=0?"Dehydration is shutting you down.":"You're starving. Your strength is going.","bad"); if(e.blood<=0){ kill(s,e,e.water<=0?"Died of thirst in the dark.":"Starved in the dark."); continue; } }
+      if(e.kind==="player"&&e.food!=null){ const hf=e.food, hw=e.water; e.food=Math.max(0,+(e.food-.03).toFixed(3)); e.water=Math.max(0,+(e.water-.045).toFixed(3));
+        if(hf>=15&&e.food<15) say(s,"Your stomach knots. You should eat something.","warn"); if(hw>=15&&e.water<15) say(s,"Your mouth is dry. You should drink something.","warn");
+        if((e.food<=0||e.water<=0)&&s.turn%5===0){ e.blood-=1; if(s.turn%15===0) say(s,e.water<=0?"Dehydration is shutting you down.":"You're starving. Your strength is going.","bad"); if(e.blood<=0){ kill(s,e,e.water<=0?"Died of thirst in the dark.":"Starved in the dark."); continue; } }
         else if(e.food>=60&&e.water>=60&&s.turn%8===0&&!LIMBS.some(l=>e.bleed[l])&&e.blood<100) e.blood=Math.min(100,e.blood+1); }
       const bl=LIMBS.filter(l=>e.bleed[l]);
       if(bl.length){ e.blood-=2*bl.length; if(chance(s,.6)) bleedDecal(s,e.x,e.y,1);

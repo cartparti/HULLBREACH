@@ -196,9 +196,9 @@ test("armour pieces: helmet, chest, legs and accessory stack, each protects its 
 });
 
 test("flashlight in the starter kit, eating and drinking keep you alive", () => {
-  const s = Sim.newGame(9, { ...Sim.STARTER, food: 3, water: 50 }, { gen: { tier: 1 } }), p = s.ents.find((e) => e.kind === "player");
+  const s = Sim.newGame(9, { ...Sim.STARTER, food: 1, water: 50 }, { gen: { tier: 1 } }), p = s.ents.find((e) => e.kind === "player");
   assert.equal(p.light.d, "flashlight"); assert.ok(Sim.gearOf(p).dark, "a flashlight steadies your aim in the dark");
-  const b0 = p.blood; for (let i = 0; i < 40 && p.alive; i++) { p.acted = false; Sim.act(s, "p1", { type: "wait" }); }
+  const b0 = p.blood; for (let i = 0; i < 70 && p.alive; i++) { p.acted = false; Sim.act(s, "p1", { type: "wait" }); }
   assert.equal(p.food, 0); assert.ok(p.blood < b0, "starving costs blood");
   const r = p.inv.findIndex((it) => it.d === "ration"); assert.ok(Sim.act(s, "p1", { type: "use", index: r })); assert.ok(p.food >= 20, "eating restores food");
   const w = p.inv.findIndex((it) => it.d === "waterflask"); const w0 = p.water; Sim.act(s, "p1", { type: "use", index: w }); assert.ok(p.water > w0 + 30);

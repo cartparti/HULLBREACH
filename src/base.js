@@ -9,7 +9,7 @@ let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all",
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:300,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
-  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1},unlocks:{cloak:[],visor:[],crest:[]},
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -21,7 +21,7 @@ function migrate(p){ const d=newProfile();
 function fixProfile(p){ const d=newProfile(); if(!p) return d; if(p.v===1) p=migrate(p); if(p.v!==SAVE_V) return d;
   p.stats={...d.stats,...(p.stats||{})}; p.kit={...d.kit,...(p.kit||{})}; if(!Array.isArray(p.kit.inv)) p.kit.inv=[]; p.kit.ammo=p.kit.ammo||{};
   p.stash=Array.isArray(p.stash)?p.stash.filter(q=>q&&Items.def(q.d)):[]; for(const q of p.stash) if(!q.uid) Object.assign(q,mk(q));
-  p.ammo=p.ammo||{}; p.mats=p.mats||{}; if(p.food==null) p.food=80; if(p.water==null) p.water=80; if(!p.gotLight){ p.gotLight=1; p.stash.push(mk({d:"flashlight"})); } p.look={...d.look,...(p.look||{})}; p.unlocks={cloak:[],visor:[],crest:[],...(p.unlocks||{})};
+  p.ammo=p.ammo||{}; p.mats=p.mats||{}; if(p.food==null) p.food=80; if(p.water==null) p.water=80; if(!p.gotLight){ p.gotLight=1; p.stash.push(mk({d:"flashlight"})); } p.look={...d.look,...(p.look||{})}; if(p.look.fh==null){ const old=+p.look.f|0; p.look.fh=[0,1,3,5,0,0][old]||0; p.look.fm=[0,0,0,0,1,2][old]||0; } p.unlocks={cloak:[],visor:[],crest:[],...(p.unlocks||{})};
   p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); return p; }
 const ship=()=>(typeof Net!=="undefined"&&Net.sq&&!Net.host&&Net.ship)?Net.ship:profile.ship, here=()=>World.loc(ship().loc);
 function shipScene(){ return here().scene; }
@@ -258,7 +258,7 @@ const canPay=c=>Object.entries(c).every(([m,n])=>m==="credits"?profile.credits>=
 const fabLvl=()=>Math.max(1,Math.min(5,ship().fab|0||1));
 let fabTab="weapon";
 function eatDrink(food,water,heal){ profile.food=Math.max(0,Math.min(100,profile.food+(food||0))); profile.water=Math.max(0,Math.min(100,profile.water+(water||0))); }
-function travelHunger(days){ if(!profile) return; profile.food=Math.max(0,profile.food-6*days); profile.water=Math.max(0,profile.water-8*days); if(profile.food<20||profile.water<20) toast(profile.water<20?"You're parched. Get something to drink at the galley.":"You're starving. Get a meal at the galley."); save(); }
+function travelHunger(days){ if(!profile) return; profile.food=Math.max(0,profile.food-1.5*days); profile.water=Math.max(0,profile.water-2*days); if(profile.food<15||profile.water<15) toast(profile.water<20?"You're parched. Get something to drink at the galley.":"You're starving. Get a meal at the galley."); save(); }
 function viewWorkbench(){
   const lv=fabLvl(), up=Items.FAB_UP[lv], canUp=!inSquad()||Net.host;
   const tabs=[["weapon","Weapons"],["armor","Armour"],["gear","Gear"],["meds","Meds"],["food","Food"],["ammo","Ammo"]];
@@ -279,12 +279,12 @@ function viewBar(){
   const menu=Items.BAR.map(b=>`<div class="panel shop-row"><div class="slot" style="display:flex;align-items:center;justify-content:center;font-size:22px">${b.water>(b.food||0)?"🥤":"🍲"}</div><div class="nm"><b>${b.name}</b><span>${[b.food?`+${b.food} food`:"",b.water?`+${b.water} water`:""].filter(Boolean).join(" · ")}</span></div><span class="price">${b.price?b.price+" cr":"free"}</span><button class="plain" data-act="bareat:${b.id}" ${profile.credits<b.price?"disabled":""}>${b.water>(b.food||0)?"Drink":"Eat"}</button></div>`).join("");
   const togo=Items.BAR_TOGO.map(([d,price],i)=>{ const it={d,r:0}; return `<div class="panel shop-row">${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${esc(Items.statLine(it))} · ${ownedOf(it)} in stash</span></div><span class="price">${price} cr</span><button class="plain" data-act="bartogo:${i}" ${profile.credits<price?"disabled":""}>Buy</button></div>`; }).join("");
   return `<section class="h-grid"><div class="panel h-card span12"><div class="h-eyebrow">How you're holding up</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center;max-width:520px">${hungerRows(profile.food,profile.water)}</div>
-      <p class="risk">Food and water drain on raids (and a little every day the ship travels). Above 60 of both, you slowly regain blood. Below 15, your aim suffers. At zero you lose blood until you eat or drink.</p></div>
+      <p class="risk">Food and water drain on raids (and a little every day the ship travels). They go down slowly, so you only need to eat now and then. Above 60 of both, you slowly regain blood. Below 8, your aim suffers. At zero you slowly lose blood until you eat or drink.</p></div>
     <div class="panel h-card span6"><div class="h-eyebrow">Eat and drink here</div><div class="shop">${menu}</div></div>
     <div class="panel h-card span6"><div class="h-eyebrow">To go · for your pack</div><div class="shop">${togo}</div></div></section>`;
 }
 function dyeOpen(slot,id){ const o=Items.DYES[slot][id], r=slot==="cloak"?o[2]:o[1]; return r===0||profile.unlocks[slot].includes(id); }
-const WARD_TAB=["Face","Hair","Clothes","Armour"]; let wardTab="Face";
+const WARD_TAB=["Body","Face","Hair","Clothes","Armour"]; let wardTab="Body";
 function viewWardrobe(){
   const ST=Items.STYLE, L=profile.look, lab=t=>t[0].toUpperCase()+t.slice(1);
   const col=(f,arr,lbl)=>`<div class="h-eyebrow">${lbl}</div><div class="swatches">${arr.map((c,i)=>`<button class="swatch" data-act="style:${f}:${i}" aria-pressed="${(L[f]|0)===i}" aria-label="${lbl} ${i+1}"><i style="background:${c}"></i></button>`).join("")}</div>`;
@@ -293,12 +293,13 @@ function viewWardrobe(){
       return `<button class="swatch" data-act="look:${slot}:${id}" aria-pressed="${L[slot[0]]===id}" ${open?"":"disabled"} title="${open?(slot==="crest"?o[0]:id):`Locked · find a ${Items.RAR[r].name.toLowerCase()} dye`}" style="${slot==="crest"?"width:auto;padding:0 10px":""}">${c?`<i style="background:${c}"></i>`:`<span style="font-size:12px">${o[0]}</span>`}${open?"":`<span class="lock" style="color:${Items.RAR[r].col}">■</span>`}</button>`; }).join("")}</div>`;
   const u=profile.unlocks, n=u.cloak.length+u.visor.length+u.crest.length;
   const body={
-    Face:col("s",ST.skin,"Skin tone")+opt("f",ST.face,"Face",{clean:"Clean-shaven",tattoo:"Face tattoo"})+col("e",ST.eyes,"Eyes"),
-    Hair:opt("h",ST.hair,"Hairstyle",{none:"Shaved",buzz:"Buzz cut",topknot:"Top knot"})+col("hc",ST.hairCol,"Hair colour"),
+    Body:opt("g",ST.body,"Body")+col("s",ST.skin,"Skin tone")+`<p class="risk">Every hairstyle, face and outfit works with either body.</p>`,
+    Face:opt("ey",ST.eyeShape,"Eye shape",{heavy:"Heavy-lidded"})+col("e",ST.eyes,"Eye colour")+opt("br",ST.brows,"Brows")+opt("no",ST.nose,"Nose")+opt("mo",ST.mouth,"Mouth")+opt("fm",ST.marks,"Marks",{none:"None",warpaint:"War paint"}),
+    Hair:opt("h",ST.hair,"Hairstyle",{none:"Shaved",buzz:"Buzz cut",topknot:"Top knot",curly:"Curls",slick:"Slicked back",buns:"Twin buns"})+col("hc",ST.hairCol,"Hair colour")+opt("fh",ST.facialHair,"Facial hair",{none:"Clean-shaven",shortbeard:"Short beard",fullbeard:"Full beard",chops:"Mutton chops"}),
     Clothes:opt("t",ST.top,"Top",{coverall:"Coverall",jacket:"Flight jacket",hivis:"Hi-vis vest",undersuit:"Vac undersuit",singlet:"Singlet & harness"})+col("tc",ST.cloth,"Top colour")+opt("b",ST.bottom,"Bottoms",{fatigues:"Cargo fatigues",workpants:"Work trousers",shorts:"Utility shorts"})+col("bc",ST.cloth,"Bottoms colour")+opt("bs",ST.boots,"Boots",{magboots:"Magboots",workboots:"Work boots",wraps:"Foot wraps"})+col("bt",ST.cloth,"Boot colour")+`<p class="risk">Coveralls and vac undersuits are one piece: they colour your legs too.</p>`,
     Armour:`<p>Helmets, chest pieces, legs and accessories all show on your character. Find them on derelicts or craft them at the workbench. Dyes colour your cape and scarf, tint visors and lenses, and crest the helms that take one.</p>${dye("cloak","Cape and scarf dye")}${dye("visor","Visor tint")}${dye("crest","Helmet attachment")}<p class="risk">${n} dye${n===1?"":"s"} found. Rarer dyes turn up on harder stations.</p>`,
   }[wardTab];
-  return `<section class="panel h-card"><div class="lo"><div class="preview" style="gap:12px;flex-wrap:wrap"><div style="text-align:center"><canvas id="h-prev2" width="48" height="64" aria-label="You, out of armour" style="width:96px;height:128px;image-rendering:pixelated"></canvas><div class="risk">Clothes</div></div><div style="text-align:center"><canvas id="h-prev" width="48" height="64" aria-label="You in your kit" style="width:96px;height:128px"></canvas><div class="risk">In your kit</div></div></div>
+  return `<section class="panel h-card"><div class="lo"><div class="preview" style="gap:12px;flex-wrap:wrap"><div style="text-align:center"><canvas id="h-prev2" width="48" height="64" aria-label="You, out of armour" style="width:144px;height:192px;image-rendering:pixelated"></canvas><div class="risk">Clothes</div></div><div style="text-align:center"><canvas id="h-prev" width="48" height="64" aria-label="You in your kit" style="width:144px;height:192px"></canvas><div class="risk">In your kit</div></div></div>
     <div class="eq"><div class="seg">${WARD_TAB.map(t=>`<button data-act="wtab:${t}" aria-pressed="${wardTab===t}">${t}</button>`).join("")}</div>${body}</div></div></section>`;
 }
 // ---------- inventory (raid: live; ship: your kit) ----------
