@@ -11,13 +11,20 @@
     "icons": "npm run build && node tools/make-icons.mjs",
     "cap:sync": "npm run build && npx cap sync",
     "cap:android": "npm run build && npx cap sync android && npx cap open android",
-    "cap:ios": "npm run build && npx cap sync ios && npx cap open ios"
+    "cap:ios": "npm run build && npx cap sync ios && npx cap open ios",
+    "test:relay": "node tests/relay.test.mjs",
+    "relay": "node server/index.mjs"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "@capacitor/android": "6.1.2",
     "@capacitor/cli": "6.1.2",
     "@capacitor/core": "6.1.2",
     "@capacitor/ios": "6.1.2"
+  },
+  "config": {
+    "server": ""
   }
 }

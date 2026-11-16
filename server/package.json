@@ -1,0 +1,11 @@
+{
+  "name": "hullbreach-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebSocket squad relay for the Hullbreach app.",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": { "start": "node index.mjs" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "8.18.0" }
+}

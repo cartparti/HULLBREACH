@@ -1,0 +1,12 @@
+# One-click hosting for the Hullbreach squad relay on Render
+# (Dashboard -> New -> Blueprint -> pick this repo). The free plan supports
+# WebSockets; it sleeps when idle and wakes on the first connection.
+services:
+  - type: web
+    name: hullbreach-relay
+    runtime: node
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: node index.mjs
+    plan: free
+    healthCheckPath: /

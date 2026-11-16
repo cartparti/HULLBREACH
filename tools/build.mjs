@@ -8,11 +8,13 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
-const MODULES = ["sim", "world", "client", "base", "net", "squadui", "boot"];
+const MODULES = ["sim", "world", "client", "base", "transport", "net", "squadui", "boot"];
 
 const body = read("src/head.html");
 const js = MODULES.map((m) => `// ---- src/${m}.js ----\n${read(`src/${m}.js`)}`).join("\n");
 const pkg = JSON.parse(read("package.json"));
+// Default squad server for the app: HB_SERVER env var (CI) or package.json "config.server".
+const SERVER = process.env.HB_SERVER || (pkg.config && pkg.config.server) || "";
 
 rmSync(join(root, "dist"), { recursive: true, force: true });
 mkdirSync(join(root, "dist/app"), { recursive: true });
@@ -36,6 +38,7 @@ const app = `<!doctype html>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>window.HB_SERVER=${JSON.stringify(SERVER)};</script>
 <style>html,body{margin:0;height:100%;background:#050606}img{max-width:100%}[hidden]{display:none!important}body{-webkit-tap-highlight-color:transparent;overscroll-behavior:none}</style>
 </head>
 <body>

@@ -440,6 +440,15 @@ function buildLightmap(cx,cy,now){
 function spawn(n,x,y,o){ for(let i=0;i<n;i++){ const a=(o.dir??Math.random()*6.283)+(Math.random()-.5)*(o.spread??6.283), sp=(o.speed||50)*(.4+Math.random()*.8);
   parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:(o.life||.4)*(.6+Math.random()*.6),max:o.life||.4,col:o.col[i%o.col.length],size:o.size||1,emit:!!o.emit,drag:o.drag??3}); } }
 const cpx=v=>v*TS+12;
+// Fixture effects; also played when a crewmate uses something (net.js "fx" message).
+function flavorFx(kind,x,y,local){
+  if(!S||S.mode!=="ship"||!Number.isFinite(x)||!Number.isFinite(y)) return; const now=performance.now(); flavorT[kind]=now;
+  if(kind==="coffee") spawn(10,cpx(x)+3,y*TS+2,{col:["rgba(220,220,220,.5)","rgba(180,180,180,.4)"],speed:12,life:1.2,dir:-1.57,spread:.8,drag:.6});
+  if(kind==="toilet") spawn(10,cpx(x),cpx(y),{col:["#9ac0c4","#6a8a8e"],speed:25,life:.6});
+  if(kind==="vending") spawn(6,cpx(x),cpx(y)+4,{col:["#c9a24a","#ffffff"],speed:20,life:.5,emit:true});
+  if(kind==="bars"||kind==="captive"){ flavorT.captive=now; if(local) shake=Math.max(shake,1.5); spawn(6,cpx(x),cpx(y),{col:["#8a8a80","#c9c0a8"],speed:30,life:.3,emit:true}); }
+  if(kind==="arcade") spawn(8,cpx(x),y*TS-6,{col:["#e04030","#62cfe0","#e8b048"],speed:30,life:.4,emit:true});
+}
 function processFx(){
   const p=me(), now=performance.now();
   for(const f of S.fx||[]){
@@ -464,13 +473,7 @@ function processFx(){
       case "melee": spawn(7,cpx(f.x),cpx(f.y)-6,{col:["#5a0e0a","#8a1a12"],speed:40,life:.35,size:2}); shake=Math.max(shake,1.5); break;
       case "spaced": spawn(18,cpx(f.x),cpx(f.y),{col:["#5a0e0a","#a39379"],speed:90,life:.6,size:2}); break;
       case "power": powerFlicker=.7; break;
-      case "flavor": flavorT[f.kind]=now; if(f.pid===PID&&typeof onFlavor==="function") setTimeout(()=>onFlavor(f.kind,f.x,f.y),0);
-        if(f.kind==="coffee") spawn(10,cpx(f.x)+3,f.y*TS+2,{col:["rgba(220,220,220,.5)","rgba(180,180,180,.4)"],speed:12,life:1.2,dir:-1.57,spread:.8,drag:.6});
-        if(f.kind==="toilet") spawn(10,cpx(f.x),cpx(f.y),{col:["#9ac0c4","#6a8a8e"],speed:25,life:.6});
-        if(f.kind==="vending") spawn(6,cpx(f.x),cpx(f.y)+4,{col:["#c9a24a","#ffffff"],speed:20,life:.5,emit:true});
-        if(f.kind==="bars"||f.kind==="captive"){ flavorT.captive=now; shake=Math.max(shake,1.5); spawn(6,cpx(f.x),cpx(f.y),{col:["#8a8a80","#c9c0a8"],speed:30,life:.3,emit:true}); }
-        if(f.kind==="arcade") spawn(8,cpx(f.x),f.y*TS-6,{col:["#e04030","#62cfe0","#e8b048"],speed:30,life:.4,emit:true});
-        break;
+      case "flavor": if(f.pid===PID&&typeof onFlavor==="function") setTimeout(()=>onFlavor(f.kind,f.x,f.y),0); flavorFx(f.kind,f.x,f.y,true); break;
       case "sit": if(f.pid===PID&&typeof onSit==="function") setTimeout(()=>onSit(f.kind),0); break;
       case "terminal": if(f.pid===PID&&typeof onTerminal==="function") setTimeout(()=>onTerminal(f.kind),0); break;
       case "explode": spawn(46,cpx(f.x),cpx(f.y),{col:["#fff0b0","#ffb040","#ff6a20","#c02a10"],speed:150,life:.6,size:2,emit:true}); spawn(30,cpx(f.x),cpx(f.y),{col:["#2a2420","#3a3430","#1a1614"],speed:90,life:1.1,size:2});

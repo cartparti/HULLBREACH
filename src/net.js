@@ -16,8 +16,11 @@ const crewKey=()=>Net.sq?Net.myKey:"p1";
 
 async function netInit(){
   try{
-    if(!window.claude?.use) return;
-    const [room,user]=await Promise.all([window.claude.use("room"),window.claude.use("user")]);
+    let room=null, user=null;
+    if(window.claude?.use) [room,user]=await Promise.all([window.claude.use("room"),window.claude.use("user")]);
+    else { const url=HB.serverUrl(); if(!url) return; Net.connecting=true; if(panelKind==="crew") renderPanel();
+      const t=await wsTransport(url); Net.connecting=false; if(!t){ Net.avail=false; if(panelKind==="crew"){ renderPanel(); toast("Couldn't reach the squad server at that address."); } return; }
+      room=t.room; user=t.user; Net.app=true; }
     if(!room) return; Net.room=room; Net.user=user;
     Net.myId=user?await user.id():null;
     room.onPeers(ch=>{ Net.lobbyPeers=ch.peers; const meP=ch.peers.find(p=>p.sameTab); if(meP) Net.myPeer=meP.peer; if(!Net.myKey) Net.myKey=Net.myId||Net.myPeer; resolveNames(ch.peers); if(panelKind==="crew") renderPanel(); });
@@ -26,6 +29,7 @@ async function netInit(){
   }catch(e){ Net.avail=false; }
 }
 async function resolveNames(peers){
+  if(Net.app) for(const p of peers) if(p.by&&p.presence&&typeof p.presence.nm==="string"&&p.presence.nm) Net.names[p.by]=p.presence.nm.slice(0,20);
   if(!Net.user||!Net.user.profiles) return; const ids=[...new Set(peers.map(p=>p.by).filter(Boolean))].filter(id=>!(id in Net.names)); if(!ids.length) return;
   try{ const ps=await Net.user.profiles(ids); for(const id of ids) Net.names[id]=(ps[id]&&ps[id].name)||""; }catch(e){}
   if(panelKind==="crew") renderPanel(); if(S) renderPanels();
@@ -65,6 +69,9 @@ function onSquadPeers(ch){
   resolveNames(ch.peers);
   // crew positions aboard the ship
   if(S&&S.mode==="ship") for(const r of Net.roster){ if(r.key===Net.myKey) continue; const e=S.ents.find(q=>q.id===r.key); if(e&&typeof r.x==="number"){ e.x=r.x; e.y=r.y; if(r.f) e.face=r.f; if(r.look){ e.armor=r.look.armor||"suit"; e.weapon=r.look.weapon||null; } } }
+  // two crew on one tile (both grabbed the same seat): the later key steps off
+  if(S&&S.mode==="ship"&&me()){ const mine=me(), clash=Net.roster.find(r=>r.key!==Net.myKey&&r.x===mine.x&&r.y===mine.y&&r.key<Net.myKey);
+    if(clash){ for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1]]){ const t=Sim.tileAt(S,mine.x+dx,mine.y+dy); if(Sim.walk(t)&&t.t!=="seat"&&!S.ents.some(e=>e!==mine&&e.x===mine.x+dx&&e.y===mine.y+dy)){ mine.x+=dx; mine.y+=dy; toast("That seat's taken."); netShipMoved(); break; } } } }
   if(Net.host){
     for(const p of ch.left) hostCrewLeft(p);
     const shipCrew=S&&S.mode==="ship"?S.ents.filter(e=>e.kind==="player").map(e=>e.id).sort().join(","):"";
@@ -111,6 +118,7 @@ function hostSendLog(from){ for(let i=Math.max(1,from);i<=Net.n;i+=40) emit({t:"
 function onSquadMsg(m){
   const d=m.data; if(!d||typeof d!=="object") return; const fromKey=m.by||m.peer;
   if(d.t==="chat"){ if(!m.sameTab&&typeof d.m==="string") addChat(fromKey,d.m); return; }
+  if(d.t==="fx"){ if(!m.sameTab&&typeof d.kind==="string") flavorFx(d.kind,d.x|0,d.y|0,false); return; }
   if(d.t==="suggest"){ if(!m.sameTab&&World.loc(d.to)){ Net.suggest={k:fromKey,to:d.to,at:Date.now()}; if(Net.host) toast(`${nameOf(fromKey)} suggests a course to ${World.loc(d.to).name}. Open the star map to fly there.`); if(panelKind==="helm") renderPanel(); } return; }
   if(d.t==="ping"){ if(!m.sameTab&&Number.isFinite(d.x)&&Number.isFinite(d.y)) addPing(fromKey,d.x,d.y,String(d.kind),d.sc); return; }
   if(m.sameTab&&d.t!=="state") return;

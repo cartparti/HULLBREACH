@@ -25,8 +25,12 @@ jobs:
           node-version: 20
       - name: Rules tests
         run: node tests/sim.test.mjs
+      - name: Relay tests
+        run: npm ci --prefix server && node tests/relay.test.mjs
       - name: Build
         run: node tools/build.mjs
+        env:
+          HB_SERVER: ${{ vars.HB_SERVER }}
       - name: Upload web app
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3

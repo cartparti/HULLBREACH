@@ -10,7 +10,7 @@ Turn-based, simulation-driven, and built for squads of up to four.
 
 - **On your phone:** open the GitHub Pages site (see *Deploying* below), then use your browser's **Add to Home Screen** / **Install app**. It runs full-screen and works offline for solo play.
 - **On PC:** open the same site in any modern browser.
-- **Squads:** co-op currently runs in the claude.ai Artifact build of the game (it uses claude.ai's real-time rooms and per-player cloud saves). A standalone multiplayer server for the app is next on the roadmap.
+- **Squads (up to 4):** open the **Crew** panel on your ship. In the app, squads meet on a Hullbreach squad server: host one for free with the included relay (see [server/README.md](server/README.md)), set your callsign and connect. The claude.ai build of the game uses claude.ai's own real-time rooms and cloud saves instead. Both run the same squad protocol.
 
 ## What's in the game
 
@@ -43,9 +43,11 @@ src/
   world.js    galaxy, traders, contracts, the crew ship (World.act)
   client.js   pixel-art renderer, lighting, effects, input
   base.js     ship base: terminals, loadout, stash, travel, raids, saves
-  net.js      squads over claude.ai rooms: host-sequenced lockstep + replay
+  transport.js app connection to the squad relay (same interface as claude.ai rooms)
+  net.js      squads: host-sequenced lockstep + replay, crew presence
   squadui.js  shared vision, tags, pings, chat, crew cards, revive/give
   boot.js     start-up
+server/       squad relay for the app (Node + ws), render.yaml for one-click hosting
 web/          app manifest, service worker, icons
 tools/        build.mjs (no dependencies), make-icons.mjs (Playwright)
 tests/        rules tests (plain Node)
@@ -55,7 +57,7 @@ tests/        rules tests (plain Node)
 
 `Sim` is deterministic: every random roll comes from a seed stored in the state. In a squad the leader's page is the sequencer: crew send action requests, the leader applies them with `Sim.act` and broadcasts `{n, actor, action}`; every page replays the same numbered actions on the same seeded station. Messages stay tiny (well under the 4 KB room limit), a missed message triggers a replay of the action log, and a state hash every few actions catches divergence. Ship walking is cosmetic and travels as presence instead.
 
-The same protocol is what the future app server will relay.
+In the app the same messages travel through `server/index.mjs`, a relay that mirrors claude.ai rooms (lobby, named squad rooms, presence, 4 KB messages). It only forwards; the leader's game is the referee.
 
 ## Development
 
@@ -63,6 +65,8 @@ Requires Node 18+.
 
 ```sh
 npm test          # rules tests
+npm run test:relay  # relay tests (after: npm install --prefix server)
+npm run relay     # run the squad relay locally on :8787
 npm run build     # dist/app (web app) and dist/artifact.html (claude.ai build)
 npm run serve     # build and serve dist/app locally
 npm run icons     # regenerate app icons from the game sprite (needs Playwright)
@@ -92,7 +96,7 @@ Publishing needs a Google Play developer account (one-time fee) and/or an Apple 
 
 ## Roadmap
 
-- Multiplayer server for the app (WebSocket relay for the existing lockstep protocol, plus account saves)
+- Account saves for the app (cloud stash shared across devices)
 - Second enemy type that hunts by sound
 - Two-person actions: forcing the vault together, carrying downed crew
 - More contracts and derelict layouts

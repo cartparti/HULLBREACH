@@ -86,6 +86,7 @@ const FLAVOR={
 let flavorCD=0;
 function onFlavor(kind){
   const F=FLAVOR[kind]; if(!F) return; const lines=F[0]; toast(lines[(Math.random()*lines.length)|0]);
+  if(typeof inSquad==="function"&&inSquad()&&Number.isFinite(arguments[1])) emit({t:"fx",kind,x:arguments[1],y:arguments[2]});
   if(F[1]&&typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>3000){ flavorCD=Date.now(); emit({t:"chat",m:F[1]}); }
 }
 
@@ -244,15 +245,21 @@ function viewDeploy(L){
       ${btn}</div></section>`;
 }
 function viewCrew(){
-  if(!Net.avail&&!window.claude) return `<section class="panel h-card"><h3>Squads are coming to the app</h3><p>This build of Hullbreach runs solo, with your save kept on this device. Co-op squads need the Hullbreach multiplayer server, which is next on the roadmap. Until then you can play squads in the claude.ai version of the game.</p></section>`;
+  const fieldCss="font:600 16px var(--f-hud);background:#071010;color:var(--bone);border:1px solid var(--line-dim);height:40px;padding:0 10px;min-width:0;flex:1";
+  if(!Net.avail&&!window.claude) return `<section class="h-grid"><div class="panel h-card span12"><div class="h-eyebrow">Squad server</div>
+      <p>Squads in the app meet on a Hullbreach squad server. Enter its address (it starts with wss://), pick a callsign, and connect. Everyone in your squad needs the same server.</p>
+      <div class="bar-row"><input id="srv-url" style="${fieldCss}" placeholder="wss://your-squad-server.example" aria-label="Squad server address" value="${esc(HB.serverUrl())}" autocomplete="off"></div>
+      <div class="bar-row"><input id="srv-name" style="${fieldCss}" maxlength="20" aria-label="Callsign" placeholder="Callsign" value="${esc(HB.callsign())}" autocomplete="off"><button class="deploy-btn" style="height:40px;font-size:15px" data-act="srvconnect" ${Net.connecting?"disabled":""}>${Net.connecting?"Connecting…":"Connect"}</button></div>
+      <p class="risk">No server yet? The repo's server folder has a ready-to-run relay and the steps to host it for free.</p></div></section>`;
+  const appHead=Net.app?`<div class="panel h-card span12"><div class="bar-row"><span class="h-eyebrow grow">Callsign · ${esc(HB.serverUrl().replace(/^wss?:\/\//,""))}</span></div><div class="bar-row"><input id="srv-name" style="${fieldCss}" maxlength="20" aria-label="Callsign" value="${esc(HB.callsign())}" autocomplete="off"><button class="plain" data-act="callsign">Save</button></div></div>`:"";
   if(!Net.avail) return `<section class="panel h-card"><h3>Multiplayer isn't available here</h3><p>Squads need everyone signed in to Claude with this page shared to them, with permission to use it. Ask the page's owner to share it from the Share menu. Until then you can keep playing solo.</p></section>`;
   if(!inSquad()){
     const open=Net.lobbyPeers.filter(p=>!p.sameTab&&p.presence&&p.presence.app==="hb"&&p.presence.open&&p.presence.sq);
-    return `<section class="h-grid"><div class="panel h-card span6"><div class="h-eyebrow">Lead a squad</div><p>Your ship becomes the squad's ship. You fly it, pick the targets and launch raids. Contract rewards go to everyone.</p><button class="deploy-btn" data-act="sqcreate">Open a squad</button></div>
+    return `<section class="h-grid">${appHead}<div class="panel h-card span6"><div class="h-eyebrow">Lead a squad</div><p>Your ship becomes the squad's ship. You fly it, pick the targets and launch raids. Contract rewards go to everyone.</p><button class="deploy-btn" data-act="sqcreate">Open a squad</button></div>
       <div class="panel h-card span6"><div class="h-eyebrow">Join a squad</div><div class="bar-row"><input id="sq-code" maxlength="8" placeholder="Code" aria-label="Squad code" autocomplete="off" style="font:600 18px var(--f-num);letter-spacing:.2em;text-transform:uppercase;background:#071010;color:var(--bone);border:1px solid var(--line-dim);height:40px;padding:0 10px;width:140px"><button class="plain" data-act="sqjoin">Join</button></div>
         <div class="h-eyebrow" style="margin-top:6px">Open squads on this page</div>
         ${open.length?open.map(p=>`<div class="panel contract-row"><div><b>${(p.by&&Net.names[p.by])||"A contractor"}</b><br><span>${p.presence.crew}/4 crew · at ${String(p.presence.loc||"").slice(0,40)}</span></div><button class="plain" data-act="sqjoin:${String(p.presence.sq).replace(/[^a-z0-9]/g,"")}">Join</button></div>`).join(""):`<p class="risk">Nobody has an open squad right now.</p>`}</div></section>`; }
-  return `<section class="h-grid"><div class="panel h-card span7"><div class="h-eyebrow">Squad code</div><h2 style="font-family:var(--f-num);letter-spacing:.3em">${Net.code.toUpperCase()}</h2><p class="risk">Crew can join with this code from their own Crew panel, or pick your squad from the open list.</p>
+  return `<section class="h-grid">${appHead}<div class="panel h-card span7"><div class="h-eyebrow">Squad code</div><h2 style="font-family:var(--f-num);letter-spacing:.3em">${Net.code.toUpperCase()}</h2><p class="risk">Crew can join with this code from their own Crew panel, or pick your squad from the open list.</p>
       <div class="squad">${Net.roster.map(q=>`<div class="${q.key===Net.myKey?"me":""}"><b>${nameOf(q.key)}</b><span>${q.key===(Net.setup?Net.setup.hostKey:Net.myKey)&&Net.host===(q.key===Net.myKey)?"Leader":"Crew"}${q.ready?" · ready":""}</span></div>`).join("")}${"<div>Open berth</div>".repeat(Math.max(0,4-Net.roster.length))}</div></div>
     <div class="panel h-card span5"><div class="h-eyebrow">${Net.host?"You lead this squad":"Crew member"}</div><p>${Net.host?"You fly the ship and launch raids. If you leave, the squad ends.":"The leader flies the ship and launches raids. Your stash and credits stay your own."}</p>
       <button class="plain" data-act="sqleave">${armed.sqleave?"Confirm":Net.host?"Disband squad":"Leave squad"}</button></div></section>`;
@@ -291,6 +298,8 @@ $("p-body").addEventListener("click",e=>{
     case "launch": Net.ready=true; Net.readyLo=loadoutFromKit(kitResolved()); squadPresence(); hostLaunch(); return;
     case "ready": setReady(!Net.ready); return;
     case "sqcreate": createSquad(); return;
+    case "srvconnect": { const u=($("srv-url").value||"").trim(); if(!/^wss?:\/\//.test(u)){ toast("The address should start with wss:// (or ws:// on your own network)."); return; } HB.setServer(u); HB.setCallsign($("srv-name").value); netInit(); renderPanel(); return; }
+    case "callsign": HB.setCallsign($("srv-name").value); toast("Callsign saved."); if(inSquad()) squadPresence(); break;
     case "sqjoin": joinSquad(x||($("sq-code")?$("sq-code").value:"")); return;
     case "sqleave": if(arm("sqleave")) leaveSquad(Net.host?"Squad disbanded.":"You left the squad."); break;
     case "kit": k.type=x; panelSub=null; save(); refreshLook(); break;
