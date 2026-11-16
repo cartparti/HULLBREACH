@@ -259,7 +259,7 @@ function drawHuman(g,{step=0,b=0},L){
   if(CH==="exo"){ R(g,12,18+b,3,1,"#8a8a80"); }
   if(CH==="aegis"){ R(g,10,10+b,5,3,"#a8842a"); R(g,10,10+b,5,1,"#e8c868"); }
   if(AC==="pauldron") drawPauldron(g,b);
-  if(L.li){ R(g,13,13+b,2.5,1.5,"#2a2a26"); R(g,13,13+b,2.5,.5,"#5a5a50"); R(g,15.5,13+b,.5,1.5,"#fff4c0"); hp(g,15.5,13.5+b,"#ffffff"); }
+  if(L.li){ R(g,13,13+b,2.5,1.5,"#2a2a26"); R(g,13,13+b,2.5,.5,"#5a5a50"); R(g,15.5,13+b,.5,1.5,L.li===1?"#fff4c0":"#3a3a34"); if(L.li===1) hp(g,15.5,13.5+b,"#ffffff"); }
 }
 // wounds and missing limbs, painted over a finished sprite. dm: one char per limb (head torso larm rarm lleg rleg):
 // 0 fine, 1 wounded, 2 wrecked, 3 gone
@@ -278,7 +278,7 @@ function damageHuman(g,b,bl,fl,dm,L){ if(!dm||dm==="000000") return; const D=i=>
   if(D(2)===3) stump(g,9,13+b,1.5,2);
   if(D(0)===3){ cut(g,6,-2,14,12.5+b); stump(g,11,10+b,3,1.5); for(let k=0;k<4;k++) hp(g,10.5+k,9.5+b-(k%2),"#8a1a12"); } else woundAt(g,10.5,5+b,5,6,D(0),15); }
 function drawPlayer(g,o,L={}){ drawHuman(g,o,L); const step=o.step||0, b=o.b||0, bl=step===1?-2:step===2?2:0; damageHuman(g,b,bl,-bl,L.dm,L); }
-function lookOf(e){ const g=e&&(Sim.gun(e)||e.melee), d=k=>e&&e[k]?e[k].d:null; return {...((e&&e.look)||{}),hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),li:e&&e.light?1:0,w:g?g.d:null,dm:e&&e.hp?dmgKey(e):"000000"}; }
+function lookOf(e){ const g=e&&(Sim.gun(e)||e.melee), d=k=>e&&e[k]?e[k].d:null; return {...((e&&e.look)||{}),hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),li:e&&e.light?(e.lightOff?2:1):0,w:g?g.d:null,dm:e&&e.hp?dmgKey(e):"000000"}; }
 
 function drawHusk(g,{step=0,b=0,lunge=0}){
   const P={f:"#a69679",fH:"#c7b899",fS:"#76654f",fD:"#4a3d30",raw:"#6e2620",rawH:"#9a3a2c",bone:"#d6cbb0",cl:"#2b3533",clH:"#3e4a47",bl:"#5a0e0a",eye:"#ff3a26"};
@@ -774,7 +774,7 @@ function computeLights(){
   for(const k of Object.keys(S.fire||{})){ const i=+k, lv=S.fire[i], x0=i%W, y0=(i/W)|0, r=2.5+lv;
     for(let y=Math.max(0,Math.floor(y0-r));y<=Math.min(S.H-1,Math.ceil(y0+r));y++)for(let x=Math.max(0,Math.floor(x0-r));x<=Math.min(W-1,Math.ceil(x0+r));x++){
       const d=Math.hypot(x-x0,y-y0); if(d>r) continue; if(d>0&&!Sim.los(S,x0,y0,x,y)) continue; fireContrib.push(Sim.idx(S,x,y),(1-d/r)*(.45+.22*lv)); } }
-  FLASH=new Float32Array(N); const [fx,fy]=p.face||[1,0], LS=p.light?Items.stats(p.light):null, rng=LS?LS.range:0, cone=LS?LS.cone:1;
+  FLASH=new Float32Array(N); const [fx,fy]=p.face||[1,0], LS=p.light&&!p.lightOff?Items.stats(p.light):null, rng=LS?LS.range:0, cone=LS?LS.cone:1;
   for(let i=0;i<N;i++){ if(!VIS[i]) continue; const x=i%W,y=(i/W)|0, dx=x-p.x, dy=y-p.y, d=Math.hypot(dx,dy);
     let v=0; if(d<2.6) v+=(1-d/2.6)*(LS?.35:.22);
     if(LS&&d>0&&d<rng){ const cos=(dx*fx+dy*fy)/d; if(cos>cone) v+=Math.pow(1-d/rng,.9)*1.05*Math.min(1,(cos-cone)/.12); }
@@ -1192,7 +1192,7 @@ function renderPanels(){
     const lg=$("log"); lg.innerHTML=logHTML(40); lg.scrollTop=lg.scrollHeight;
     $("fig").innerHTML=figHTML(p); $("vitals").innerHTML=vitHTML(p); drawEkg($("vitals"),p);
     $("hotbar").innerHTML=hotHTML(p,6,true);
-    $("b-ext").disabled=!onPad; $("b-air").classList.toggle("on",overlay); renderTip();
+    $("b-ext").disabled=!onPad; $("b-air").classList.toggle("on",overlay); $("b-light").classList.toggle("on",!!p.light&&!p.lightOff); $("b-light").disabled=!p.light; renderTip();
   } else {
     const pr=S.P[Sim.idx(S,p.x,p.y)];
     const m=(lbl,val,max,col,txt)=>`<span class="lbl">${lbl}</span><div class="meter"><i style="width:${Math.max(0,Math.min(100,val/max*100))}%;background:${col}"></i></div><span class="num">${txt}</span>`;
@@ -1203,7 +1203,7 @@ function renderPanels(){
     $("dinv").innerHTML=p.inv.length?p.inv.map((it,i)=>`<button data-use="${i}" style="border-color:${rarCol(it)}"><span><img alt="" src="${iconFor(it)}">${Items.name(it)}</span><span style="color:${rarCol(it)}">${Items.RAR[Items.rarOf(it)].name}</span></button>`).join(""):`<div class="empty">Empty.</div>`;
     $("dfacts").innerHTML=contractRows(p);
     const dl=$("dlog"); dl.innerHTML=logHTML(60); dl.scrollTop=dl.scrollHeight;
-    $("t-ext").disabled=!onPad; $("t-air").classList.toggle("on",overlay);
+    $("t-ext").disabled=!onPad; $("t-air").classList.toggle("on",overlay); $("t-light").classList.toggle("on",!!p.light&&!p.lightOff);
     const tg=target&&targetable(target.x,target.y)?target:null;
     $("t-firepct").textContent=tg?(Sim.entAt(S,tg.x,tg.y)?Math.round(Sim.hitChance(S,p,tg.x,tg.y)*100)+"%":(S.tiles[Sim.idx(S,tg.x,tg.y)].t==="window"?"window":"drum")):"nearest";
     renderCard();
@@ -1296,13 +1296,14 @@ function stepTravel(){
 function tileAt(ev){ const r=screen.getBoundingClientRect(); const px=(ev.clientX-r.left)*view.dpr/view.scale+Math.round(camX), py=(ev.clientY-r.top)*view.dpr/view.scale+Math.round(camY); return {x:Math.floor(px/TS),y:Math.floor(py/TS)}; }
 document.addEventListener("keydown",e=>{
   if(!S||(e.target&&e.target.tagName==="INPUT")) return;
-  if(!$("panel").hidden){ if(e.key==="Escape"&&typeof closePanel==="function") closePanel(); return; }
+  if(!$("panel").hidden){ const kk=e.key.toLowerCase(); if((kk==="escape"||((kk==="i"||kk==="tab")&&panelKind==="inventory"))&&typeof closePanel==="function"){ e.preventDefault(); closePanel(); } return; }
   if(mode!=="pc") return;
   const k=e.key.toLowerCase(), mv={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]}[k];
   if(mv){ e.preventDefault(); send({type:"move",dx:mv[0],dy:mv[1]}); return; }
   if(k===" "||k==="."){ e.preventDefault(); send({type:"wait"}); return; }
   if(k==="escape"){ stopTravel(); return; }
   if(k==="r"&&S.mode==="raid"){ send({type:"swap"}); return; }
+  if(k==="l"){ toggleLight(); return; }
   if(k==="i"||k==="tab"){ e.preventDefault(); if(typeof openPanel==="function") openPanel("inventory"); return; }
   if(k==="escape"&&throwMode){ throwMode=null; return; }
   if(k==="f"||k==="e") send({type:"interact"}); else if(k==="g") send({type:"pickup"}); else if(k==="x") fire(); else if(k==="q") send({type:"extract"});
@@ -1356,6 +1357,10 @@ $("dr-new").onclick=()=>armAbandon($("dr-new"),"Abandon run");
 $("b-fire").onclick=fire; $("b-int").onclick=()=>send({type:"interact"}); $("b-get").onclick=()=>send({type:"pickup"});
 $("b-wait").onclick=()=>send({type:"wait"}); $("b-ext").onclick=()=>send({type:"extract"});
 $("b-air").onclick=()=>{ overlay=!overlay; renderPanels(); };
+function toggleLight(){ if(!S) return; const p=me(); if(!p||!p.light){ toast("No light equipped. Put a flashlight in your Light slot from your kit."); return; }
+  if(S.mode==="raid") send({type:"light"}); else { p.lightOff=!p.lightOff; computeLights(); renderPanels(); toast(p.lightOff?"Light off.":"Light on."); } }
+$("b-light").onclick=toggleLight; $("t-light").onclick=toggleLight;
+$("b-help").onclick=()=>{ $("help").hidden=!$("help").hidden; };
 $("b-new").onclick=()=>armAbandon($("b-new"),"Abandon");
 
 function setMode(m){ mode=m; document.body.dataset.mode=m; try{ localStorage.setItem("hb-mode",m); }catch(e){} target=null; hover=null; stopTravel(); camInit=false; resize(); if(S) renderPanels(); }

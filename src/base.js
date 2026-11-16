@@ -174,9 +174,12 @@ function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
   $("p-body").innerHTML=P.view(); renderSync();
+  const MINE=[["inventory","Kit"],["rack","Loadout"],["stash","Stash"],["workbench","Fabricator"],["wardrobe","Wardrobe"],["bar","Galley"]];
+  $("p-tabs").innerHTML=S&&S.mode==="ship"&&MINE.some(([k])=>k===panelKind)?MINE.map(([k,n])=>`<button data-tab="${k}" aria-current="${panelKind===k}">${n}</button>`).join(""):"";
   const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,c.width,c.height); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0,c.width,c.height); }
   const c2=$("h-prev2"); if(c2){ const g=c2.getContext("2d"); g.clearRect(0,0,c2.width,c2.height); g.drawImage(playerFrames({...profile.look,hd:null,a:null,lg:null,ac:null,w:null}).idle0,0,0,c2.width,c2.height); } }
 $("p-close").onclick=closePanel;
+$("p-tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b) openPanel(b.dataset.tab); });
 $("panel").addEventListener("click",e=>{ if(e.target.id==="panel") closePanel(); });
 
 function viewHelm(){
@@ -243,6 +246,7 @@ function viewStash(){
   const canScrap=sel&&["weapon","armor","pack","throw"].includes(Items.kind(sel));
   const detail=sel?(()=>{ const I=itemInfo(sel); return `<div class="panel h-card span4"><div class="h-eyebrow" style="color:${I.col}">${I.rarName} · ${I.cat}</div><div class="bar-row">${slotHTML(sel)}<h3 class="grow" style="color:${I.col}">${esc(I.name)}</h3></div>
       <p>${esc(Items.statLine(sel))}</p><p class="risk">${esc(I.desc)}</p><p class="risk">Worth about ${I.sell} cr to a trader.</p>
+      ${Items.slotOf(sel)?`<button class="plain" data-act="equipitem:${sel.uid}">${KIT_SLOTS.some(k=>profile.kit[k]===sel.uid)&&profile.kit.type==="custom"?"Equipped in your kit":"Equip in your kit"}</button>`:""}
       ${Items.kind(sel)==="food"?`<button class="plain" data-act="consume:${sel.uid}">${(Items.def(sel.d).water||0)>(Items.def(sel.d).food||0)?"Drink it":"Eat it"}</button>`:""}
       ${canScrap?`<button class="plain" data-act="scrap:${sel.uid}">${armed["scrap:"+sel.uid]?"Confirm: break it down":"Break down for materials"}</button>`:""}</div>`; })()
     :`<div class="panel h-card span4"><div class="h-eyebrow">Hold</div><p>${profile.stash.length} items, worth about ${total} cr at base prices.</p><div class="h-eyebrow">Ammunition</div>${ammoChips(profile.ammo)}<div class="h-eyebrow" style="margin-top:8px">Materials</div>${matChips(profile.mats)}<p class="risk">Break gear down for materials, then craft ammo at the workbench in the armory.</p></div>`;
@@ -305,7 +309,8 @@ function viewInventory(){
   const raid=S&&S.mode==="raid", p=raid?me():null, r=raid?null:kitResolved();
   const G=raid?Sim.gun(p):null, at=G&&Items.stats(G).ammo;
   const eq=KIT_SLOTS.map(s=>{ const it=raid?p[s]:r[s], act=raid&&((s==="w1"&&p.act===1&&p.w1)||(s==="w2"&&p.act===2&&p.w2));
-      return `<div class="panel" style="padding:6px;${act?"border-color:var(--bile)":""}">${gearRow(SLOT_NAME[s]+(act?" ●":""),it,EMPTY_TXT[s])}</div>`; }).join("");
+      const btn=raid?(s==="light"&&p.light?`<button class="plain" data-act="ilight">${p.lightOff?"Turn on":"Turn off"}</button>`:""):`<button class="plain" data-act="equipslot:${s}">Change</button>`;
+      return `<div class="panel" style="padding:6px;${act?"border-color:var(--bile)":""}">${gearRow(SLOT_NAME[s]+(act?" ●":""),it,EMPTY_TXT[s],btn)}</div>`; }).join("");
   const inv=raid?p.inv:r.inv, cap=raid?p.cap:r.cap, ammo=raid?p.ammo:r.ammo;
   const cells=[]; for(let i=0;i<cap;i++){ const it=inv[i];
     cells.push(it?`<button class="inv-cell" ${raid?`data-act="isel:${i}"`:""} aria-pressed="${raid&&invSel===i}" style="border-color:${rc(it)}"><img alt="" src="${iconFor(it)}"><span>${nmHTML(it)}<small>${esc(Items.statLine(it)||Items.RAR[Items.rarOf(it)].name)}</small></span></button>`
@@ -319,11 +324,11 @@ function viewInventory(){
     btns.push(`<button class="plain" data-act="idrop:${invSel}">Drop</button>`);
     for(const q of S.ents) if(q.kind==="player"&&q.id!==PID&&q.alive&&Math.abs(q.x-p.x)+Math.abs(q.y-p.y)<=1) btns.push(`<button class="plain" data-act="igive:${invSel}:${q.id}">Give to ${esc(typeof nameOf==="function"?nameOf(q.id):"crew")}</button>`);
     actions=`<div class="panel h-card" style="margin-top:8px"><div class="bar-row">${slotHTML(it)}<div class="grow">${nmHTML(it)}<div class="risk">${esc(Items.statLine(it))}</div>${Items.statLine(it)!==(Items.def(it.d).desc||"")?`<div class="risk">${esc(Items.def(it.d).desc||"")}</div>`:""}</div></div><div class="bar-row">${btns.join("")}</div><p class="risk">Equipping, swapping and dropping are free. Using a med takes your turn.</p></div>`; }
-  const health=raid?`<div class="panel h-card span5"><div class="h-eyebrow">Condition</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center">
+  const health=raid?`<div class="panel h-card span5"><div class="h-eyebrow">Condition</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center;align-content:start">
       <span class="lbl">Blood</span><div class="meter"><i style="width:${Math.max(0,p.blood)}%;background:${p.blood>60?"var(--bile)":p.blood>35?"var(--brass)":"var(--blood2)"}"></i></div><span class="num">${Math.max(0,p.blood)}</span>
       <span class="lbl">Suit O₂</span><div class="meter"><i style="width:${p.o2/(p.o2max||100)*100}%;background:var(--cold)"></i></div><span class="num">${p.o2}/${p.o2max||100}</span>${hungerRows(p.food,p.water)}${limbRows(p)}</div>
       ${p.stimT>0?`<p class="risk good">Stimmed · ${p.stimT} turns</p>`:""}</div>`
-    :`<div class="panel h-card span5"><div class="h-eyebrow">Condition</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center">${hungerRows(profile.food,profile.water)}</div><p class="risk">Food and water drop during raids and while the ship travels. Eat at the galley bar, or carry rations. Starving or parched, you lose blood.</p></div>`;
+    :`<div class="panel h-card span5"><div class="h-eyebrow">Condition</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center;align-content:start">${hungerRows(profile.food,profile.water)}</div><p class="risk">Food and water drop during raids and while the ship travels. Eat at the galley bar, or carry rations. Starving or parched, you lose blood.</p></div>`;
   return `<section class="h-grid"><div class="panel h-card span7"><div class="lo inv-lo"><div class="preview"><canvas id="h-prev" width="48" height="64" aria-label="Your contractor"></canvas></div>
       <div class="eq">${eq}${raid&&p.w2?`<button class="plain" data-act="iswap">Swap guns${mode==="pc"?" (R)":""}</button>`:""}</div></div></div>${health}
     <div class="panel h-card span12"><div class="bar-row"><div class="h-eyebrow grow">Backpack · ${inv.length}/${cap}</div>${raid?"":`<button class="plain" data-act="open:rack">Loadout rack</button>`}</div><div class="inv-grid">${cells.join("")}</div>${actions}
@@ -456,6 +461,11 @@ $("p-body").addEventListener("click",e=>{
       for(const m in yv) profile.mats[m]=(profile.mats[m]|0)+yv[m]; toast(`Broke down ${Items.name(it)}: ${MAT_T.filter(m=>yv[m]).map(m=>yv[m]+" "+Items.MATS[m].toLowerCase()).join(", ")}.`); save(); refreshLook(); break; }
     case "craft": { const R2=Items.RECIPES.find(q=>q.id===x); if(!R2||R2.lvl>fabLvl()||!canPay(R2.cost)) break; pay(R2.cost); const out={...R2.out,r:Items.craftRarity(R2,fabLvl())}; World.grant(profile,out); toast(`Crafted ${Items.name(out)}.`); save(); break; }
     case "fabtab": fabTab=x; break;
+    case "equipslot": if(profile.kit.type!=="custom"){ profile.kit.type="custom"; toast("Switched to a custom kit. Pick your gear."); } save(); openPanel("rack",x); return;
+    case "equipitem": { const it=byUid(x), sl=it&&Items.slotOf(it); if(!sl) break; const k=profile.kit; if(k.type!=="custom"){ k.type="custom"; }
+      const slot=sl==="gun"?(!k.w1||k.w1===x?"w1":!k.w2?"w2":"w1"):sl; for(const s2 of KIT_SLOTS) if(k[s2]===x) k[s2]=null; k[slot]=x; k.inv=k.inv.filter(u=>u!==x);
+      toast(`${Items.name(it)} is in your ${SLOT_NAME[slot].toLowerCase()} slot. Your kit is now custom.`); save(); refreshLook(); break; }
+    case "ilight": send({type:"light"}); break;
     case "fabup": { const lv=fabLvl(), up=Items.FAB_UP[lv]; if(!up||!canPay(up)||(inSquad()&&!Net.host)) break; pay(up); profile.ship.fab=lv+1; toast(`Fabricator upgraded to Mk ${lv+1}: ${Items.FAB_NAME[lv+1]}.`); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "bareat": { const b=Items.BAR.find(q=>q.id===x); if(!b||profile.credits<b.price) break; profile.credits-=b.price; eatDrink(b.food,b.water); toast(b.water>(b.food||0)?`You drink the ${b.name.toLowerCase()}.`:`You eat the ${b.name.toLowerCase()}.`); if(inSquad()) emit({t:"chat",m:`grabs a ${b.name.toLowerCase()} at the galley`}); save(); break; }
     case "bartogo": { const row=Items.BAR_TOGO[+x]; if(!row||profile.credits<row[1]) break; profile.credits-=row[1]; World.grant(profile,{d:row[0],r:0}); toast(`Bought ${Items.name({d:row[0],r:0})}.`); save(); break; }

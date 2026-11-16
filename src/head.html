@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pirata+One&family=UnifrakturMaguntia&family=IM+Fell+English+SC&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap">
 <style>
 /* Layout: full-bleed game view in both modes. PC = four corner HUD clusters + hotbar; Touch = vitals strip, hotbar, d-pad and fire cluster, slide-up kit. */
 :root{
@@ -348,12 +348,99 @@ body[data-mode="touch"][data-scene="ship"] .chat{top:calc(env(safe-area-inset-to
 body[data-mode="touch"] .r-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 312px)}
 @media (max-width:1180px){.h-bc .hotslot:nth-child(n+6){display:none}}
 @media (max-width:980px){.h-br .tab{display:none}}
+
+/* ===================== THEME: black, blood red, tarnished gold, blackletter ===================== */
+:root{
+  --ink:#030202; --glass:rgba(10,4,4,.86); --line:#8a1c12; --line-dim:#3e100b; --tab:#120605;
+  --bone:#e2d6bf; --ash:#9a8c7c; --brass:#c9a24a; --blood:#8a1a12; --blood2:#e0482f; --bile:#c9a24a; --cold:#7fb0c0;
+  --f-gothic:"UnifrakturMaguntia","Old English Text MT",serif; --f-display:"Pirata One","Palatino Linotype",serif; --f-fell:"IM Fell English SC",Georgia,serif;
+}
+body{background:#030202}
+.panel{background:linear-gradient(180deg,rgba(18,6,5,.9),rgba(8,3,3,.9));border:1px solid var(--line-dim);box-shadow:inset 0 0 0 1px rgba(0,0,0,.7),0 0 18px rgba(80,0,0,.18);position:relative}
+.panel::before,.panel::after,.modal-in::before,.modal-in::after{content:"";position:absolute;width:9px;height:9px;border:1px solid var(--brass);opacity:.55;pointer-events:none}
+.panel::before,.modal-in::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.panel::after,.modal-in::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+button{font-family:var(--f-display);font-weight:400;font-size:17px;letter-spacing:.04em;text-transform:none;background:linear-gradient(180deg,#1c0907,#0c0404);border-color:#4a140e;color:var(--bone)}
+button .key{background:#2a0a07;border-color:#4a140e;font-family:var(--f-num);font-size:12px;color:var(--brass)}
+button:hover{border-color:#c0301e;color:#fff;box-shadow:0 0 10px rgba(190,30,20,.35)}
+button.on{border-color:var(--brass);color:var(--brass)}
+button.danger{background:linear-gradient(180deg,#4a0c08,#240504);border-color:#a02a1c;color:#ffd8c8}
+.deploy-btn{font-family:var(--f-gothic)!important;font-size:26px!important;letter-spacing:.02em!important;background:linear-gradient(180deg,#6a120c,#2a0504)!important;border:1px solid #c0301e!important;text-transform:none!important}
+.h-eyebrow{font-family:var(--f-fell);letter-spacing:.14em;text-transform:none;color:#b8402c;font-size:13px}
+.h-card h2,.h-card h3,.modal-top h2,.endbox h3,.report h3{font-family:var(--f-gothic);font-weight:400;letter-spacing:.01em}
+.modal-top h2{font-size:38px;color:#e8d8b8;text-shadow:0 0 12px rgba(160,20,10,.45)}
+.h-card h3{font-size:26px} .h-card h2{font-size:34px}
+.modal{background:radial-gradient(ellipse at 50% 30%,rgba(40,4,2,.55),rgba(0,0,0,.88))}
+.modal-in{position:relative;background:linear-gradient(180deg,rgba(16,5,4,.98),rgba(6,2,2,.98));border:1px solid #6a160e;box-shadow:0 0 0 1px #1a0504,0 30px 80px rgba(0,0,0,.85),0 0 60px rgba(120,0,0,.15)}
+.modal-in::before,.modal-in::after{width:22px;height:22px;opacity:.8}
+.modal-top{border-bottom:1px solid #3e100b;background:linear-gradient(90deg,transparent,rgba(120,10,6,.12),transparent)}
+.hub-cr b{color:var(--brass)}
+.tab{border-color:var(--line);background:var(--tab);font-family:var(--f-display);font-weight:400;text-transform:none;font-size:18px;letter-spacing:.03em}
+.tab b{background:#2a0a07;border-color:var(--line);color:var(--brass);font-family:var(--f-num);font-size:13px}
+.slot{border-color:#4a140e!important;background:radial-gradient(ellipse at 50% 40%,#1e0c0a,#080303)}
+.meter{background:#140605;border-color:#3e100b}
+.chips button[aria-pressed="true"],.seg button[aria-pressed="true"]{border-color:var(--brass);color:var(--brass);background:linear-gradient(180deg,#3a0c08,#1a0504)}
+input{background:#0c0404!important;border-color:#4a140e!important}
+.p-tabs{display:flex;flex-wrap:wrap;gap:4px;align-self:flex-end}
+.p-tabs button{height:28px;font-size:15px;padding:0 10px}
+.p-tabs button[aria-current="true"]{border-color:var(--brass);color:var(--brass)}
+.inv-lo .eq{display:flex;flex-direction:column;gap:4px}
+.inv-lo .eq > .panel{padding:3px 6px!important}
+.inv-lo .eq .eq-row{grid-template-columns:70px 40px minmax(0,1fr) auto;gap:8px}
+.inv-lo .eq .eq-row .slot{width:40px;height:40px} .inv-lo .eq .eq-row .slot img{width:36px;height:36px}
+.inv-lo .eq .eq-row .nm b{font-size:15px}
+.inv-lo .eq .eq-row .nm span{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inv-lo .eq .eq-row button{height:26px;font-size:14px}
+.h-card{align-content:start}
+/* ---- PC raid HUD ---- */
+.mission{padding:8px 12px 10px;min-width:250px;max-width:300px;display:flex;flex-direction:column;gap:6px}
+.m-head{display:flex;flex-direction:column;border-bottom:1px solid #3e100b;padding-bottom:4px}
+.m-eye{font-family:var(--f-fell);font-size:12px;color:#b8402c;letter-spacing:.14em}
+.m-head b{font-family:var(--f-gothic);font-weight:400;font-size:26px;line-height:1.05;color:#e8d8b8}
+.mission .contract{display:grid;grid-template-columns:auto 1fr;gap:1px 12px;font-size:13px}
+.mission .contract span:nth-child(even){text-align:right}
+.mission .btns{display:flex;gap:4px}
+.mission .btns button{height:26px;font-size:15px}
+.h-tr .log{width:min(380px,30vw);max-height:150px;font-size:13px;background:linear-gradient(180deg,rgba(10,3,3,.78),rgba(6,2,2,.6))}
+.cmd{left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));flex-direction:row;align-items:stretch;gap:0;
+  background:linear-gradient(180deg,rgba(18,6,5,.92),rgba(6,2,2,.95));border:1px solid #5a160e;box-shadow:0 0 0 1px #000,0 10px 40px rgba(0,0,0,.8),0 0 30px rgba(120,0,0,.15);padding:8px;max-width:calc(100vw - 32px)}
+.cmd > div{padding:0 10px;border-right:1px solid #3e100b;display:flex;align-items:center}
+.cmd > div:last-child{border-right:0}
+.cmd-vit{gap:10px}
+.cmd-vit .vit{display:grid;grid-template-columns:auto minmax(90px,140px) auto;gap:2px 8px;align-items:center;font-size:12px;background:none;border:0;box-shadow:none;padding:0}
+.cmd-vit .vit .big{grid-column:1/-1;font-size:20px;line-height:1}
+.cmd-vit .vit canvas.ekg{display:none}
+.cmd-vit .vit::before,.cmd-vit .vit::after{display:none}
+.cmd-gun{flex-direction:column;align-items:stretch!important;justify-content:center;gap:3px;width:170px}
+.cmd-gun .slot.wide{width:100%;height:42px}
+.cmd-gun .slot.wide img{width:126px!important;height:42px!important}
+.g-row{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.g-row b{font-family:var(--f-display);font-weight:400;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-ammo{display:flex;align-items:baseline;gap:4px}
+.cmd-gun .ammo{width:auto;height:auto;border:0;background:none;font-size:22px;color:var(--bone)}
+.cmd-gun .ammo.low{color:var(--blood2)}
+.g-swap{font-size:12px;color:var(--ash)}
+.cmd-hot{gap:5px}
+.cmd-acts{display:grid!important;grid-template-columns:repeat(4,auto);gap:4px!important}
+.cmd-acts button{height:30px;font-size:15px}
+.help{position:absolute;z-index:12;left:max(16px,env(safe-area-inset-left,0px));top:190px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.help b{font-family:var(--f-gothic);font-weight:400;font-size:22px}
+@media (max-width:1180px){ .cmd-vit .vit{grid-template-columns:auto 70px auto} .cmd-gun{width:140px} .cmd-acts{grid-template-columns:repeat(2,auto)} }
+/* ship HUD */
+.s-loc b,.s-tl .tab span{font-family:var(--f-gothic);font-weight:400}
+.s-loc b{font-size:24px}
+/* touch HUD */
+.t-menu button,.t-acts button{font-family:var(--f-display);text-transform:none;font-size:18px}
+.t-acts .fire{background:linear-gradient(180deg,#7a140c,#2a0504)!important;border-color:#c0301e!important}
+.endbox{border-color:#6a160e;background:linear-gradient(180deg,rgba(18,6,5,.96),rgba(6,2,2,.96))}
+.endbox h3{font-size:52px}
 </style>
 
 <div class="modal" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="p-title">
   <div class="modal-in">
     <header class="modal-top">
       <div class="grow"><div class="h-eyebrow" id="p-eyebrow"></div><h2 id="p-title"></h2></div>
+      <nav class="p-tabs" id="p-tabs" aria-label="Your panels"></nav>
       <div class="hub-cr"><span class="lbl">Credits</span><b id="h-cr">0</b></div>
       <button id="p-close" class="plain" aria-label="Close panel">Close <span class="key" style="border:0;background:none">Esc</span></button>
     </header>
@@ -374,42 +461,35 @@ body[data-mode="touch"] .r-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
   </div>
   <div class="hud s-prompt r-prompt raid-only" id="r-prompt"></div>
 
-  <!-- PC HUD -->
-  <div class="hud h-tl pc-only loadout raid-only">
-    <div class="tab"><b>I</b><span>Loadout</span></div>
-    <div class="row">
-      <div><div class="slot wide"><img id="ic-gun" alt="Service pistol"></div><div class="ammobar"><i id="ammobar"></i></div></div>
-      <div><div class="ammo" id="ammo">12</div><span class="kb" id="ammo-type">PST</span></div>
+  <!-- PC HUD: mission card (top left), comms (top right), one command bar along the bottom -->
+  <div class="hud h-tl pc-only raid-only">
+    <div class="panel mission">
+      <div class="m-head"><span class="m-eye">Mission</span><b id="r-site">Relay KS-9</b></div>
+      <div class="contract" id="contract"></div>
+      <div class="btns"><button id="b-air" class="plain" title="Show air pressure and wind (T)"><span class="key">T</span>Air</button><button id="b-help" class="plain" title="Controls">?</button><button id="b-new" class="plain">Abandon</button></div>
     </div>
-    <div class="panel gun-info"><b id="gun-name">Service pistol</b><span id="gun-swap">one gun</span></div>
     <div class="panel crew-cards" id="crew-cards" hidden></div>
   </div>
-  <div class="hud h-tr pc-only raid-only">
-    <div class="tab"><b>C</b><span id="r-site">Contract · Relay KS-9</span></div>
-    <div class="panel contract" id="contract"></div>
-    <div class="btns"><button id="b-air"><span class="key">T</span>Air</button><button id="b-new" class="plain">Abandon</button></div>
-  </div>
-  <div class="hud h-bl pc-only raid-only">
-    <div class="panel log" id="log" aria-live="polite"></div>
-    <div class="vit-row">
-      <div class="panel monitor"><div class="fig" id="fig"></div></div>
-      <div class="panel vit" id="vitals"></div>
+  <div class="hud h-tr pc-only raid-only"><div class="panel log" id="log" aria-live="polite"></div></div>
+  <div class="hud cmd pc-only raid-only">
+    <div class="cmd-vit"><div class="fig" id="fig"></div><div class="vit" id="vitals"></div></div>
+    <div class="cmd-gun"><div class="slot wide"><img id="ic-gun" alt="Service pistol"></div><div class="ammobar"><i id="ammobar"></i></div>
+      <div class="g-row"><b id="gun-name">Service pistol</b><span class="g-ammo"><span class="ammo" id="ammo">12</span><span class="kb" id="ammo-type">PST</span></span></div><span class="g-swap" id="gun-swap">one gun</span></div>
+    <div class="cmd-hot" id="hotbar"></div>
+    <div class="cmd-acts acts">
+      <button id="b-int" title="Use or open what's in front of you"><span class="key">F</span>Use</button>
+      <button id="b-get" title="Pick up what's on your tile"><span class="key">G</span>Grab</button>
+      <button id="b-fire" title="Fire at your target or the nearest husk"><span class="key">X</span>Fire</button>
+      <button id="b-wait" title="Let a turn pass"><span class="key">␣</span>Wait</button>
+      <button id="b-swap" title="Switch guns"><span class="key">R</span>Swap</button>
+      <button id="b-light" title="Turn your light on or off"><span class="key">L</span>Light</button>
+      <button id="b-inv" title="Inventory, wounds and gear"><span class="key">I</span>Kit</button>
+      <button id="b-ext" class="danger" disabled title="Extract from the shuttle pad"><span class="key">Q</span>Extract</button>
     </div>
-    <div class="tab"><b>H</b><span>Vitals monitor</span></div>
   </div>
-  <div class="hud h-bc pc-only raid-only" id="hotbar"></div>
-  <div class="hud h-br pc-only raid-only">
-    <div class="acts">
-      <button id="b-inv"><span class="key">I</span>Inventory</button>
-      <button id="b-swap"><span class="key">R</span>Swap</button>
-      <button id="b-int"><span class="key">F</span>Use</button>
-      <button id="b-get"><span class="key">G</span>Grab</button>
-      <button id="b-wait"><span class="key">␣</span>Wait</button>
-      <button id="b-fire"><span class="key">X</span>Fire</button>
-      <button id="b-ext" class="danger" disabled><span class="key">Q</span>Extract</button>
-    </div>
-    <div class="tab" style="min-width:0"><b>?</b><span>WASD move · click to walk or shoot</span></div>
-    <div class="tab sq-only" style="min-width:0"><b>Z</b><span>Ping · Enter chat · right-click item to give</span></div>
+  <div class="panel help pc-only" id="help" hidden>
+    <b>Controls</b><span><span class="key">WASD</span> move · <span class="key">Click</span> walk or shoot</span><span><span class="key">F</span> use · <span class="key">G</span> grab · <span class="key">X</span> fire · <span class="key">␣</span> wait</span>
+    <span><span class="key">1-9</span> items · <span class="key">R</span> swap · <span class="key">L</span> light · <span class="key">I</span> kit</span><span><span class="key">T</span> air map · <span class="key">Q</span> extract</span><span class="sq-only"><span class="key">Z</span> ping · <span class="key">Enter</span> chat · right-click item to give</span>
   </div>
   <div class="tip pc-only raid-only" id="tip" hidden></div>
   <!-- Ship HUD -->
@@ -432,7 +512,7 @@ body[data-mode="touch"] .r-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
     <div class="t-row">
       <div class="panel t-vit" id="tvit"></div>
       <div class="panel t-mon"><div class="fig" id="tfig"></div></div>
-      <div class="t-menu"><button id="t-bag">Inv</button><button id="t-swap">Swap</button><button id="t-air">Air</button><button id="t-chat" class="sq-only">Chat</button></div>
+      <div class="t-menu"><button id="t-bag">Kit</button><button id="t-swap">Swap</button><button id="t-light">Light</button><button id="t-air">Air</button><button id="t-chat" class="sq-only">Chat</button></div>
     </div>
     <div class="t-ticker" id="tick" role="button" aria-label="Open comms log"></div>
     <div class="t-crew" id="tcrew" hidden></div>

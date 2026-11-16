@@ -109,9 +109,9 @@ const Sim = (() => {
   const GEAR = ["head","armor","legs","acc","light"];
   // combined armour from helmet, chest, legs and accessory
   function gearOf(e){ const g={head:0,torso:0,legs:0,fire:0,stealth:0,o2:Items.CLOTHES_O2,slots:0,acc:0,dark:0,nolimp:0};
-    for(const k of GEAR){ const it=e[k]; if(!it) continue; const st=ST(it); if(!st) continue;
+    for(const k of GEAR){ const it=e[k]; if(!it) continue; if(k==="light"&&e.lightOff) continue; const st=ST(it); if(!st) continue;
       const dr=st.dr||0; if(st.part==="head") g.head+=dr; else if(st.part==="legs") g.legs+=dr; else g.torso+=dr;
-      g.torso+=st.tdr||0; g.fire+=st.fire||0; g.stealth+=st.stealth||0; g.o2+=st.o2||0; g.slots+=st.slots||0; g.acc+=st.acc||0; if(st.dark||st.k==="light") g.dark=1; if(st.nolimp) g.nolimp=1; }
+      g.torso+=st.tdr||0; g.fire+=st.fire||0; g.stealth+=st.stealth||0; g.o2+=st.o2||0; g.slots+=st.slots||0; g.acc+=st.acc||0; if(st.dark||st.k==="light") g.dark=1; if(st.k==="light") g.lit=1; if(st.nolimp) g.nolimp=1; }
     g.fire=Math.min(.8,g.fire); g.head=Math.min(.6,g.head); g.torso=Math.min(.6,g.torso); g.legs=Math.min(.6,g.legs); return g; }
   const capOf = e => (e.pack?ST(e.pack).slots:Items.POCKETS)+gearOf(e).slots;
 
@@ -291,6 +291,7 @@ const Sim = (() => {
     // free actions: no turn spent
     if(a.type==="swap"){ const other=p.act===1?2:1; if(!(other===1?p.w1:p.w2)){ say(s,"You only have one gun.","info"); return false; } p.act=other; say(s,`You switch to the ${nm(gun(p))}.`,"info"); return true; }
     if(a.type==="equip") return doEquip(s,p,a.index);
+    if(a.type==="light"){ if(!p.light){ say(s,"You don't have a light equipped.","info"); return false; } p.lightOff=!p.lightOff; say(s,p.lightOff?"You switch your light off. The dark closes in.":"You click your light on.","info"); return true; }
     if(a.type==="drop") return doDrop(s,p,a.index);
     switch(a.type){
       case "move": { const r=doMove(s,p,a.dx,a.dy); ok=!!r; slow=r==="walked"&&crippled(p); break; }
@@ -655,7 +656,7 @@ const Sim = (() => {
   // Husk AI. They see within a radius (less in the dark, less if you're stealthy), hear gunfire and doors,
   // shriek to call the pack, spread out to surround you instead of queuing in a corridor, search where
   // they last saw you, back off into the dark when badly hurt and wait to ambush.
-  const huskSees=(s,h,p)=>p.alive&&Math.hypot(p.x-h.x,p.y-h.y)<=(s.power?8:5)-gearOf(p).stealth&&los(s,h.x,h.y,p.x,p.y);
+  const huskSees=(s,h,p)=>{ if(!p.alive) return false; const G=gearOf(p); return Math.hypot(p.x-h.x,p.y-h.y)<=(s.power?8:5)+(G.lit&&!s.power?3:0)-G.stealth&&los(s,h.x,h.y,p.x,p.y); };
   const free=(s,x,y)=>walk(tileAt(s,x,y))&&!entAt(s,x,y)&&!s.fire[idx(s,x,y)];
   function husks(s){
     const claimed=new Set();
@@ -751,7 +752,7 @@ const Sim = (() => {
   // Cheap fingerprint of everything the rules depend on (not view-only data like seen/log).
   function hash(s){ let h=2166136261>>>0; const mix=v=>{ const str=String(v); for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } };
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
-    for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
+    for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
     mix(Object.keys(s.fire).join(",")); let d=0; for(const t of s.tiles) if(t.t==="door"&&t.open) d++; mix(d);
     return (h>>>0).toString(36); }
