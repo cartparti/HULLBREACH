@@ -1,0 +1,8 @@
+{
+  "appId": "com.cartparti.hullbreach",
+  "appName": "Hullbreach",
+  "webDir": "dist/app",
+  "backgroundColor": "#050606",
+  "android": { "backgroundColor": "#050606" },
+  "ios": { "backgroundColor": "#050606", "contentInset": "never" }
+}

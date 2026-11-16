@@ -1,0 +1,23 @@
+{
+  "name": "hullbreach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Grimdark co-op pixel-art extraction game.",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node tests/sim.test.mjs",
+    "serve": "npm run build && npx --yes serve@14.2.4 dist/app",
+    "icons": "npm run build && node tools/make-icons.mjs",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:android": "npm run build && npx cap sync android && npx cap open android",
+    "cap:ios": "npm run build && npx cap sync ios && npx cap open ios"
+  },
+  "engines": { "node": ">=18" },
+  "devDependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/cli": "6.1.2",
+    "@capacitor/core": "6.1.2",
+    "@capacitor/ios": "6.1.2"
+  }
+}
