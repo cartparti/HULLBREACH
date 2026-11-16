@@ -32,19 +32,19 @@ const World = (() => {
       desc:"A refinery that has been burning for a month. Fewer husks. Much more fire.",site:{tier:3,mods:{fires:7,huskDrop:.35,loot:1.4}}},
   ];
   const NPCS={
-    hesk:{name:"Quartermaster Hesk",role:"Trader",look:{skin:"#a68a6a",hood:"#3a4a44",eye:"#cfd8c8"},shop:{buy:1,sell:1,stock:[[{d:"bandage"},40],[{d:"medkit",r:1},140],[{d:"o2"},60],[{d:"ammo_pistol",n:12},50],[{d:"ammo_rifle",n:10},60],[{d:"ammo_shell",n:6},60],[{d:"pistol",r:0},240],[{d:"knife",r:0},120],[{d:"frag"},160],[{d:"field"},450]]},
+    hesk:{name:"Quartermaster Hesk",role:"Trader",look:{skin:"#a68a6a",hood:"#3a4a44",eye:"#cfd8c8"},shop:{buy:1,sell:1,stock:[[{d:"bandage"},40],[{d:"medkit",r:1},140],[{d:"o2"},60],[{d:"ammo_pistol",n:12},50],[{d:"ammo_rifle",n:10},60],[{d:"ammo_shell",n:6},60],[{d:"pistol",r:0},240],[{d:"sixgun",r:0},300],[{d:"knife",r:0},120],[{d:"crowbar",r:0},90],[{d:"suit",r:0},260],[{d:"scrapvest",r:0},180],[{d:"sling"},120],[{d:"frag"},160],[{d:"field"},450]]},
       line:"Ninefold keeps its contractors stocked. Fair prices. Don't make me regret it."},
     vance:{name:"Broker Vance",role:"Contracts",look:{skin:"#8a6a50",hood:"#2a2420",eye:"#e8b450"},
       line:"KS-9 went dark with something my client wants back. Recover it and I'll make it worth the trip.",contracts:["c_ks9","c_tithe"]},
     dask:{name:"Foreman Dask",role:"Contracts",look:{skin:"#6a5040",hood:"#5a4a2a",eye:"#d0b080"},
       line:"Tithe Hulk 7 drifted off its lane with a full hold. I want its recorder before the guild does.",contracts:["c_tithe2"]},
-    caul:{name:"Brother Caul",role:"Reliquary",look:{skin:"#b8a088",hood:"#5a1a12",eye:"#f0d090"},shop:{buy:1.1,sell:.9,stock:[[{d:"flak",r:0},900],[{d:"flak",r:1},1500],[{d:"hazard",r:0},800],[{d:"hazard",r:1},1350],[{d:"medkit",r:1},130],[{d:"stim",r:2},260],[{d:"incendiary"},180],[{d:"axe",r:1},420]]},
+    caul:{name:"Brother Caul",role:"Reliquary",look:{skin:"#b8a088",hood:"#5a1a12",eye:"#f0d090"},shop:{buy:1.1,sell:.9,stock:[[{d:"flak",r:0},900],[{d:"flak",r:1},1500],[{d:"hazard",r:0},800],[{d:"hazard",r:1},1350],[{d:"medkit",r:1},130],[{d:"stim",r:2},260],[{d:"incendiary"},180],[{d:"axe",r:1},420],[{d:"machete",r:1},300],[{d:"coachgun",r:0},700]]},
       line:"Every plate is blessed. Most of them even stop bullets."},
     ysolde:{name:"Prioress Ysolde",role:"Contracts",look:{skin:"#c8b098",hood:"#e8e0d0",eye:"#7ab0d0"},
       line:"The Mercy of Iron carried our sick. Bring back its log so we know how they died.",contracts:["c_mercy"]},
     mott:{name:"Fixer Mott",role:"Contracts",look:{skin:"#7a5a44",hood:"#2a2a2a",eye:"#ff6a30"},
       line:"Pyre Station's still burning. The recorder's fireproof. Are you?",contracts:["c_pyre"]},
-    fennick:{name:"Fennick",role:"Black market",look:{skin:"#9a8a70",hood:"#3a2a40",eye:"#9ae8c0"},shop:{buy:1.15,sell:1.25,stock:[[{d:"scatter",r:1},1100],[{d:"carbine",r:0},900],[{d:"rivet",r:1},1200],[{d:"longbore",r:0},1300],[{d:"launcher",r:0},1800],[{d:"ammo_sniper",n:4},90],[{d:"ammo_rocket",n:2},160],[{d:"hauler"},950],[{d:"stun"},150],[{d:"scrap",n:3},40],[{d:"prop",n:2},50],[{d:"circ",n:2},70]]},
+    fennick:{name:"Fennick",role:"Black market",look:{skin:"#9a8a70",hood:"#3a2a40",eye:"#9ae8c0"},shop:{buy:1.15,sell:1.25,stock:[[{d:"scatter",r:1},1100],[{d:"carbine",r:0},900],[{d:"rivet",r:1},1200],[{d:"longbore",r:0},1300],[{d:"launcher",r:0},1800],[{d:"hornet",r:0},650],[{d:"wasp",r:1},1000],[{d:"bullpup",r:0},1000],[{d:"hound",r:0},1350],[{d:"kestrel",r:0},1500],[{d:"thumper",r:0},1400],[{d:"ripsaw",r:0},850],[{d:"ammo_sniper",n:4},90],[{d:"ammo_rocket",n:2},160],[{d:"hauler"},950],[{d:"stun"},150],[{d:"scrap",n:3},40],[{d:"prop",n:2},50],[{d:"circ",n:2},70]]},
       line:"I pay more for salvage than anyone in three sectors. I also charge more. Funny how that works."},
   };
   const CONTRACTS={

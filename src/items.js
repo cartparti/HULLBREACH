@@ -27,29 +27,43 @@ const Items = (() => {
     // ---- pistols ----
     pistol:   { k: "weapon", cls: "pistol", name: "Service pistol", ammo: "pistol", dmg: [11, 17], acc: 0, fall: .035, value: 120, desc: "Reliable sidearm." },
     cannon:   { k: "weapon", cls: "pistol", name: "Hand cannon", ammo: "pistol", dmg: [17, 25], acc: -.06, fall: .04, value: 260, desc: "Kicks like a mule. Hits like one too." },
+    hornet:   { k: "weapon", cls: "pistol", name: "Hornet machine pistol", ammo: "pistol", dmg: [6, 10], acc: -.05, fall: .045, burst: 3, value: 300, desc: "A stubby spray-gun. Three-round bursts, eats ammo." },
+    sixgun:   { k: "weapon", cls: "pistol", name: "Drover revolver", ammo: "pistol", dmg: [15, 22], acc: .05, fall: .03, value: 240, desc: "Six chambers, heavy rounds, never jams." },
     widow:    { k: "weapon", cls: "pistol", name: "Widow's Kiss", ammo: "pistol", dmg: [15, 21], acc: .08, fall: .03, bleed: 1, rar: 3, value: 900, desc: "Every hit opens a wound that won't close." },
     lastword: { k: "weapon", cls: "pistol", name: "The Last Word", ammo: "pistol", dmg: [22, 30], acc: .1, fall: .025, head: .35, rar: 4, value: 2200, desc: "Engraved with a prayer nobody finished. Finds the head." },
     // ---- rifles ----
     carbine:  { k: "weapon", cls: "rifle", name: "Autocarbine", ammo: "rifle", dmg: [9, 14], acc: .05, fall: .025, burst: 2, value: 380, desc: "Fires two-round bursts." },
     rivet:    { k: "weapon", cls: "rifle", name: "Rivet rifle", ammo: "rifle", dmg: [13, 20], acc: .12, fall: .018, value: 420, desc: "Accurate at long range." },
+    wasp:     { k: "weapon", cls: "smg", name: "Wasp SMG", ammo: "pistol", dmg: [8, 12], acc: .04, fall: .035, burst: 2, value: 340, desc: "Folding-stock submachine gun. Pistol rounds, two-round bursts." },
+    bullpup:  { k: "weapon", cls: "rifle", name: "Kessler bullpup", ammo: "rifle", dmg: [8, 13], acc: .06, fall: .022, burst: 3, value: 520, desc: "Compact assault rifle. Three-round bursts." },
+    warden:   { k: "weapon", cls: "rifle", name: "Warden battle rifle", ammo: "rifle", dmg: [18, 26], acc: .14, fall: .016, value: 560, desc: "Semi-auto, full-power rounds. One shot, one problem solved." },
     lament:   { k: "weapon", cls: "rifle", name: "Saint Orrin's Lament", ammo: "rifle", dmg: [15, 22], acc: .18, fall: .012, burst: 2, rar: 3, value: 1400, desc: "A pilgrim's rifle, censer still smoking." },
     hymn:     { k: "weapon", cls: "rifle", name: "Hymn of Iron", ammo: "rifle", dmg: [14, 20], acc: .16, fall: .012, burst: 3, rar: 4, value: 2600, desc: "Three barrels, one voice. Three-round bursts." },
     // ---- shotguns ----
     scatter:  { k: "weapon", cls: "shotgun", name: "Breach scattergun", ammo: "shell", dmg: [6, 10], pellets: 4, acc: .08, fall: .11, value: 420, desc: "Four pellets. Brutal up close." },
     pump:     { k: "weapon", cls: "shotgun", name: "Pump gun", ammo: "shell", dmg: [7, 11], pellets: 3, acc: .12, fall: .09, value: 360, desc: "Three heavy pellets, steadier reach." },
+    hound:    { k: "weapon", cls: "shotgun", name: "Hound auto-shotgun", ammo: "shell", dmg: [5, 9], pellets: 3, burst: 2, acc: .06, fall: .1, value: 640, desc: "Drum-fed automatic shotgun. Two shells per trigger pull." },
+    coachgun: { k: "weapon", cls: "shotgun", name: "Double-barrel coach gun", ammo: "shell", dmg: [7, 12], pellets: 4, burst: 2, acc: .04, fall: .14, value: 380, desc: "Both barrels at once. Terrifying at arm's length, useless past it." },
+    pipe:     { k: "weapon", cls: "shotgun", name: "Pipe shotgun", ammo: "shell", dmg: [4, 8], pellets: 3, acc: 0, fall: .12, value: 70, desc: "Welded from plumbing. It mostly fires forwards." },
     gravedigger: { k: "weapon", cls: "shotgun", name: "Gravedigger", ammo: "shell", dmg: [8, 13], pellets: 5, acc: .12, fall: .08, bleed: .7, rar: 3, value: 1300, desc: "Its stock is a sharpened spade." },
     sweeper:  { k: "weapon", cls: "shotgun", name: "Deck Sweeper", ammo: "shell", dmg: [9, 14], pellets: 6, acc: .15, fall: .07, knock: 1, rar: 4, value: 2500, desc: "Six pellets. Throws husks across the room." },
     // ---- snipers ----
     longbore: { k: "weapon", cls: "sniper", name: "Longbore", ammo: "sniper", dmg: [26, 38], acc: .2, fall: .006, close: .25, value: 640, desc: "Devastating at range, clumsy up close." },
+    kestrel:  { k: "weapon", cls: "sniper", name: "Kestrel bolt-action", ammo: "sniper", dmg: [32, 46], acc: .24, fall: .005, close: .2, bolt: 1, value: 760, desc: "Hits like a hammer. You lose a turn working the bolt." },
+    rook:     { k: "weapon", cls: "sniper", name: "Rook marksman rifle", ammo: "sniper", dmg: [20, 29], acc: .2, fall: .008, close: .1, value: 700, desc: "Semi-automatic marksman rifle. Lighter hits, no bolt to work." },
     goodbye:  { k: "weapon", cls: "sniper", name: "Long Goodbye", ammo: "sniper", dmg: [32, 44], acc: .26, fall: .004, close: .2, head: .25, rar: 3, value: 1800, desc: "Ivory stock, never missed a funeral." },
     voideye:  { k: "weapon", cls: "sniper", name: "Eye of the Void", ammo: "sniper", dmg: [38, 52], acc: .3, fall: .003, close: .1, pierce: 1, dark: 1, rar: 4, value: 3200, desc: "Sees in the dark. Rounds pass through the first target." },
     // ---- launchers ----
     launcher: { k: "weapon", cls: "launcher", name: "Breaching launcher", ammo: "rocket", dmg: [14, 24], blast: 1.6, acc: .1, fall: .02, value: 900, desc: "Explosive rockets. Mind the windows." },
+    thumper:  { k: "weapon", cls: "launcher", name: "Thumper grenade launcher", ammo: "rocket", dmg: [10, 18], blast: 1.4, acc: .1, fall: .02, value: 700, desc: "Break-action, lobs smaller grenades. Easier to live next to." },
     hullbreaker: { k: "weapon", cls: "launcher", name: "Hullbreaker", ammo: "rocket", dmg: [18, 28], blast: 2.2, acc: .14, fall: .015, rar: 3, value: 2000, desc: "Built to open ships. It does." },
     judgement: { k: "weapon", cls: "launcher", name: "Judgement", ammo: "rocket", dmg: [24, 36], blast: 2.8, fire: 1, acc: .16, fall: .012, rar: 4, value: 3600, desc: "Gilded. Its rockets leave fire behind." },
     // ---- melee ----
     knife:    { k: "weapon", cls: "melee", name: "Combat knife", dmg: [7, 11], acc: .1, bleed: .5, value: 60, desc: "Quick and quiet." },
     axe:      { k: "weapon", cls: "melee", name: "Fire axe", dmg: [11, 17], acc: 0, pry: 1, value: 180, desc: "Opens dead doors in one swing." },
+    machete:  { k: "weapon", cls: "melee", name: "Machete", dmg: [9, 14], acc: .06, bleed: .6, value: 110, desc: "Long, cheap and nasty." },
+    crowbar:  { k: "weapon", cls: "melee", name: "Crowbar", dmg: [8, 13], acc: .02, pry: 1, value: 60, desc: "Pries dead doors. Dents heads." },
+    ripsaw:   { k: "weapon", cls: "melee", name: "Ripsaw blade", dmg: [13, 19], acc: .04, bleed: .85, value: 420, desc: "A motorised chain-blade. Loud, and very final." },
     maul:     { k: "weapon", cls: "melee", name: "Shock maul", dmg: [14, 20], acc: -.05, stun: 1, value: 320, desc: "Stuns what it hits for a turn." },
     butcher:  { k: "weapon", cls: "melee", name: "Butcher's Hymn", dmg: [16, 24], acc: .08, bleed: .9, rar: 3, value: 1100, desc: "A cleaver that sings when it bites." },
     splitter: { k: "weapon", cls: "melee", name: "Voidsplitter", dmg: [22, 32], acc: .05, stun: 2, cleave: 1, rar: 4, value: 2800, desc: "Hits everything next to you and stuns it." },
@@ -61,6 +75,7 @@ const Items = (() => {
     sunburst: { k: "throw", cls: "throw", name: "Sunburst Charge", dmg: [20, 30], blast: 2.4, fire: 1.2, rar: 3, value: 600, desc: "A blinding blast that leaves fire." },
     halo:     { k: "throw", cls: "throw", name: "Black Halo", dmg: [26, 40], blast: 2.8, pull: 1, stun: 2, rar: 4, value: 1500, desc: "Drags everything in, then detonates." },
     // ---- armor (defines your silhouette) ----
+    scrapvest:{ k: "armor", name: "Scrap plate vest", dr: .15, fire: 0, o2: 20, value: 60, pal: "scrap", desc: "Riveted hull plate over your clothes. Not sealed." },
     suit:     { k: "armor", name: "Contractor suit", dr: 0, fire: 0, o2: 60, value: 40, pal: "suit", desc: "Standard sealed suit." },
     flak:     { k: "armor", name: "Flak carapace", dr: .25, fire: .1, o2: 50, value: 380, pal: "flak", desc: "Plated against claws and shrapnel." },
     hazard:   { k: "armor", name: "Hazard suit", dr: .08, fire: .6, o2: 100, value: 340, pal: "hazard", desc: "Shrugs off fire. Big oxygen tank." },
@@ -95,7 +110,7 @@ const Items = (() => {
   };
   for (const [slot, opts] of Object.entries(DYES)) for (const [id, o] of Object.entries(opts)) { const r = slot === "crest" ? o[1] : slot === "visor" ? o[1] : o[2]; if (r > 0) DEF[`dye_${slot}_${id}`] = { k: "dye", slot, dye: id, rar: r, name: `${slot === "crest" ? o[0] : id[0].toUpperCase() + id.slice(1) + (slot === "cloak" ? " cloak dye" : " visor tint")}`, value: 60 * (r + 1), desc: "Unlocks a new look in the wardrobe." }; }
 
-  const BASE_WEAPONS = ["pistol", "cannon", "carbine", "rivet", "scatter", "pump", "longbore", "launcher", "knife", "axe", "maul"];
+  const BASE_WEAPONS = ["pistol", "cannon", "hornet", "sixgun", "wasp", "carbine", "rivet", "bullpup", "warden", "scatter", "pump", "hound", "coachgun", "pipe", "longbore", "kestrel", "rook", "launcher", "thumper", "knife", "axe", "maul", "machete", "crowbar", "ripsaw"];
   const UNIQ = Object.keys(DEF).filter((d) => DEF[d].rar >= 3);
   const def = (d) => DEF[d] || null;
   const rarOf = (it) => { const D = def(it.d); return D && (D.rar >= 3 || D.k === "dye") ? D.rar : it.r | 0; };
@@ -137,23 +152,45 @@ const Items = (() => {
   function info(it) { const D = def(it.d) || { k: "?", name: "Unknown", desc: "" }, r = rarOf(it); return { name: name(it), desc: D.desc || "", sell: Math.round(value(it) * .5), value: value(it), rar: r, rarName: RAR[r].name, col: RAR[r].col, kind: D.k, cat: { weapon: "gear", armor: "gear", pack: "gear", throw: "supplies", med: "supplies", mat: "materials", ammo: "materials", val: "salvage", box: "salvage", key: "salvage", dye: "salvage" }[D.k] || "salvage" }; }
   function statLine(it) {
     const s = stats(it); if (!s) return "";
-    if (s.k === "weapon") { const parts = [`${s.dmg[0]}–${s.dmg[1]} dmg`]; if (s.pellets) parts[0] = `${s.pellets}×${s.dmg[0]}–${s.dmg[1]}`; if (s.burst) parts.push(`burst ${s.burst}`); if (s.ammo) parts.push(AMMO[s.ammo].name.toLowerCase()); else parts.push("melee"); if (s.blast) parts.push(`blast ${s.blast}`); if (s.stun) parts.push(`stun ${s.stun}`); if (s.bleed >= .7) parts.push("bleeds"); if (s.pierce) parts.push("pierces"); if (s.knock) parts.push("knockback"); if (s.cleave) parts.push("cleaves"); return parts.join(" · "); }
+    if (s.k === "weapon") { const parts = [`${s.dmg[0]}–${s.dmg[1]} dmg`]; if (s.pellets) parts[0] = `${s.pellets}×${s.dmg[0]}–${s.dmg[1]}`; if (s.burst) parts.push(`burst ${s.burst}`); if (s.ammo) parts.push(AMMO[s.ammo].name.toLowerCase()); else parts.push("melee"); if (s.blast) parts.push(`blast ${s.blast}`); if (s.stun) parts.push(`stun ${s.stun}`); if (s.bleed >= .7) parts.push("bleeds"); if (s.bolt) parts.push("bolt-action"); if (s.pierce) parts.push("pierces"); if (s.knock) parts.push("knockback"); if (s.cleave) parts.push("cleaves"); return parts.join(" · "); }
     if (s.k === "armor") return `${Math.round(s.dr * 100)}% head/torso armour · ${Math.round(s.fire * 100)}% fire · ${s.o2} O₂${s.stealth ? " · stealth" : ""}`;
     if (s.k === "pack") return `${s.slots} slots`;
     if (s.k === "throw") return [s.dmg ? `${s.dmg[0]}–${s.dmg[1]} dmg` : "", s.blast ? `blast ${s.blast}` : "", s.fire ? "fire" : "", s.stun ? `stun ${s.stun}` : "", s.noise ? "lure" : ""].filter(Boolean).join(" · ");
     return s.desc || "";
   }
+  // cat: ammo | gear | supplies
   const RECIPES = [
-    { id: "r_pistol", out: { d: "ammo_pistol", n: 12 }, cost: { scrap: 2, prop: 1 } },
-    { id: "r_rifle", out: { d: "ammo_rifle", n: 10 }, cost: { scrap: 2, prop: 2 } },
-    { id: "r_shell", out: { d: "ammo_shell", n: 6 }, cost: { scrap: 3, prop: 1 } },
-    { id: "r_sniper", out: { d: "ammo_sniper", n: 4 }, cost: { scrap: 2, prop: 2, circ: 1 } },
-    { id: "r_rocket", out: { d: "ammo_rocket", n: 1 }, cost: { scrap: 3, prop: 3, circ: 2 } },
-    { id: "r_frag", out: { d: "frag", r: 0 }, cost: { scrap: 2, prop: 2 } },
-    { id: "r_incendiary", out: { d: "incendiary", r: 0 }, cost: { scrap: 1, prop: 3 } },
-    { id: "r_bandage", out: { d: "bandage", r: 0 }, cost: { scrap: 1 } },
-    { id: "r_medkit", out: { d: "medkit", r: 1 }, cost: { scrap: 2, circ: 2 } },
+    { id: "r_pistol", cat: "ammo", out: { d: "ammo_pistol", n: 12 }, cost: { scrap: 2, prop: 1 } },
+    { id: "r_rifle", cat: "ammo", out: { d: "ammo_rifle", n: 10 }, cost: { scrap: 2, prop: 2 } },
+    { id: "r_shell", cat: "ammo", out: { d: "ammo_shell", n: 6 }, cost: { scrap: 3, prop: 1 } },
+    { id: "r_sniper", cat: "ammo", out: { d: "ammo_sniper", n: 4 }, cost: { scrap: 2, prop: 2, circ: 1 } },
+    { id: "r_rocket", cat: "ammo", out: { d: "ammo_rocket", n: 1 }, cost: { scrap: 3, prop: 3, circ: 2 } },
+    { id: "g_crowbar", cat: "gear", out: { d: "crowbar", r: 0 }, cost: { scrap: 3 } },
+    { id: "g_knife", cat: "gear", out: { d: "knife", r: 0 }, cost: { scrap: 3 } },
+    { id: "g_pipe", cat: "gear", out: { d: "pipe", r: 0 }, cost: { scrap: 5, prop: 1 } },
+    { id: "g_pistol", cat: "gear", out: { d: "pistol", r: 0 }, cost: { scrap: 6, prop: 1, circ: 1 } },
+    { id: "g_vest", cat: "gear", out: { d: "scrapvest", r: 0 }, cost: { scrap: 8 } },
+    { id: "g_suit", cat: "gear", out: { d: "suit", r: 0 }, cost: { scrap: 5, circ: 3 } },
+    { id: "g_sling", cat: "gear", out: { d: "sling", r: 0 }, cost: { scrap: 4 } },
+    { id: "g_field", cat: "gear", out: { d: "field", r: 0 }, cost: { scrap: 8, circ: 2 } },
+    { id: "r_frag", cat: "supplies", out: { d: "frag", r: 0 }, cost: { scrap: 2, prop: 2 } },
+    { id: "r_incendiary", cat: "supplies", out: { d: "incendiary", r: 0 }, cost: { scrap: 1, prop: 3 } },
+    { id: "r_decoy", cat: "supplies", out: { d: "decoy", r: 0 }, cost: { scrap: 2, circ: 1 } },
+    { id: "r_bandage", cat: "supplies", out: { d: "bandage", r: 0 }, cost: { scrap: 1 } },
+    { id: "r_medkit", cat: "supplies", out: { d: "medkit", r: 1 }, cost: { scrap: 2, circ: 2 } },
   ];
+  // character styles: free to change in the wardrobe
+  const STYLE = {
+    skin: ["#f1c9a5", "#d9a77e", "#b07a52", "#8a5634", "#5e3a22", "#3e2616", "#a8b0a0"],
+    hair: ["none", "buzz", "short", "long", "mohawk", "topknot", "braid"],
+    hairCol: ["#1a1410", "#3a2414", "#6a4020", "#a0682e", "#d8b060", "#c8c8c0", "#8a2a1c", "#3a6a8a"],
+    face: ["clean", "stubble", "beard", "moustache", "scar", "tattoo"],
+    eyes: ["#2a1e14", "#3a5a8a", "#4a7a3a", "#8a6a2a", "#7a1a12"],
+    top: ["tee", "long", "tank"],
+    bottom: ["pants", "shorts"],
+    cloth: ["#3a4448", "#56603c", "#5e1a12", "#1c2a44", "#2a2826", "#8a7a5a", "#cfc2a6", "#7a5a1a", "#3e1e52", "#46504a"],
+  };
+  const CLOTHES_O2 = 20, POCKETS = 3;
   const UPGRADE_COST = (lvl) => ({ scrap: 4 + lvl * 2, circ: 2 + lvl });
-  return { RAR, AMMO, MATS, DEF, DYES, VALS, RECIPES, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
+  return { RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
 })();

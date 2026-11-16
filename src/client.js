@@ -35,7 +35,7 @@ function whiteOf(c){ const w=cvs(c.width,c.height), g=w.getContext("2d"); g.draw
 
 // ---------- characters (24x32, facing right, feet at y=30) ----------
 // ---------- gear art: one pixel design per weapon, reused in hands, on the floor and in the HUD ----------
-const ARMOR_PAL={suit:{},flak:{pl:"#4a4438",plH:"#736a52",plS:"#2c2820",br:"#c9a24a",a:"#34322c",aH:"#56534a"},
+const ARMOR_PAL={suit:{},scrap:{a:"#5a5448",aH:"#8a826e",pl:"#5a5448",plH:"#8a826e",br:"#b0a890"},flak:{pl:"#4a4438",plH:"#736a52",plS:"#2c2820",br:"#c9a24a",a:"#34322c",aH:"#56534a"},
   hazard:{a:"#7a5e1a",aH:"#a8842a",aS:"#4a380e",pl:"#9a7a22",plH:"#c9a240",plS:"#5a4612",br:"#2a2a24"},
   ossuary:{a:"#b8ad94",aH:"#e0d6c0",aS:"#7a705c",pl:"#cfc4aa",plH:"#f0e8d4",plS:"#8a8068",br:"#5a4a30"},
   shroud:{a:"#1a1a20",aH:"#34343e",aS:"#0a0a0e",pl:"#22222a",plH:"#3e3e4a",plS:"#101014",br:"#8a3ad0"},
@@ -67,10 +67,68 @@ function gunPix(g,id,x,y){
     case "maul": r(1,3,10,1,"#2a2a2a"); r(10,1,5,5,"#3a4448"); r(10,1,5,1,"#5a666a"); r(11,3,3,1,"#5ad0d0"); break;
     case "butcher": r(1,3,5,1,"#2a2018"); r(6,1,8,4,"#9a9a92"); r(6,1,8,1,"#c8c8c0"); r(9,3,3,2,"#6a1010"); r(13,1,1,4,"#e0e0d8"); break;
     case "splitter": r(1,3,9,1,"#1a1a1a"); r(9,0,7,7,"#2a1a3a"); r(9,0,7,1,"#4a2e66"); r(10,2,5,1,"#b070ff"); r(12,1,1,5,"#b070ff"); break;
+    case "hornet": r(4,1,8,2,"#2a2c28"); r(4,1,8,1,"#4e5048"); r(12,2,1,1,K); r(7,3,2,4,"#1a1a18"); r(5,3,2,2,"#2a2018"); r(3,1,1,1,"#4e5048"); r(9,0,2,1,"#5a5a50"); break;
+    case "sixgun": r(3,1,9,2,"#6a6a64"); r(3,1,9,1,"#9a9a92"); r(12,1,2,1,"#4a4a44"); r(6,2,3,2,"#4a4a44"); r(6,2,3,1,"#8a8a82"); r(3,3,2,3,"#6a3a1e"); r(3,3,1,3,"#8a5030"); break;
+    case "wasp": r(2,1,11,3,"#33352f"); r(2,1,11,1,"#5a5d54"); r(13,2,2,1,K); r(8,4,2,3,K); r(5,4,2,2,"#2a2018"); r(0,2,2,1,"#4a4a40"); r(0,3,1,2,"#4a4a40"); r(6,0,3,1,K); break;
+    case "bullpup": r(1,1,13,3,"#3a3e36"); r(1,1,13,1,"#62685a"); r(14,2,2,1,K); r(9,4,2,2,"#2a2018"); r(3,4,3,3,K); r(7,0,4,1,K); r(8,0,1,1,"#e04030"); break;
+    case "warden": r(0,2,15,2,"#4a3a24"); r(0,2,15,1,"#6a5434"); r(5,1,9,2,"#2e302a"); r(5,1,9,1,"#55584e"); r(14,2,2,1,K); r(8,4,2,3,K); r(6,0,3,1,K); break;
+    case "hound": r(2,1,11,3,"#2a2c28"); r(2,1,11,1,"#50524a"); r(13,1,3,2,K); r(6,4,4,3,"#3a3a34"); r(7,4,2,2,"#5a5a50"); r(0,2,3,3,"#1e1e1a"); r(11,0,2,1,K); break;
+    case "coachgun": r(0,2,4,3,WD); r(0,2,4,1,"#6a4a2c"); r(4,1,12,1,"#3a3a34"); r(4,2,12,1,"#2a2a26"); r(4,1,12,1,"#5a5a50"); r(4,3,4,1,BR); r(5,4,2,2,WD); break;
+    case "pipe": r(1,2,13,2,"#5a5048"); r(1,2,13,1,"#8a7a68"); r(14,1,2,4,"#3a3430"); r(3,1,2,1,"#a83a20"); r(0,3,3,3,"#5a3a1e"); r(7,4,1,2,"#3a3430"); r(10,2,1,2,"#2a2420"); break;
+    case "kestrel": r(0,3,16,1,"#2e302a"); r(0,3,6,2,"#5a3a1e"); r(0,3,6,1,"#7a5030"); r(4,0,6,2,K); r(5,0,1,1,"#5ab0c0"); r(9,2,2,1,"#8a8a80"); r(10,1,1,1,"#8a8a80"); r(13,4,1,2,D); break;
+    case "rook": r(0,3,16,1,"#33352f"); r(2,2,9,2,"#3a3e36"); r(2,2,9,1,"#62685a"); r(4,0,5,2,K); r(5,0,1,1,"#e8b048"); r(7,4,2,3,K); r(0,2,2,4,"#3a3e36"); break;
+    case "thumper": r(1,1,10,4,"#3a4430"); r(1,1,10,1,"#56603c"); r(11,1,5,4,"#22261c"); r(12,2,3,2,K); r(4,5,2,2,WD); r(0,2,2,3,WD); break;
+    case "machete": r(2,3,4,1,"#2a2018"); r(6,2,9,2,"#a8a8a0"); r(6,2,9,1,"#d0d0c8"); r(14,3,2,1,"#d0d0c8"); r(6,2,1,3,"#4a4a40"); break;
+    case "crowbar": r(1,3,13,1,"#8a2018"); r(1,3,13,1,"#a83020"); r(13,1,1,3,"#8a2018"); r(14,1,1,1,"#a83020"); r(1,4,2,1,"#6a1810"); break;
+    case "ripsaw": r(1,3,4,2,"#2a2a26"); r(1,3,4,1,"#e0a020"); r(5,2,11,3,"#5a5a54"); r(5,2,11,1,"#8a8a82"); for(let k=0;k<6;k++){ r(5+k*2,1,1,1,"#c8c8c0"); r(6+k*2,5,1,1,"#c8c8c0"); } break;
     default: r(4,2,8,2,D);
   }
 }
+// unarmoured contractor: clothes, face and hair from the wardrobe (scrap vest goes over the clothes)
+function drawHuman(g,{step=0,b=0},L){
+  const ST=Items.STYLE, pick=(arr,i,d)=>arr[i]!=null?arr[i]:arr[d];
+  const sk=pick(ST.skin,L.s,1), skS=shade(sk,.78), hc=pick(ST.hairCol,L.hc,1), eye=pick(ST.eyes,L.e,0);
+  const tc=pick(ST.cloth,L.tc,0), tcH=shade(tc,1.3), tcS=shade(tc,.7), bc=pick(ST.cloth,L.bc,4), bcH=shade(bc,1.25), bcS=shade(bc,.7), bt=pick(ST.cloth,L.bt,4), btD=shade(bt,.55), btH=shade(bt,.9);
+  const nm=(arr,v,d)=>typeof v==="number"?(arr[v]||d):(v||d), top=nm(ST.top,L.t,"tee"), shorts=nm(ST.bottom,L.b,"pants")==="shorts", hair=nm(ST.hair,L.h,"short"), face=nm(ST.face,L.f,"clean"), vest=L.a==="scrapvest";
+  const bl=step===1?-2:step===2?2:0, fl=-bl;
+  // back leg
+  R(g,9+bl,21,3,6,bcS); if(shorts) R(g,9+bl,24,3,3,skS); R(g,8+bl,26,5,4,btD); R(g,8+bl,29,5,1,"#0e0d0b");
+  // front leg
+  R(g,12+fl,21,3,6,bc); R(g,12+fl,21,1,6,bcH); if(shorts){ R(g,12+fl,24,3,3,sk); R(g,12+fl,24,1,3,shade(sk,1.08)); } R(g,11+fl,26,5,4,btD); R(g,11+fl,26,5,1,btH); R(g,11+fl,29,5,1,"#0e0d0b");
+  // torso
+  R(g,9,12+b,6,9-b,tc); R(g,9,12+b,6,1,tcH); R(g,9,12+b,1,8,tcH); R(g,14,13+b,1,8,tcS);
+  if(top==="tank"){ R(g,9,12+b,1,3,sk); R(g,14,12+b,1,2,sk); }
+  R(g,9,20,6,1,"#2e2418"); R(g,11,20,1,1,"#a37a32");
+  if(vest){ R(g,8,13+b,8,7,"#5a5448"); R(g,8,13+b,8,1,"#8a826e"); R(g,8,13+b,1,7,"#7a7262"); R(g,15,14+b,1,6,"#3a362e"); for(const [vx,vy] of [[9,14],[14,14],[9,18],[14,18]]) R(g,vx,vy+b,1,1,"#b0a890"); R(g,10,16+b,4,1,"#3a362e"); }
+  // neck + head
+  R(g,11,11+b,3,2,skS);
+  R(g,10,5+b,5,7,sk); R(g,10,5+b,5,1,shade(sk,1.08)); R(g,15,6+b,1,4,sk); R(g,10,10+b,1,2,skS);
+  R(g,11,8+b,1,2,skS); // ear
+  R(g,14,7+b,1,1,eye); R(g,13,7+b,1,1,"#e8e0d0"); R(g,14,6+b,2,1,shade(hc,.9)); // eye + brow
+  R(g,15,8+b,1,1,skS); R(g,14,10+b,2,1,shade(sk,.62)); // nose, mouth
+  switch(face){
+    case "stubble": for(const [fx,fy] of [[12,10],[13,11],[15,11],[14,11],[12,11]]) R(g,fx,fy+b,1,1,shade(hc,1.1)); break;
+    case "beard": R(g,11,9+b,5,3,hc); R(g,12,12+b,3,1,hc); R(g,14,10+b,2,1,shade(sk,.62)); break;
+    case "moustache": R(g,13,9+b,3,1,hc); break;
+    case "scar": R(g,13,5+b,1,5,"#c06a5a"); R(g,12,8+b,1,1,"#c06a5a"); break;
+    case "tattoo": R(g,12,6+b,1,4,"#2a3a5a"); R(g,11,9+b,1,1,"#2a3a5a"); break;
+  }
+  switch(hair){
+    case "buzz": R(g,10,4+b,5,1,shade(hc,.85)); R(g,10,5+b,1,2,shade(hc,.85)); break;
+    case "short": R(g,10,3+b,6,2,hc); R(g,9,4+b,2,4,hc); R(g,10,3+b,6,1,shade(hc,1.25)); break;
+    case "long": R(g,10,3+b,6,2,hc); R(g,9,4+b,2,9,hc); R(g,8,7+b,1,6,shade(hc,.8)); R(g,10,3+b,6,1,shade(hc,1.25)); break;
+    case "mohawk": R(g,11,1+b,3,4,hc); R(g,11,1+b,3,1,shade(hc,1.25)); R(g,10,5+b,1,2,shade(sk,.85)); break;
+    case "topknot": R(g,10,4+b,6,1,hc); R(g,9,5+b,1,3,hc); R(g,11,1+b,3,3,hc); R(g,11,1+b,3,1,shade(hc,1.25)); break;
+    case "braid": R(g,10,3+b,6,2,hc); R(g,9,4+b,2,4,hc); R(g,8,8+b,2,2,hc); R(g,7,10+b,2,2,shade(hc,.85)); R(g,7,12+b,1,3,hc); break;
+  }
+  // arm: sleeve then skin
+  const sleeve=top==="long"?tc:top==="tee"?null:null;
+  if(L.w){ gunPix(g,L.w,7,13+b); R(g,12,15+b,3,2,top==="tank"?sk:tc); R(g,12,17+b,3,2,sleeve||sk); R(g,12,17+b,3,1,sleeve?tcH:shade(sk,1.08)); }
+  else { R(g,12,14+b,3,3,top==="tank"?sk:tc); R(g,12,17+b,3,4,sleeve||sk); R(g,12,17+b,1,4,sleeve?tcH:shade(sk,1.08)); R(g,12,21+b,3,1,skS); }
+  if(vest) R(g,11,13+b,4,2,"#6a6456");
+}
 function drawPlayer(g,{step=0,b=0},L={}){
+  if(!L.a||L.a==="scrapvest") return drawHuman(g,{step,b},L);
   const cl=(Items.DYES.cloak[L.c]||Items.DYES.cloak.red), vis=(Items.DYES.visor[L.v]||Items.DYES.visor.amber)[0];
   const P={a:"#3b3f38",aH:"#5f6458",aS:"#25271f",pl:"#525849",plH:"#7a816d",plS:"#2f322b",red:cl[0],redH:cl[1],br:"#a37a32",bt:"#1b1a17",btH:"#36342d",...(ARMOR_PAL[(Items.def(L.a)||{}).pal||"suit"]||{})};
   const bl=step===1?-2:step===2?2:0, fl=-bl;
@@ -92,7 +150,7 @@ function drawPlayer(g,{step=0,b=0},L={}){
   if(L.w){ gunPix(g,L.w,7,13+b); R(g,12,16+b,3,3,P.a); R(g,12,16+b,3,1,P.aH); }
   else { R(g,12,17+b,3,4,P.a); R(g,12,17+b,1,4,P.aH); R(g,12,21+b,3,1,"#3a3a32"); }
 }
-function lookOf(e){ const g=e&&(Sim.gun(e)||e.melee); return {a:e&&e.armor?e.armor.d:"suit",w:g?g.d:null,c:(e&&e.look&&e.look.c)||"red",v:(e&&e.look&&e.look.v)||"amber",k:(e&&e.look&&e.look.k)||"plume"}; }
+function lookOf(e){ const g=e&&(Sim.gun(e)||e.melee); return {...((e&&e.look)||{}),a:e&&e.armor?e.armor.d:null,w:g?g.d:null}; }
 
 function drawHusk(g,{step=0,b=0,lunge=0}){
   const P={f:"#a69679",fH:"#c7b899",fS:"#76654f",fD:"#4a3d30",raw:"#6e2620",rawH:"#9a3a2c",bone:"#d6cbb0",cl:"#2b3533",clH:"#3e4a47",bl:"#5a0e0a",eye:"#ff3a26"};
@@ -113,7 +171,7 @@ function drawHusk(g,{step=0,b=0,lunge=0}){
 }
 function buildChar(fn){ const fr={}; for(const [k,o] of Object.entries({idle0:{b:0},idle1:{b:1},walk1:{step:1},walk2:{step:2},lunge:{lunge:1}})){ fr[k]=outlined(24,32,g=>fn(g,o)); fr[k+"W"]=whiteOf(fr[k]); } return fr; }
 const CH={husk:buildChar(drawHusk)}, CHP={};
-function playerFrames(L){ L=L||{}; const k=[L.a||"suit",L.w||"",L.c||"red",L.v||"amber",L.k||"plume"].join("|"); return CHP[k]||(CHP[k]=buildChar((g,o)=>drawPlayer(g,o,L))); }
+function playerFrames(L){ L=L||{}; const k=["a","w","c","v","k","s","h","hc","f","e","t","tc","b","bc","bt"].map(f=>L[f]==null?"":L[f]).join("|"); return CHP[k]||(CHP[k]=buildChar((g,o)=>drawPlayer(g,o,L))); }
 const CORPSE={
   husk:outlined(24,16,g=>{ R(g,4,6,13,4,"#a69679"); R(g,4,6,13,1,"#c7b899"); for(let k=0;k<3;k++) R(g,7+k*3,7,1,3,"#d6cbb0"); R(g,7,9,8,1,"#6e2620"); R(g,17,4,5,5,"#a69679"); R(g,19,6,2,2,"#4a3d30"); R(g,2,10,5,2,"#76654f"); R(g,10,2,2,4,"#76654f"); R(g,11,1,3,1,"#d6cbb0"); R(g,6,10,6,2,"#2b3533"); }),
   player:outlined(24,16,g=>{ R(g,3,7,4,4,"#5e1a12"); R(g,6,5,11,6,"#525849"); R(g,6,5,11,1,"#7a816d"); R(g,17,5,5,5,"#3b3f38"); R(g,19,7,2,1,"#6a5020"); R(g,8,11,9,2,"#1b1a17"); R(g,9,3,10,2,"#20201b"); }),

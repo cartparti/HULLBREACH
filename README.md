@@ -18,12 +18,13 @@ Turn-based, simulation-driven, and built for squads of up to four.
 - **Per-limb wounds.** Bleeding, crippled legs, ruined aim, suit oxygen, trauma kits.
 - **Your ship.** Walk the bridge, armory, quarters, break room, brig, bathroom, hold and airlock. Every fixture does something. Terminals: star map, loadout rack, workbench, wardrobe, stash locker, contract board, records, airlock.
 - **Procedural stations.** Every raid builds a new station from a seed: docking bay, corridors, medbays, labs, shrines, armories, a vault with the black box. Squads share the seed, so everyone boards the same station.
-- **Loot with rarity.** Common, uncommon, rare, extremely rare and legendary. Pistols, rifles, shotguns, snipers, launchers, melee and throwables, plus suits and packs. Extremely rare and legendary gear is unique and named (the Widow, the Last Word, the Hymn of Ash...).
+- **Start with nothing.** You begin in street clothes with a 20 O₂ rebreather and three pockets. Find or craft armour, packs and weapons.
+- **Loot with rarity.** Common, uncommon, rare, extremely rare and legendary. Machine pistols, revolvers, SMGs, bullpups, battle rifles, auto-shotguns, coach guns, pipe shotguns, bolt-action and marksman rifles, grenade launchers, machetes, crowbars, chain-blades and throwables, plus suits and packs. Extremely rare and legendary gear is unique and named (the Widow, the Last Word, the Hymn of Ash...).
 - **Ammo and crafting.** Five ammo types that run out. Find more, buy it, or craft it at the workbench from scrap, propellant and circuitry. Break down gear for materials and upgrade packs up to +3 slots.
 - **Inventory.** I / Tab (or the bag button) shows equipped gear, every limb's health, blood, O₂, the ammo pouch and the backpack, with use, equip, throw, drop and give.
-- **Your look.** Armour sets your silhouette; cloak, visor and crest dyes unlock when you bring them home.
+- **Your look.** Skin tone, face, eyes, hairstyle and colour, top, bottoms and boots are free to change in the wardrobe. Armour sets your silhouette; cloak, visor and crest dyes unlock when you bring them home.
 - **A small galaxy.** Three sectors, nine locations: stations with traders, outposts with contract givers, and four derelicts with their own hazards (KS-9's cargo fire, Tithe Hulk 7's dead power, the Mercy of Iron's extra husks, Pyre Station's inferno).
-- **Extraction economy.** Starter kit (free, nothing at risk) or a custom kit from your stash: two guns, melee, suit, pack, supplies and ammo, all lost if you die.
+- **Extraction economy.** Scav kit (free: clothes, a pistol, 12 rounds, a bandage) or a custom kit from your stash: two guns, melee, suit, pack, supplies and ammo, all lost if you die.
 - **Squad tactics.** Shared vision, name tags, crew cards, pings, chat, downed-and-revive, handing items over, friendly fire.
 
 ## Controls

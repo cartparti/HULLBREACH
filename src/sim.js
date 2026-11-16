@@ -119,7 +119,7 @@ const Sim = (() => {
   const walk = t => t.t==="floor"||t.t==="extract"||t.t==="seat"||(t.t==="door"&&t.open);
   const clear= t => !(t.t==="wall"||t.t==="console"||(t.t==="door"&&!t.open));
 
-  const STARTER={w1:{d:"pistol",r:0},w2:null,melee:{d:"knife",r:0},armor:{d:"suit",r:0},pack:{d:"sling",r:0},ammo:{pistol:24},inv:[{d:"bandage",r:0},{d:"bandage",r:0},{d:"frag",r:0}]};
+  const STARTER={w1:{d:"pistol",r:0},w2:null,melee:null,armor:null,pack:null,ammo:{pistol:12},inv:[{d:"bandage",r:0}]};
   // accept old saves' loadouts too
   const OLD={pistol:"pistol",scatter:"scatter",rifle:"rivet",suit:"suit",flak:"flak",hazard:"hazard",sling:"sling",hauler:"hauler"};
   function normLo(lo){
@@ -185,7 +185,7 @@ const Sim = (() => {
   }
   function addPlayer(s,id,name,x,y,lo){
     lo=normLo(lo); const cp=v=>v&&Items.def(v.d)?{d:v.d,r:v.r|0,...(v.l?{l:v.l}:{}),...(v.v?{v:v.v}:{}),...(v.iss?{iss:1}:{})}:null;
-    const armor=cp(lo.armor)||{d:"suit",r:0}, pack=cp(lo.pack)||{d:"sling",r:0}, A=ST(armor), cap=ST(pack).slots;
+    const armor=cp(lo.armor), pack=cp(lo.pack), A=armor?ST(armor):{o2:Items.CLOTHES_O2}, cap=pack?ST(pack).slots:Items.POCKETS;
     const ammo={}; for(const t of AMMO_TYPES) ammo[t]=Math.max(0,(lo.ammo&&lo.ammo[t])|0);
     s.ents.push({id,kind:"player",name,x,y,hp:{...PLAYER_HP},max:{...PLAYER_HP},bleed:{},blood:100,o2:A.o2,o2max:A.o2,
       w1:cp(lo.w1),w2:cp(lo.w2),melee:cp(lo.melee),armor,pack,act:1,ammo,mats:{scrap:0,prop:0,circ:0},cap,look:lo.look||null,stimT:0,
@@ -363,6 +363,7 @@ const Sim = (() => {
     face(p,tx-p.x,ty-p.y); noise(s,p.x,p.y,st.cls==="sniper"||st.cls==="launcher"?14:st.cls==="shotgun"?11:10);
     const shots=Math.min(st.burst||1,p.ammo[st.ammo]);
     for(let k=0;k<shots;k++){ p.ammo[st.ammo]--; fireOne(s,p,tx,ty,st,target); if(target&&!target.alive) break; }
+    if(st.bolt){ p.busy=Math.max(p.busy,1); say(s,"You work the bolt.","info"); }
     if(p.ammo[st.ammo]===0) say(s,`That was your last ${Items.AMMO[st.ammo].name.toLowerCase().replace(/s$/,"")}.`,"warn");
     return true;
   }

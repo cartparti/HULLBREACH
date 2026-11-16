@@ -170,4 +170,14 @@ test("gear: equip, swap guns, drop, typed ammo pickup, rarity scaling", () => {
   assert.equal(Items.name({ d: "rivet", r: 2 }), "Rivet rifle Mk III"); assert.equal(Items.name({ d: "voideye", r: 0 }), "Eye of the Void"); assert.equal(Items.rarOf({ d: "voideye", r: 0 }), 4);
 });
 
+test("clothes start: no armour or pack, weapon variants, bolt-action costs a turn", () => {
+  const s0 = Sim.newGame(5, Sim.STARTER, { gen: { tier: 1 } }), p0 = s0.ents.find((e) => e.kind === "player");
+  assert.equal(p0.armor, null); assert.equal(p0.pack, null); assert.equal(p0.o2max, Items.CLOTHES_O2); assert.equal(p0.cap, Items.POCKETS);
+  for (const d of ["hornet", "sixgun", "wasp", "bullpup", "warden", "hound", "coachgun", "pipe", "kestrel", "rook", "thumper", "machete", "crowbar", "ripsaw", "scrapvest"]) assert.ok(Items.def(d), d);
+  assert.ok(Items.RECIPES.some((r) => r.out.d === "suit") && Items.RECIPES.some((r) => r.out.d === "scrapvest"), "armour can be crafted");
+  const { s, p } = arena(kit({ d: "kestrel", r: 0 }, { sniper: 3 }), [[24, 13]]);
+  const t0 = s.turn; assert.ok(Sim.act(s, "p1", { type: "shoot", x: 24, y: 13 })); assert.equal(s.turn, t0 + 2, "the station gets a free turn while you work the bolt");
+  assert.equal(p.busy, 0); assert.ok(/work the bolt/.test(s.log.map((l) => l.msg).join(" ")));
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

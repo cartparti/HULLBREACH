@@ -3,12 +3,13 @@
 // crew ship (World ship state). Signed-in players save to db at
 // data/users/<id>/save.
 const SAVE_V=2, KIT_SLOTS=["w1","w2","melee","armor","pack"], SLOT_NAME={w1:"Primary",w2:"Secondary",melee:"Melee",armor:"Suit",pack:"Pack"};
-const ISSUED={armor:{d:"suit",r:0,iss:1},pack:{d:"sling",r:0,iss:1},melee:{d:"knife",r:0,iss:1}};
+const ISSUED={}; // nothing is issued: you start in your clothes and find or craft the rest
+const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",armor:`Street clothes · no armour · ${Items.CLOTHES_O2} O₂ rebreather`,pack:`Pockets · ${Items.POCKETS} slots`};
 let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all", stashSel=null, armed={}, invSel=null;
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:300,
-  stash:[mk({d:"pistol",r:0}),mk({d:"knife",r:0}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"medkit",r:1}),mk({d:"o2"}),mk({d:"frag"})],
-  ammo:{pistol:36},mats:{scrap:3,prop:2,circ:1},look:{c:"red",v:"amber",k:"plume"},unlocks:{cloak:[],visor:[],crest:[]},
+  stash:[mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"})],
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3},look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4},unlocks:{cloak:[],visor:[],crest:[]},
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -53,7 +54,7 @@ const byUid=u=>u?profile.stash.find(q=>q.uid===u)||null:null;
 const strip=it=>{ if(!it) return null; const o={d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; if(it.n) o.n=it.n; if(it.iss) o.iss=1; return o; };
 const rc=it=>Items.RAR[Items.rarOf(it)].col;
 const nmHTML=it=>`<b style="color:${rc(it)}">${esc(Items.name(it))}</b>`;
-const capOf=pack=>Items.stats(pack||ISSUED.pack).slots;
+const capOf=pack=>pack?Items.stats(pack).slots:Items.POCKETS;
 function slotFits(slot,it){ const s=Items.slotOf(it); return slot==="w1"||slot==="w2"?s==="gun":s===slot; }
 function kitResolved(){ const k=profile.kit;
   if(k.type==="starter"){ const st=Sim.STARTER, iss=x=>x&&{...x,iss:1};
@@ -66,7 +67,7 @@ function kitResolved(){ const k=profile.kit;
   return r;
 }
 function kitRisk(r){ if(r.free) return 0; let v=0; for(const s of KIT_SLOTS) if(r[s]&&!r[s].iss) v+=Math.round(Items.value(r[s])*.5); for(const it of r.inv) v+=Math.round(Items.value(it)*.5); for(const t in r.ammo) v+=r.ammo[t]; return v; }
-function lookOfKit(r){ r=r||kitResolved(); const g=r.w1||r.w2; return {a:(r.armor||ISSUED.armor).d,w:g?g.d:null,c:profile.look.c,v:profile.look.v,k:profile.look.k}; }
+function lookOfKit(r){ r=r||kitResolved(); const g=r.w1||r.w2; return {...profile.look,a:r.armor?r.armor.d:null,w:g?g.d:null}; }
 function slotHTML(it,title,n){ if(!it) return `<div class="slot" title="${title||"Empty"}"></div>`;
   return `<div class="slot" title="${esc(title||Items.name(it))}" style="border-color:${rc(it)}"><img alt="${esc(Items.name(it))}" src="${iconFor(it)}">${n>1?`<span class="n">×${n}</span>`:""}</div>`; }
 function toast(msg){ const t=$("h-toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3000); }
@@ -153,7 +154,8 @@ function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
   $("p-body").innerHTML=P.view(); renderSync();
-  const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,24,32); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0); } }
+  const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,24,32); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0); }
+  const c2=$("h-prev2"); if(c2){ const g=c2.getContext("2d"); g.clearRect(0,0,24,32); g.drawImage(playerFrames({...profile.look,a:null,w:null}).idle0,0,0); } }
 $("p-close").onclick=closePanel;
 $("panel").addEventListener("click",e=>{ if(e.target.id==="panel") closePanel(); });
 
@@ -184,14 +186,14 @@ function viewHelm(){
 function gearRow(label,it,extra,btn){ return `<div class="eq-row"><span class="lbl">${label}</span>${slotHTML(it,label)}<div class="nm">${it?nmHTML(it):`<b>No ${label.replace(" ●","").toLowerCase()}</b>`}<span>${it?`<span class="rar" style="color:${rc(it)}">${Items.RAR[Items.rarOf(it)].name}${it.iss?" · issued":""}</span> · ${esc(Items.statLine(it))}`:extra||""}</span></div>${btn||""}</div>`; }
 function viewLoadout(){
   const k=profile.kit, custom=k.type==="custom", r=kitResolved();
-  const head=`<div class="bar-row"><div class="seg"><button data-act="kit:starter" aria-pressed="${!custom}">Starter kit</button><button data-act="kit:custom" aria-pressed="${custom}">Custom kit</button></div>
+  const head=`<div class="bar-row"><div class="seg"><button data-act="kit:starter" aria-pressed="${!custom}">Scav kit</button><button data-act="kit:custom" aria-pressed="${custom}">Custom kit</button></div>
     <span class="risk ${custom?"bad":"good"}">${custom?`At risk if you die: ${kitRisk(r)} cr`:"Free · nothing at risk"}</span></div>`;
   const preview=`<div class="preview"><canvas id="h-prev" width="24" height="32" aria-label="Your contractor"></canvas></div>`;
   let body;
-  if(!custom) body=`<div class="eq"><h3>Starter kit</h3><p>Issued free for every raid. Die in it and you lose nothing from your stash. Anything you find and extract with is yours to keep. Issued gear goes back on the rack.</p>
-      ${KIT_SLOTS.map(s=>gearRow(SLOT_NAME[s],r[s],"Empty")).join("")}<div class="h-eyebrow">Pack · ${r.used}/${r.cap}</div>${kitSummaryHTML({inv:r.inv,ammo:r.ammo})}</div>`;
+  if(!custom) body=`<div class="eq"><h3>Scav kit</h3><p>Free for every raid: your clothes, a battered pistol with 12 rounds and a bandage. No armour, no pack, nothing at risk. Anything you find and extract with is yours to keep. Find or craft real armour and gear, then build a custom kit.</p>
+      ${KIT_SLOTS.map(s=>gearRow(SLOT_NAME[s],r[s],EMPTY_TXT[s])).join("")}<div class="h-eyebrow">Pack · ${r.used}/${r.cap}</div>${kitSummaryHTML({inv:r.inv,ammo:r.ammo})}</div>`;
   else {
-    const row=s=>gearRow(SLOT_NAME[s],r[s],s==="w2"?"A second gun. Swap with R or the swap button.":"Empty",`<button class="plain" data-act="pick:${s}">Change</button>`)+(panelSub===s?pickerHTML(s,r):"");
+    const row=s=>gearRow(SLOT_NAME[s],r[s],EMPTY_TXT[s],`<button class="plain" data-act="pick:${s}">Change</button>`)+(panelSub===s?pickerHTML(s,r):"");
     const packRows=r.inv.map(it=>`<div class="eq-row"><span class="lbl">Pack</span>${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${esc(Items.statLine(it))}</span></div><button class="plain" data-act="invrm:${it.uid}">Remove</button></div>`).join("");
     const ammo=AMMO_T.map(t=>{ const A=Items.AMMO[t], have=profile.ammo[t]|0, n=r.ammo[t]|0; if(!have&&!n) return "";
       return `<div class="eq-row"><span class="lbl">${A.short}</span><div class="slot"><span class="num" style="font-size:16px;color:${A.col}">${have}</span></div><div class="nm"><b>${A.name}</b><span>${have} in the hold</span></div>
@@ -207,7 +209,7 @@ function pickerHTML(slot,r){
   const usedU=new Set([...KIT_SLOTS.map(s=>r[s]&&r[s].uid),...r.inv.map(i=>i.uid)].filter(Boolean)), opts=[];
   const opt=(act,it,note)=>`<button data-act="${act}"><span>${it?`<img alt="" src="${iconFor(it)}">`:`<div class="slot" style="width:32px;height:32px"></div>`}<span>${it?nmHTML(it):"<b>None</b>"}<br><small class="risk">${it?esc(Items.statLine(it)):""}</small></span></span><span class="risk">${note||""}</span></button>`;
   if(slot==="inv"){ for(const it of profile.stash) if(!usedU.has(it.uid)&&["throw","med","key"].includes(Items.kind(it))) opts.push(opt(`invadd:${it.uid}`,it,Items.RAR[Items.rarOf(it)].name)); }
-  else { opts.push(ISSUED[slot]?opt(`set:${slot}:`,ISSUED[slot],"issued · free"):opt(`set:${slot}:`,null,slot.startsWith("w")?"no gun":""));
+  else { opts.push(opt(`set:${slot}:`,null,EMPTY_TXT[slot]));
     const list=profile.stash.filter(it=>slotFits(slot,it)&&(!usedU.has(it.uid)||(r[slot]&&r[slot].uid===it.uid))).sort((a,b)=>Items.rarOf(b)-Items.rarOf(a));
     for(const it of list) opts.push(opt(`set:${slot}:${it.uid}`,it,Items.RAR[Items.rarOf(it)].name)); }
   if(opts.length<=1&&slot!=="inv"||!opts.length) opts.push(`<div class="risk">Nothing ${slot==="inv"?"to pack":"else for this slot"} in your stash. Find gear on derelicts, craft it, or buy it from traders.</div>`);
@@ -229,22 +231,31 @@ function viewStash(){
 const costHTML=c=>Object.entries(c).map(([m,n])=>`<span style="color:${(profile.mats[m]|0)>=n?"inherit":"var(--blood2)"}">${n} ${Items.MATS[m].toLowerCase()}</span>`).join(" · ");
 const canPay=c=>Object.entries(c).every(([m,n])=>(profile.mats[m]|0)>=n);
 function viewWorkbench(){
-  const recipes=Items.RECIPES.map(R2=>{ const it={r:0,...R2.out};
-    return `<div class="panel shop-row">${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${costHTML(R2.cost)}</span></div><span></span><button class="plain" data-act="craft:${R2.id}" ${canPay(R2.cost)?"":"disabled"}>Craft</button></div>`; }).join("");
+  const recipes=[["gear","Armour and gear"],["ammo","Ammunition"],["supplies","Supplies"]].map(([c,lbl])=>`<div class="h-eyebrow" style="margin-top:6px">${lbl}</div>`+Items.RECIPES.filter(q=>q.cat===c).map(R2=>{ const it={r:0,...R2.out}, sl=Items.statLine(it);
+    return `<div class="panel shop-row">${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${costHTML(R2.cost)}${c==="gear"&&sl?` · ${esc(sl)}`:""}</span></div><span></span><button class="plain" data-act="craft:${R2.id}" ${canPay(R2.cost)?"":"disabled"}>Craft</button></div>`; }).join("")).join("");
   const packs=profile.stash.filter(q=>Items.kind(q)==="pack").map(q=>{ const l=q.l|0, c=Items.UPGRADE_COST(l);
     return `<div class="panel shop-row">${slotHTML(q)}<div class="nm">${nmHTML(q)}<span>${capOf(q)} slots${l<3?` → ${capOf(q)+1} · ${costHTML(c)}`:" · fully upgraded"}</span></div><span></span><button class="plain" data-act="upg:${q.uid}" ${l<3&&canPay(c)?"":"disabled"}>${l<3?"Upgrade":"Maxed"}</button></div>`; }).join("");
   return `<section class="h-grid"><div class="panel h-card span12"><div class="h-eyebrow">Materials</div>${matChips(profile.mats)}<p class="risk">Materials come from husks, crates and broken-down gear. Ammo you craft goes straight into the hold.</p></div>
-    <div class="panel h-card span6"><div class="h-eyebrow">Fabricate</div><div class="shop">${recipes}</div></div>
+    <div class="panel h-card span6"><div class="h-eyebrow">Fabricate · crafted gear goes to your stash</div><div class="shop">${recipes}</div></div>
     <div class="panel h-card span6"><div class="h-eyebrow">Pack upgrades · +1 slot each, up to +3</div><div class="shop">${packs||`<p class="risk">No packs in your stash. The sling you're issued can't be modified. Find or buy a field pack or better.</p>`}</div></div></section>`;
 }
 function dyeOpen(slot,id){ const o=Items.DYES[slot][id], r=slot==="cloak"?o[2]:o[1]; return r===0||profile.unlocks[slot].includes(id); }
+const WARD_TAB=["Face","Hair","Clothes","Armour"]; let wardTab="Face";
 function viewWardrobe(){
-  const row=(slot,label)=>`<div class="h-eyebrow">${label}</div><div class="swatches">${Object.entries(Items.DYES[slot]).map(([id,o])=>{ const open=dyeOpen(slot,id), r=slot==="cloak"?o[2]:o[1], col=slot==="cloak"?o[1]:slot==="visor"?o[0]:null;
-      return `<button class="swatch" data-act="look:${slot}:${id}" aria-pressed="${profile.look[slot[0]]===id}" ${open?"":"disabled"} title="${open?(slot==="crest"?o[0]:id):`Locked · find a ${Items.RAR[r].name.toLowerCase()} dye`}" style="${slot==="crest"?"width:auto;padding:0 10px":""}">${col?`<i style="background:${col}"></i>`:`<span style="font-size:12px">${o[0]}</span>`}${open?"":`<span class="lock" style="color:${Items.RAR[r].col}">■</span>`}</button>`; }).join("")}</div>`;
+  const ST=Items.STYLE, L=profile.look, lab=t=>t[0].toUpperCase()+t.slice(1);
+  const col=(f,arr,lbl)=>`<div class="h-eyebrow">${lbl}</div><div class="swatches">${arr.map((c,i)=>`<button class="swatch" data-act="style:${f}:${i}" aria-pressed="${(L[f]|0)===i}" aria-label="${lbl} ${i+1}"><i style="background:${c}"></i></button>`).join("")}</div>`;
+  const opt=(f,arr,lbl,names)=>`<div class="h-eyebrow">${lbl}</div><div class="chips">${arr.map((n,i)=>`<button data-act="style:${f}:${i}" aria-pressed="${(L[f]|0)===i}">${(names&&names[n])||lab(n)}</button>`).join("")}</div>`;
+  const dye=(slot,label)=>`<div class="h-eyebrow">${label}</div><div class="swatches">${Object.entries(Items.DYES[slot]).map(([id,o])=>{ const open=dyeOpen(slot,id), r=slot==="cloak"?o[2]:o[1], c=slot==="cloak"?o[1]:slot==="visor"?o[0]:null;
+      return `<button class="swatch" data-act="look:${slot}:${id}" aria-pressed="${L[slot[0]]===id}" ${open?"":"disabled"} title="${open?(slot==="crest"?o[0]:id):`Locked · find a ${Items.RAR[r].name.toLowerCase()} dye`}" style="${slot==="crest"?"width:auto;padding:0 10px":""}">${c?`<i style="background:${c}"></i>`:`<span style="font-size:12px">${o[0]}</span>`}${open?"":`<span class="lock" style="color:${Items.RAR[r].col}">■</span>`}</button>`; }).join("")}</div>`;
   const u=profile.unlocks, n=u.cloak.length+u.visor.length+u.crest.length;
-  return `<section class="panel h-card"><div class="lo"><div class="preview"><canvas id="h-prev" width="24" height="32" aria-label="Your contractor"></canvas></div>
-    <div class="eq"><p>Your suit sets your silhouette. Find better armour to change it. Cloak colours, visor tints and helm crests unlock when you bring dyes home from derelicts.</p>
-      ${row("cloak","Cloak")}${row("visor","Visor tint")}${row("crest","Helm crest")}<p class="risk">${n} dye${n===1?"":"s"} found. Rarer dyes turn up on harder stations.</p></div></div></section>`;
+  const body={
+    Face:col("s",ST.skin,"Skin tone")+opt("f",ST.face,"Face",{clean:"Clean-shaven",tattoo:"Face tattoo"})+col("e",ST.eyes,"Eyes"),
+    Hair:opt("h",ST.hair,"Hairstyle",{none:"Shaved",buzz:"Buzz cut",topknot:"Top knot"})+col("hc",ST.hairCol,"Hair colour"),
+    Clothes:opt("t",ST.top,"Top",{tee:"T-shirt",long:"Long sleeve",tank:"Tank top"})+col("tc",ST.cloth,"Top colour")+opt("b",ST.bottom,"Bottoms")+col("bc",ST.cloth,"Bottoms colour")+col("bt",ST.cloth,"Boots"),
+    Armour:`<p>Armour sets your silhouette and covers your face. Find it on derelicts or craft it at the workbench.</p>${dye("cloak","Cloak")}${dye("visor","Visor tint")}${dye("crest","Helm crest")}<p class="risk">${n} dye${n===1?"":"s"} found. Rarer dyes turn up on harder stations.</p>`,
+  }[wardTab];
+  return `<section class="panel h-card"><div class="lo"><div class="preview" style="gap:12px;flex-wrap:wrap"><div style="text-align:center"><canvas id="h-prev2" width="24" height="32" aria-label="You, out of armour" style="width:96px;height:128px;image-rendering:pixelated"></canvas><div class="risk">Clothes</div></div><div style="text-align:center"><canvas id="h-prev" width="24" height="32" aria-label="You in your kit" style="width:96px;height:128px"></canvas><div class="risk">In your kit</div></div></div>
+    <div class="eq"><div class="seg">${WARD_TAB.map(t=>`<button data-act="wtab:${t}" aria-pressed="${wardTab===t}">${t}</button>`).join("")}</div>${body}</div></div></section>`;
 }
 // ---------- inventory (raid: live; ship: your kit) ----------
 function limbRows(p){ return Sim.LIMBS.map(l=>{ const f=Math.max(0,p.hp[l]/p.max[l]);
@@ -253,7 +264,7 @@ function viewInventory(){
   const raid=S&&S.mode==="raid", p=raid?me():null, r=raid?null:kitResolved();
   const G=raid?Sim.gun(p):null, at=G&&Items.stats(G).ammo;
   const eq=KIT_SLOTS.map(s=>{ const it=raid?p[s]:r[s], act=raid&&((s==="w1"&&p.act===1&&p.w1)||(s==="w2"&&p.act===2&&p.w2));
-      return `<div class="panel" style="padding:6px;${act?"border-color:var(--bile)":""}">${gearRow(SLOT_NAME[s]+(act?" ●":""),it,"Empty")}</div>`; }).join("");
+      return `<div class="panel" style="padding:6px;${act?"border-color:var(--bile)":""}">${gearRow(SLOT_NAME[s]+(act?" ●":""),it,EMPTY_TXT[s])}</div>`; }).join("");
   const inv=raid?p.inv:r.inv, cap=raid?p.cap:r.cap, ammo=raid?p.ammo:r.ammo;
   const cells=[]; for(let i=0;i<cap;i++){ const it=inv[i];
     cells.push(it?`<button class="inv-cell" ${raid?`data-act="isel:${i}"`:""} aria-pressed="${raid&&invSel===i}" style="border-color:${rc(it)}"><img alt="" src="${iconFor(it)}"><span>${nmHTML(it)}<small>${esc(Items.statLine(it)||Items.RAR[Items.rarOf(it)].name)}</small></span></button>`
@@ -404,6 +415,8 @@ $("p-body").addEventListener("click",e=>{
     case "craft": { const R2=Items.RECIPES.find(q=>q.id===x); if(!R2||!canPay(R2.cost)) break; pay(R2.cost); World.grant(profile,R2.out); toast(`Crafted ${Items.name({r:0,...R2.out})}.`); save(); break; }
     case "upg": { const it=byUid(x); if(!it||(it.l|0)>=3) break; const c=Items.UPGRADE_COST(it.l|0); if(!canPay(c)) break; pay(c); it.l=(it.l|0)+1; toast(`${Items.name(it)} now holds ${capOf(it)} items.`); save(); refreshLook(); break; }
     case "look": if(dyeOpen(x,y)){ profile.look[x[0]]=y; save(); refreshLook(); } break;
+    case "style": profile.look[x]=+y|0; save(); refreshLook(); break;
+    case "wtab": wardTab=x; break;
     // raid inventory
     case "isel": invSel=invSel===+x?null:+x; break;
     case "iswap": send({type:"swap"}); break;
