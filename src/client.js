@@ -757,7 +757,7 @@ function buildStatic(){
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const i=Sim.idx(S,x,y), t=S.tiles[i]; let c=null;
     if(t.t!=="wall"&&t.t!=="window"&&t.t!=="space") c=AMBC[Sim.roomName(x,y)]||AMBC._;
     else { let n=0,a=[0,0,0]; for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]){ const tt=T(x+dx,y+dy).t; if(tt!=="wall"&&tt!=="window"&&tt!=="space"){ const cc=AMBC[Sim.roomName(x+dx,y+dy)]||AMBC._; a[0]+=cc[0];a[1]+=cc[1];a[2]+=cc[2];n++; } } c=n?a.map(v=>v/n):[.2,.21,.22]; }
-    const dk=S.mode==="ship"?.8:.5; AMB[i*3]=c[0]*dk; AMB[i*3+1]=c[1]*dk; AMB[i*3+2]=c[2]*dk*1.06; }
+    const dk=S.mode==="ship"?1.05:.5; AMB[i*3]=c[0]*dk; AMB[i*3+1]=c[1]*dk; AMB[i*3+2]=c[2]*dk*1.06; }
   bakeShading(g);
 }
 const tileKey=()=>S.tiles.map(t=>t.t[0]+(t.open?1:0)+(t.hp??"")+(t.broken?"b":"")).join("");
@@ -776,8 +776,9 @@ function computeLights(){
       const d=Math.hypot(x-x0,y-y0); if(d>r) continue; if(d>0&&!Sim.los(S,x0,y0,x,y)) continue; fireContrib.push(Sim.idx(S,x,y),(1-d/r)*(.45+.22*lv)); } }
   FLASH=new Float32Array(N); const [fx,fy]=p.face||[1,0], LS=p.light&&!p.lightOff?Items.stats(p.light):null, rng=LS?LS.range:0, cone=LS?LS.cone:1;
   for(let i=0;i<N;i++){ if(!VIS[i]) continue; const x=i%W,y=(i/W)|0, dx=x-p.x, dy=y-p.y, d=Math.hypot(dx,dy);
-    let v=0; if(d<2.6) v+=(1-d/2.6)*(LS?.35:.22);
-    if(LS&&d>0&&d<rng){ const cos=(dx*fx+dy*fy)/d; if(cos>cone) v+=Math.pow(1-d/rng,.9)*1.05*Math.min(1,(cos-cone)/.12); }
+    let v=0; if(d<3.2) v+=(1-d/3.2)*(LS?.7:.3);
+    if(LS&&d>0&&d<rng){ const cos=(dx*fx+dy*fy)/d, e0=cone-.1; if(cos>e0){ const edge=Math.min(1,(cos-e0)/.22); v+=Math.pow(1-d/rng,.55)*2.15*edge*edge*(3-2*edge); } }
+    if(LS&&d<rng*.55) v+=.16*(1-d/(rng*.55));   // light bouncing off the walls around you
     FLASH[i]=v; }
 }
 const imgCache={};
@@ -805,7 +806,7 @@ function buildLightmap(cx,cy,now){
     const x=ox+i, y=oy+j, o=(j*lw+i)*4; let r=0,g=0,b=0;
     if(x>=0&&y>=0&&x<W&&y<S.H){ const k=y*W+x, t=S.tiles[k];
       if(p.seen[k]){
-        if(VIS[k]){ const fl=FLASH[k]||0; r=AMB[k*3]*am+Lr[k]+fl*.8; g=AMB[k*3+1]*am+Lg[k]+fl*.85; b=AMB[k*3+2]*am+Lb[k]+fl*.95;
+        if(VIS[k]){ const fl=FLASH[k]||0; r=AMB[k*3]*am+Lr[k]+fl*1.05; g=AMB[k*3+1]*am+Lg[k]+fl*1.0; b=AMB[k*3+2]*am+Lb[k]+fl*.9;
           if(t.t==="space"||t.t==="window"||t.t==="breach"){ r+=.35; g+=.38; b+=.45; }
           if(t.t==="console"){ r+=pw?.12:.3; g+=pw?.35:.05; b+=pw?.15:.03; }
           if(t.t==="extract"){ const bl=(Math.sin(now*.004)+1)/2; r+=.22*bl; g+=.13*bl; b+=.03*bl; } }
@@ -1018,7 +1019,7 @@ function render(now){
   for(const e of S.ents){ const tx=e.x*TS, ty=e.y*TS, r=rp[e.id]||(rp[e.id]={x:tx,y:ty});
     if(Math.abs(r.x-tx)>72||Math.abs(r.y-ty)>72){ r.x=tx; r.y=ty; } const step=dt*TS*8; r.x+=Math.max(-step,Math.min(step,tx-r.x)); r.y+=Math.max(-step,Math.min(step,ty-r.y)); }
   const pr=rp[p.id]||rp[PID], fw=view.fw, fh=view.fh, mw=S.W*TS, mh=S.H*TS;
-  let tx=pr.x+12-fw/2, ty=pr.y+12-fh*(mode==="touch"?.42:.5);
+  let tx=pr.x+12-fw/2, ty=pr.y+12-fh*(mode==="touch"?.47:.5);
   tx=mw>fw?Math.max(-TS*2,Math.min(mw-fw+TS*2,tx)):(mw-fw)/2;
   ty=Math.max(-fh*.3,Math.min(mh-fh*.7,ty));
   if(!camInit){ camX=tx; camY=ty; camInit=true; } const ck=1-Math.exp(-dt*8); camX+=(tx-camX)*ck; camY+=(ty-camY)*ck;
@@ -1196,14 +1197,16 @@ function renderPanels(){
   } else {
     const pr=S.P[Sim.idx(S,p.x,p.y)];
     const m=(lbl,val,max,col,txt)=>`<span class="lbl">${lbl}</span><div class="meter"><i style="width:${Math.max(0,Math.min(100,val/max*100))}%;background:${col}"></i></div><span class="num">${txt}</span>`;
-    $("tvit").innerHTML=m("BLD",p.blood,100,p.blood>60?"var(--bile)":p.blood>35?"var(--brass)":"var(--blood2)",Math.max(0,p.blood))+m("O₂",p.o2,p.o2max||100,p.o2>20?"var(--cold)":"var(--blood2)",p.o2)+(p.food!=null?m("FD",p.food,100,p.food>30?"#b08a4a":"var(--blood2)",Math.round(p.food))+m("H₂O",p.water,100,p.water>30?"#5a9ad0":"var(--blood2)",Math.round(p.water)):"")+m("AIR",pr,101,pr>70?"var(--cold)":pr>40?"var(--brass)":"var(--blood2)",Math.round(pr))+`<span class="lbl">${(()=>{ const G=Sim.gun(p), at=G&&Items.stats(G).ammo; return at?Items.AMMO[at].short:"RDS"; })()}</span><span style="grid-column:2/4;font-size:12px">${(()=>{ const G=Sim.gun(p), at=G&&Items.stats(G).ammo; return at?(p.ammo[at]|0):"–"; })()} · <span style="color:${S.power?"var(--bile)":"var(--blood2)"}">${S.power?"POWER ON":"POWER OFF"}</span></span>`;
+    const mm=(l,v,mx,c,t)=>`<div class="mm"><span>${l}</span><i><b style="width:${Math.max(0,Math.min(100,v/mx*100))}%;background:${c}"></b></i><em>${t}</em></div>`, G=Sim.gun(p), at=G&&Items.stats(G).ammo;
+    $("tvit").innerHTML=`<div class="mm-grid">${mm("BLD",p.blood,100,p.blood>60?"#c9a24a":p.blood>35?"#c07a2a":"var(--blood2)",Math.max(0,p.blood))}${mm("O₂",p.o2,p.o2max||100,p.o2>20?"var(--cold)":"var(--blood2)",p.o2)}${p.food!=null?mm("FOOD",p.food,100,p.food>30?"#b08a4a":"var(--blood2)",Math.round(p.food))+mm("H₂O",p.water,100,p.water>30?"#5a9ad0":"var(--blood2)",Math.round(p.water)):""}${pr<90?mm("AIR",pr,101,pr>40?"#c07a2a":"var(--blood2)",Math.round(pr)):""}</div>
+      <div class="t-ammo"><span>${G?esc(Items.name(G)):"Unarmed"}</span><b>${at?(p.ammo[at]|0):"–"}</b><span>${at?Items.AMMO[at].short:""}</span><span style="margin-left:auto;color:${S.power?"#8a8a70":"var(--blood2)"}">${S.power?"power on":"power off"}</span></div>`;
     $("tfig").innerHTML=figHTML(p); $("tick").innerHTML=logHTML(2);
     $("thot").innerHTML=hotHTML(p,Math.min(6,Math.max(4,p.inv.length)),false);
     $("dfig").innerHTML=figHTML(p); $("dvit").innerHTML=vitHTML(p); drawEkg($("dvit"),p);
     $("dinv").innerHTML=p.inv.length?p.inv.map((it,i)=>`<button data-use="${i}" style="border-color:${rarCol(it)}"><span><img alt="" src="${iconFor(it)}">${Items.name(it)}</span><span style="color:${rarCol(it)}">${Items.RAR[Items.rarOf(it)].name}</span></button>`).join(""):`<div class="empty">Empty.</div>`;
     $("dfacts").innerHTML=contractRows(p);
     const dl=$("dlog"); dl.innerHTML=logHTML(60); dl.scrollTop=dl.scrollHeight;
-    $("t-ext").disabled=!onPad; $("t-air").classList.toggle("on",overlay); $("t-light").classList.toggle("on",!!p.light&&!p.lightOff);
+    $("t-ext").disabled=!onPad; $("t-ext").hidden=!onPad; $("t-air").classList.toggle("on",overlay); $("t-light").classList.toggle("on",!!p.light&&!p.lightOff);
     const tg=target&&targetable(target.x,target.y)?target:null;
     $("t-firepct").textContent=tg?(Sim.entAt(S,tg.x,tg.y)?Math.round(Sim.hitChance(S,p,tg.x,tg.y)*100)+"%":(S.tiles[Sim.idx(S,tg.x,tg.y)].t==="window"?"window":"drum")):"nearest";
     renderCard();
@@ -1342,6 +1345,9 @@ document.querySelectorAll(".t-pad button").forEach(b=>{
 });
 $("t-fire").onclick=fire; $("t-use").onclick=()=>send({type:"interact"}); $("t-grab").onclick=()=>send({type:"pickup"}); $("t-ext").onclick=()=>send({type:"extract"});
 $("t-air").onclick=()=>{ overlay=!overlay; renderPanels(); };
+function setPadMode(off){ document.body.dataset.pad=off?"off":"on"; try{ localStorage.setItem("hb-pad",off?"off":"on"); }catch(e){} $("t-padmode").textContent=off?"Show d-pad":"Hide d-pad (tap to move)"; }
+$("t-padmode").onclick=()=>setPadMode(document.body.dataset.pad!=="off");
+try{ setPadMode(localStorage.getItem("hb-pad")==="off"); }catch(e){ setPadMode(false); }
 const drawer=$("drawer"); const openDrawer=o=>{ drawer.classList.toggle("open",o); drawer.setAttribute("aria-hidden",o?"false":"true"); };
 $("t-bag").onclick=()=>openPanel("inventory"); $("tick").onclick=()=>openDrawer(true); $("dr-close").onclick=()=>openDrawer(false);
 for(const id of ["dinv","thot","hotbar"]) $(id).addEventListener("click",ev=>{ const b=ev.target.closest("[data-use]"); if(b) useSlot(+b.dataset.use); });

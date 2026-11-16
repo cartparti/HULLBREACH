@@ -434,6 +434,46 @@ input{background:#0c0404!important;border-color:#4a140e!important}
 .t-acts .fire{background:linear-gradient(180deg,#7a140c,#2a0504)!important;border-color:#c0301e!important}
 .endbox{border-color:#6a160e;background:linear-gradient(180deg,rgba(18,6,5,.96),rgba(6,2,2,.96))}
 .endbox h3{font-size:52px}
+
+/* ===== phone HUD: keep the view clear ===== */
+body[data-mode="touch"] .t-top{top:calc(env(safe-area-inset-top,0px) + 6px);left:max(6px,env(safe-area-inset-left,0px));right:max(6px,env(safe-area-inset-right,0px));gap:4px}
+body[data-mode="touch"] .t-row{display:flex;gap:4px;align-items:stretch;background:linear-gradient(180deg,rgba(14,5,4,.78),rgba(6,2,2,.66));border:1px solid #3e100b;padding:3px}
+body[data-mode="touch"] .t-mon{padding:0;display:flex;align-items:center;background:none;border:0}
+body[data-mode="touch"] .t-mon .fig{transform:scale(.62);margin:-12px -9px}
+body[data-mode="touch"] .t-vit{flex:1;min-width:0;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:3px;padding:1px 2px;background:none;border:0;box-shadow:none}
+body[data-mode="touch"] .t-vit::before,body[data-mode="touch"] .t-vit::after{display:none}
+.mm-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.mm{display:grid;grid-template-columns:30px minmax(30px,1fr) 22px;align-items:center;gap:4px;font-size:10px;line-height:1}
+.mm span{color:var(--ash);letter-spacing:.06em}
+.mm i{display:block;height:5px;background:#160605;border:1px solid #3e100b;position:relative}
+.mm i b{position:absolute;left:0;top:0;bottom:0}
+.mm em{font-style:normal;font-family:var(--f-num);font-size:11px;text-align:right;color:var(--bone)}
+.t-ammo{display:flex;gap:8px;align-items:baseline;font-size:11px;color:var(--ash)}
+.t-ammo b{font-family:var(--f-num);font-size:14px;color:var(--bone);font-weight:400}
+body[data-mode="touch"] .t-menu{display:flex;flex-direction:column;gap:3px}
+body[data-mode="touch"] .t-menu button{height:24px;padding:0 9px;font-size:15px;background:rgba(20,6,5,.8)}
+body[data-mode="touch"] .t-ticker{font-size:11px;padding:2px 6px;background:rgba(8,3,3,.55);border:0;border-left:2px solid #6a160e}
+body[data-mode="touch"] .t-ticker div:first-child{display:none}
+body[data-mode="touch"] .t-ticker .t{display:none}
+body[data-mode="touch"] .t-hot{bottom:calc(env(safe-area-inset-bottom,0px) + 140px);gap:4px}
+body[data-mode="touch"] .t-hot .slot{width:38px;height:38px;background:rgba(14,5,4,.7)}
+body[data-mode="touch"] .t-hot .slot img{width:32px;height:32px}
+body[data-mode="touch"] .t-card{bottom:calc(env(safe-area-inset-bottom,0px) + 186px);font-size:12px;padding:3px 8px}
+body[data-mode="touch"] .t-pad{left:max(8px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 8px);grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:3px}
+body[data-mode="touch"] .t-pad button{background:rgba(20,6,5,.5);border-color:rgba(110,24,16,.6);font-size:15px}
+body[data-mode="touch"] .t-pad .t-wait{font-size:11px;font-family:var(--f-hud);letter-spacing:.05em}
+body[data-pad="off"] .t-pad{display:none!important}
+body[data-mode="touch"] .t-acts{right:max(8px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 8px);grid-template-columns:60px 78px;grid-template-rows:repeat(3,42px);gap:3px}
+body[data-mode="touch"] .t-acts button{font-size:15px;background:rgba(20,6,5,.55);border-color:rgba(110,24,16,.6)}
+body[data-mode="touch"] .t-acts .fire{grid-column:2;grid-row:1/4;font-size:20px;background:linear-gradient(180deg,rgba(122,20,12,.85),rgba(42,5,4,.85))!important}
+body[data-mode="touch"] .t-acts #t-use{grid-column:1;grid-row:1} body[data-mode="touch"] .t-acts #t-grab{grid-column:1;grid-row:2} body[data-mode="touch"] .t-acts #t-swap{grid-column:1;grid-row:3}
+.t-ext{right:max(8px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 140px);height:40px;padding:0 18px;justify-content:center;font-family:var(--f-gothic)!important;font-size:22px!important;border:1px solid #c9a24a!important;color:#f6e2b0!important;background:linear-gradient(180deg,rgba(90,64,14,.92),rgba(40,26,6,.92))!important;box-shadow:0 0 16px rgba(200,160,60,.35)}
+/* phone ship HUD: slimmer */
+body[data-mode="touch"] .s-tl .tab{min-width:0;font-size:15px;height:24px}
+body[data-mode="touch"] .s-loc{padding:4px 8px;font-size:12px}
+body[data-mode="touch"] .s-loc b{font-size:19px}
+body[data-mode="touch"] .s-res{display:none}
+body[data-mode="touch"] .s-tr .btns button{height:26px;font-size:14px;padding:0 8px}
 </style>
 
 <div class="modal" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="p-title">
@@ -507,12 +547,12 @@ input{background:#0c0404!important;border-color:#4a140e!important}
   </div></div>
   <div class="hud s-use ship-only touch-only"><button id="s-use" class="fire">Use</button></div>
 
-  <!-- Touch HUD -->
+  <!-- Touch HUD: one slim status strip on top, a compact control deck at the bottom -->
   <div class="hud t-top touch-only raid-only">
     <div class="t-row">
-      <div class="panel t-vit" id="tvit"></div>
-      <div class="panel t-mon"><div class="fig" id="tfig"></div></div>
-      <div class="t-menu"><button id="t-bag">Kit</button><button id="t-swap">Swap</button><button id="t-light">Light</button><button id="t-air">Air</button><button id="t-chat" class="sq-only">Chat</button></div>
+      <div class="t-mon"><div class="fig" id="tfig"></div></div>
+      <div class="t-vit" id="tvit"></div>
+      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-chat" class="sq-only" aria-label="Chat">Chat</button></div>
     </div>
     <div class="t-ticker" id="tick" role="button" aria-label="Open comms log"></div>
     <div class="t-crew" id="tcrew" hidden></div>
@@ -521,15 +561,16 @@ input{background:#0c0404!important;border-color:#4a140e!important}
   <div class="hud t-card touch-only raid-only" id="tcard" hidden></div>
   <div class="hud t-pad touch-only" aria-label="Movement">
     <span></span><button data-d="0,-1" aria-label="Move up">▲</button><span></span>
-    <button data-d="-1,0" aria-label="Move left">◀</button><button data-d="0,0" aria-label="Wait a turn" style="font-size:12px">WAIT</button><button data-d="1,0" aria-label="Move right">▶</button>
+    <button data-d="-1,0" aria-label="Move left">◀</button><button data-d="0,0" aria-label="Wait a turn" class="t-wait">wait</button><button data-d="1,0" aria-label="Move right">▶</button>
     <span></span><button data-d="0,1" aria-label="Move down">▼</button><span></span>
   </div>
   <div class="hud t-acts touch-only raid-only">
     <button id="t-use">Use</button>
     <button id="t-fire" class="fire">Fire<small id="t-firepct">nearest</small></button>
     <button id="t-grab">Grab</button>
-    <button id="t-ext" class="ext" disabled>Extract</button>
+    <button id="t-swap">Swap</button>
   </div>
+  <button class="hud t-ext touch-only raid-only" id="t-ext" disabled hidden>Extract</button>
   <div class="hud drawer touch-only raid-only" id="drawer" aria-hidden="true">
     <div class="dr-head"><span>Field kit</span><button id="dr-close" class="plain">Close</button></div>
     <div class="dr-body">
@@ -537,7 +578,7 @@ input{background:#0c0404!important;border-color:#4a140e!important}
       <section><h2>Pack · tap to use</h2><div class="dr-inv" id="dinv"></div></section>
       <section><h2>Contract</h2><div class="facts" id="dfacts"></div></section>
       <section><h2>Comms log</h2><div class="panel log" id="dlog"></div></section>
-      <section><h2>Options</h2><div class="dr-opts"><button id="dr-new" class="plain">Abandon run</button></div></section>
+      <section><h2>Options</h2><div class="dr-opts"><button id="t-air" class="plain">Air map</button><button id="t-padmode" class="plain">Hide d-pad</button><button id="dr-new" class="plain">Abandon run</button></div></section>
     </div>
   </div>
   <div class="overlay" id="end" hidden><div class="endbox" id="endbox"></div></div>
