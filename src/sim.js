@@ -738,7 +738,7 @@ const Sim = (() => {
         else if(e.food>=60&&e.water>=60&&s.turn%8===0&&!LIMBS.some(l=>e.bleed[l])&&e.blood<100) e.blood=Math.min(100,e.blood+1); }
       const bl=LIMBS.filter(l=>e.bleed[l]);
       if(bl.length){ e.blood-=2*bl.length; if(chance(s,.6)) bleedDecal(s,e.x,e.y,1);
-        for(const l of bl) if(chance(s,e.kind==="player"?.04:.06)) delete e.bleed[l];
+        for(const l of bl) if(chance(s,e.kind==="player"?(e.armor&&e.armor.d==="medcoat"?.12:.04):.06)) delete e.bleed[l];
         if(e.blood<=0){ kill(s,e,e.kind==="player"?"Bled out on the deck plating.":"bled"); continue; }
         if(e.kind==="player"&&e.blood<40&&chance(s,.25)) say(s,"Your vision tunnels. You've lost a lot of blood.","bad");
       }

@@ -9,7 +9,7 @@ let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all",
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:300,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
-  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4},unlocks:{cloak:[],visor:[],crest:[]},
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1},unlocks:{cloak:[],visor:[],crest:[]},
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -67,7 +67,7 @@ function kitResolved(){ const k=profile.kit;
   return r;
 }
 function kitRisk(r){ if(r.free) return 0; let v=0; for(const s of KIT_SLOTS) if(r[s]&&!r[s].iss) v+=Math.round(Items.value(r[s])*.5); for(const it of r.inv) v+=Math.round(Items.value(it)*.5); for(const t in r.ammo) v+=r.ammo[t]; return v; }
-function lookOfKit(r){ r=r||kitResolved(); const g=r.w1||r.w2, d=k=>r[k]?r[k].d:null; return {...profile.look,hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),li:r.light?1:0,w:g?g.d:null}; }
+function lookOfKit(r){ r=r||kitResolved(); const g=r.w1||r.w2, d=k=>r[k]?r[k].d:null; return {...profile.look,hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),li:r.light?1:0,pk:d("pack"),w:g?g.d:null}; }
 function slotHTML(it,title,n){ if(!it) return `<div class="slot" title="${title||"Empty"}"></div>`;
   return `<div class="slot" title="${esc(title||Items.name(it))}" style="border-color:${rc(it)}"><img alt="${esc(Items.name(it))}" src="${iconFor(it)}">${n>1?`<span class="n">×${n}</span>`:""}</div>`; }
 function toast(msg){ const t=$("h-toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3000); }
@@ -295,7 +295,7 @@ function viewWardrobe(){
   const body={
     Face:col("s",ST.skin,"Skin tone")+opt("f",ST.face,"Face",{clean:"Clean-shaven",tattoo:"Face tattoo"})+col("e",ST.eyes,"Eyes"),
     Hair:opt("h",ST.hair,"Hairstyle",{none:"Shaved",buzz:"Buzz cut",topknot:"Top knot"})+col("hc",ST.hairCol,"Hair colour"),
-    Clothes:opt("t",ST.top,"Top",{tee:"T-shirt",long:"Long sleeve",tank:"Tank top"})+col("tc",ST.cloth,"Top colour")+opt("b",ST.bottom,"Bottoms")+col("bc",ST.cloth,"Bottoms colour")+col("bt",ST.cloth,"Boots"),
+    Clothes:opt("t",ST.top,"Top",{coverall:"Coverall",jacket:"Flight jacket",hivis:"Hi-vis vest",undersuit:"Vac undersuit",singlet:"Singlet & harness"})+col("tc",ST.cloth,"Top colour")+opt("b",ST.bottom,"Bottoms",{fatigues:"Cargo fatigues",workpants:"Work trousers",shorts:"Utility shorts"})+col("bc",ST.cloth,"Bottoms colour")+opt("bs",ST.boots,"Boots",{magboots:"Magboots",workboots:"Work boots",wraps:"Foot wraps"})+col("bt",ST.cloth,"Boot colour")+`<p class="risk">Coveralls and vac undersuits are one piece: they colour your legs too.</p>`,
     Armour:`<p>Helmets, chest pieces, legs and accessories all show on your character. Find them on derelicts or craft them at the workbench. Dyes colour your cape and scarf, tint visors and lenses, and crest the helms that take one.</p>${dye("cloak","Cape and scarf dye")}${dye("visor","Visor tint")}${dye("crest","Helm crest")}<p class="risk">${n} dye${n===1?"":"s"} found. Rarer dyes turn up on harder stations.</p>`,
   }[wardTab];
   return `<section class="panel h-card"><div class="lo"><div class="preview" style="gap:12px;flex-wrap:wrap"><div style="text-align:center"><canvas id="h-prev2" width="48" height="64" aria-label="You, out of armour" style="width:96px;height:128px;image-rendering:pixelated"></canvas><div class="risk">Clothes</div></div><div style="text-align:center"><canvas id="h-prev" width="48" height="64" aria-label="You in your kit" style="width:96px;height:128px"></canvas><div class="risk">In your kit</div></div></div>
@@ -603,6 +603,17 @@ $("s-inv").onclick=()=>openPanel("inventory");
 $("s-mode").onclick=()=>{ setMode(mode==="pc"?"touch":"pc"); if(S&&S.mode==="ship") renderShipHud(); };
 $("dr-new").textContent="Abandon run";
 
+// ---------- main menu ----------
+function showMenu(){ const m=$("menu"); $("menu-art").src=emblemURL(); paintMenuStars($("menu-stars")); $("m-ship").textContent=(ship().name||"Lark").replace(/^Ninefold /,"");
+  const st=profile.stats; $("m-stats").textContent=`${st.raids} raids · ${st.extracts} extracted · ${st.deaths} lost · ${profile.credits} cr`; $("m-save").textContent=Store.mode==="cloud"?"Saved to your account":"Saved on this device";
+  $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; m.hidden=false; }
+function hideMenu(){ $("menu").hidden=true; }
+$("m-play").onclick=()=>{ hideMenu(); if(!profile.welcomed){ profile.welcomed=true; save(); } toast(`Aboard. Walk to a terminal and press ${mode==="pc"?"F":"USE"}. ${mode==="pc"?"I or Tab":"The Inventory button"} opens your kit.`); };
+$("m-crew").onclick=()=>{ hideMenu(); openPanel("crew"); };
+$("m-ward").onclick=()=>{ hideMenu(); openPanel("wardrobe"); };
+$("m-mode").onclick=()=>{ setMode(mode==="pc"?"touch":"pc"); $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; };
+$("s-menu").onclick=()=>{ closePanel(); showMenu(); };
+
 // ---------- boot ----------
 function start(data){
   let m=null; try{ m=localStorage.getItem("hb-mode"); }catch(e){}
@@ -616,7 +627,7 @@ function start(data){
   if(st&&st.mode==="raid"&&st.status==="playing"&&Array.isArray(st.tiles)&&st.ents.some(e=>e.kind==="player"&&e.w1!==undefined)){ S=st; S.fx=[]; afterChange(); $("r-site").textContent="Contract · "+S.site; }
   else {
     if(profile.active){ profile.stats.deaths++; profile.last={win:false,items:[],value:0,site:World.loc(profile.active.site||"ks9").name,cause:"Contact lost. Your last raid ended when the link dropped.",kit:profile.active.kit}; profile.active=null; save(); boardShip(); openPanel("debrief"); }
-    else { boardShip(); if(!profile.welcomed){ profile.welcomed=true; save(); toast(`Welcome aboard. Walk to a terminal and press ${mode==="pc"?"F":"USE"}. ${mode==="pc"?"I or Tab":"The bag button"} opens your inventory.`); } }
+    else { boardShip(); showMenu(); }
   }
   Store.init();
 }
