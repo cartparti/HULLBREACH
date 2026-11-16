@@ -255,8 +255,13 @@ const Sim = (() => {
     if(e.downed&&(limb==="head"||limb==="torso")){ kill(s,e,cause); return; }
     const was=e.hp[limb]; e.hp[limb]=Math.max(0,was-dmg);
     if(chance(s,bleedP)) e.bleed[limb]=1;
-    bleedDecal(s,e.x,e.y,1); fx(s,{type:"hurt",id:e.id,x:e.x,y:e.y});
+    bleedDecal(s,e.x,e.y,1); fx(s,{type:"hurt",id:e.id,x:e.x,y:e.y,limb,dmg});
     const vis=anyPlayerSees(s,e.x,e.y), you=e.kind==="player";
+    // a heavy hit that wrecks a limb can tear it clean off
+    if(was>0&&e.hp[limb]<=0&&limb!=="torso"&&!(e.sev&&e.sev[limb])&&(dmg-was>=4||dmg>=14)){
+      e.sev=e.sev||{}; e.sev[limb]=1; e.bleed[limb]=1; fx(s,{type:"sever",id:e.id,limb,x:e.x,y:e.y});
+      const c0=CTX; if(you) CTX=e.id; if(you) say(s,limb==="head"?"Your head comes apart.":`Your ${LNAME[limb]} is torn away!`,"bad"); else if(vis) say(s,limb==="head"?"The husk's head bursts apart.":`The husk's ${LNAME[limb]} tears off and hits the deck.`,"good"); CTX=c0;
+      if(limb==="head"){ kill(s,e,cause); return; } }
     if(was>0&&e.hp[limb]<=0){
       if(limb==="head"||limb==="torso"){
         if(you&&players(s).length>1&&players(s).some(q=>q!==e&&q.alive&&!q.downed)){ e.downed=true; e.downT=8; e.downCause=cause; const c0=CTX; CTX=e.id; say(s,"You're down! A crewmate has 8 turns to reach you.","bad"); CTX=c0; fx(s,{type:"downed",id:e.id,x:e.x,y:e.y}); return; }
@@ -647,25 +652,46 @@ const Sim = (() => {
     let c=goal; while(prev[c]!==start&&c!==start) c=prev[c];
     return c===start?null:[c%W,(c/W)|0];
   }
+  // Husk AI. They see within a radius (less in the dark, less if you're stealthy), hear gunfire and doors,
+  // shriek to call the pack, spread out to surround you instead of queuing in a corridor, search where
+  // they last saw you, back off into the dark when badly hurt and wait to ambush.
+  const huskSees=(s,h,p)=>p.alive&&Math.hypot(p.x-h.x,p.y-h.y)<=(s.power?8:5)-gearOf(p).stealth&&los(s,h.x,h.y,p.x,p.y);
+  const free=(s,x,y)=>walk(tileAt(s,x,y))&&!entAt(s,x,y)&&!s.fire[idx(s,x,y)];
   function husks(s){
+    const claimed=new Set();
     for(const h of s.ents){
       if(h.kind!=="husk"||!h.alive) continue;
       if(h.stun>0){ h.stun--; continue; }
-      if(s.fire[idx(s,h.x,h.y)]){ const opts=N4.map(([dx,dy])=>[h.x+dx,h.y+dy]).filter(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)&&!s.fire[idx(s,x,y)]);
+      if(s.fire[idx(s,h.x,h.y)]){ const opts=N4.map(([dx,dy])=>[h.x+dx,h.y+dy]).filter(([x,y])=>free(s,x,y));
         if(opts.length){ const [x,y]=opts[ri(s,0,opts.length-1)]; face(h,x-h.x,y-h.y); h.x=x; h.y=y; continue; } }
-      let best=null,bd=1e9;
-      for(const p of players(s)){ if(!p.alive) continue; const d=Math.abs(p.x-h.x)+Math.abs(p.y-h.y); if(d<bd){bd=d;best=p;} }
-      if(!best) return;
-      const R=(s.power?8:5)-gearOf(best).stealth;
-      if(Math.hypot(best.x-h.x,best.y-h.y)<=R&&los(s,h.x,h.y,best.x,best.y)){
-        if(!h.aware&&anyPlayerSees(s,h.x,h.y)) say(s,"The husk's head snaps toward you. It shrieks.","warn");
-        h.aware=true; h.last={x:best.x,y:best.y};
+      // target: someone it can see beats someone it merely heard
+      let best=null, bd=1e9, seen=false;
+      for(const p of players(s)){ if(!p.alive) continue; const v=huskSees(s,h,p), d=Math.abs(p.x-h.x)+Math.abs(p.y-h.y)-(v?100:0); if(d<bd){ bd=d; best=p; seen=v; } }
+      if(!best) return; bd=Math.abs(best.x-h.x)+Math.abs(best.y-h.y);
+      if(seen){
+        if(!h.aware){ if(anyPlayerSees(s,h.x,h.y)) say(s,"The husk's head snaps toward you. It shrieks.","warn");
+          fx(s,{type:"shriek",x:h.x,y:h.y,id:h.id});                       // the shriek calls the pack
+          for(const o of s.ents) if(o!==h&&o.kind==="husk"&&o.alive&&Math.hypot(o.x-h.x,o.y-h.y)<=7&&!o.aware){ o.aware=true; o.last={x:best.x,y:best.y}; } }
+        h.aware=true; h.last={x:best.x,y:best.y}; h.search=0; h.lurk=0;
       }
+      // lurkers wait in the dark until you're close
+      if(h.lurk&&!seen&&bd>2) continue; h.lurk=0;
+      // badly hurt: break away into the dark, then wait in ambush
+      const hurt=h.hp.torso<=HUSK_HP.torso*.3||(h.hp.lleg<=0&&h.hp.rleg<=0)||(h.blood!=null&&h.blood<30);
+      if(hurt&&seen&&bd<=3&&!h.fled&&chance(s,.6)){ h.flee=3; h.fled=1; }
+      if(h.flee>0){ h.flee--; const opts=N4.map(([dx,dy])=>[h.x+dx,h.y+dy]).filter(([x,y])=>free(s,x,y)).sort((a,b)=>(Math.abs(b[0]-best.x)+Math.abs(b[1]-best.y))-(Math.abs(a[0]-best.x)+Math.abs(a[1]-best.y)));
+        if(opts.length){ const [x,y]=opts[0]; face(h,x-h.x,y-h.y); h.x=x; h.y=y; if(anyPlayerSees(s,x,y)&&h.flee===2) say(s,"The wounded husk scrambles back into the dark.","info"); }
+        if(h.flee===0){ h.lurk=1; h.last=null; } continue; }
       if(bd===1){ huskAttack(s,h,best); continue; }
       if(crippled(h)){ h.limp=!h.limp; if(h.limp) continue; }
       if(h.last){
-        const st=stepToward(s,h,h.last.x,h.last.y);
-        if(!st){ h.last=null; continue; }
+        // spread out: head for a free tile beside the target that no other husk has claimed
+        let gx=h.last.x, gy=h.last.y;
+        if(seen){ const spots=N4.map(([dx,dy])=>[best.x+dx,best.y+dy]).filter(([x,y])=>(walk(tileAt(s,x,y))||(x===h.x&&y===h.y))&&!claimed.has(idx(s,x,y))&&!(entAt(s,x,y)&&!(x===h.x&&y===h.y)))
+            .sort((a,b)=>(Math.abs(a[0]-h.x)+Math.abs(a[1]-h.y))-(Math.abs(b[0]-h.x)+Math.abs(b[1]-h.y)));
+          if(spots.length){ [gx,gy]=spots[0]; claimed.add(idx(s,gx,gy)); } }
+        let st=stepToward(s,h,gx,gy); if(!st&&(gx!==h.last.x||gy!==h.last.y)) st=stepToward(s,h,h.last.x,h.last.y);
+        if(!st){ h.last=null; h.search=5; continue; }
         const [x,y]=st, t=tileAt(s,x,y);
         if(t.t==="door"&&!t.open){
           t.hp--; face(h,x-h.x,y-h.y); fx(s,{type:"bash",x,y}); if(anyPlayerSees(s,x,y)||Math.hypot(best.x-x,best.y-y)<7) say(s,"Something is pounding on a door nearby.","warn");
@@ -673,10 +699,15 @@ const Sim = (() => {
           continue;
         }
         if(!entAt(s,x,y)&&walk(t)){ face(h,x-h.x,y-h.y); h.x=x; h.y=y; }
-        if(h.x===h.last.x&&h.y===h.last.y) h.last=null;
-      } else if(chance(s,.25)){
-        const [dx,dy]=N4[ri(s,0,3)], t=tileAt(s,h.x+dx,h.y+dy);
-        if(walk(t)&&!entAt(s,h.x+dx,h.y+dy)&&!s.fire[idx(s,h.x+dx,h.y+dy)]){ face(h,dx,dy); h.x+=dx; h.y+=dy; }
+        if(h.x===h.last.x&&h.y===h.last.y&&!seen){ h.last=null; h.search=5; }       // lost you: search the area
+      } else if(h.search>0){
+        h.search--; const opts=N4.map(([dx,dy])=>[h.x+dx,h.y+dy]).filter(([x,y])=>free(s,x,y));
+        if(opts.length){ const [x,y]=opts[ri(s,0,opts.length-1)]; face(h,x-h.x,y-h.y); h.x=x; h.y=y; }
+        if(!h.search) h.aware=false;
+      } else if(!s.power&&chance(s,.15)&&!h.aware){ h.lurk=1; }
+      else if(chance(s,.25)){
+        const [dx,dy]=N4[ri(s,0,3)];
+        if(free(s,h.x+dx,h.y+dy)){ face(h,dx,dy); h.x+=dx; h.y+=dy; }
       }
     }
   }
@@ -720,7 +751,7 @@ const Sim = (() => {
   // Cheap fingerprint of everything the rules depend on (not view-only data like seen/log).
   function hash(s){ let h=2166136261>>>0; const mix=v=>{ const str=String(v); for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } };
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
-    for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
+    for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
     mix(Object.keys(s.fire).join(",")); let d=0; for(const t of s.tiles) if(t.t==="door"&&t.open) d++; mix(d);
     return (h>>>0).toString(36); }

@@ -206,4 +206,21 @@ test("flashlight in the starter kit, eating and drinking keep you alive", () => 
   assert.equal(Items.craftRarity(Items.RECIPES.find((rc) => rc.out.d === "pistol"), 4), 2, "a better fabricator makes better guns");
 });
 
+test("husk AI: the shriek calls the pack, they surround you, a heavy hit tears limbs off", () => {
+  const { s, p } = arena(kit({ d: "pistol", r: 0 }, { pistol: 10 }), [[24, 13], [26, 13], [20, 18]]);
+  for (const h of s.ents.filter((e) => e.kind === "husk")) h.hp.torso = 99;
+  p.acted = false; Sim.act(s, "p1", { type: "wait" });
+  const hs = s.ents.filter((e) => e.kind === "husk");
+  assert.ok(hs[0].aware && hs[1].aware, "the pack heard the shriek");
+  for (let i = 0; i < 8; i++) { p.hp = { head: 99, torso: 99, larm: 99, rarm: 99, lleg: 99, rleg: 99 }; p.blood = 100; p.acted = false; Sim.act(s, "p1", { type: "wait" }); }
+  const adj = hs.filter((h) => Math.abs(h.x - p.x) + Math.abs(h.y - p.y) === 1);
+  assert.ok(adj.length >= 2, "at least two husks reached you");
+  assert.equal(new Set(adj.map((h) => h.x + "," + h.y)).size, adj.length, "they took different sides");
+  const v = hs[0]; v.hp.larm = 5; s.fx = [];
+  const { s: s2, p: p2 } = arena(kit({ d: "voideye", r: 0 }, { sniper: 20 }), [[24, 13]]);
+  const h2 = s2.ents.find((e) => e.kind === "husk"); h2.hp = { head: 999, torso: 999, larm: 3, rarm: 3, lleg: 3, rleg: 3 }; h2.stun = 99;
+  for (let i = 0; i < 20 && !(h2.sev && Object.keys(h2.sev).length); i++) { p2.acted = false; p2.busy = 0; Sim.act(s2, "p1", { type: "shoot", x: h2.x, y: h2.y }); }
+  assert.ok(h2.sev && Object.keys(h2.sev).length >= 1, "a sniper round takes a limb with it");
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

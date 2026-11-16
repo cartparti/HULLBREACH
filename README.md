@@ -15,6 +15,8 @@ Turn-based, simulation-driven, and built for squads of up to four.
 ## What's in the game
 
 - **Simulation first.** Zone atmosphere with decompression and wind, spreading fire that needs oxygen, chain-reacting fuel drums, station power, doors that husks batter down.
+- **Smarter husks.** A husk that spots you shrieks and calls the pack; they spread out to surround you instead of queuing in corridors, search where they last saw you, retreat into the dark when badly hurt and wait to ambush. In dead stations some lurk motionless until you're close.
+- **Gore you can read.** Wounds show on the body part that took them, heavy hits tear limbs off (they land on the deck), bodies fall and bleed out, muzzle flashes light up the dark.
 - **Per-limb wounds.** Bleeding, crippled legs, ruined aim, suit oxygen, trauma kits.
 - **Your ship.** A proper hull: drive housings and exhaust at the stern, a reactor in the engine room, rooms off a central spine, and a tapered bridge at the nose. Walk the engine room, armory, quarters, break room, hold, airlock, bathroom, brig, infirmary and bridge. Every fixture does something. Terminals: star map, loadout rack, workbench, wardrobe, stash locker, contract board, records, airlock.
 - **Furniture that makes sense.** Lockers and racks line the back wall, desks get chairs, tables sit in the middle with seats around them, crates and drums pack into corners, shrines get an altar, pews and braziers. Steam, sparks, dust in lamp light and beams through doorways.
