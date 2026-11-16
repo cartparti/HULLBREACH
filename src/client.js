@@ -131,88 +131,114 @@ function gunPix(g,id,x,y){
 const STY_NM=(arr,v,d)=>typeof v==="number"?(arr[v]||d):(v||d);
 const CLOAK=L=>(Items.DYES.cloak[L.c]||Items.DYES.cloak.red), VISOR=L=>(Items.DYES.visor[L.v]||Items.DYES.visor.amber)[0];
 // one leg piece over one leg: lx = left edge of the leg, lift = how far the foot is raised
-function drawLegPiece(g,id,lx,lift,back){ const r=(x,y,w,h,c)=>R(g,x,y,w,h,back?shade(c,.82):c), y0=23, bot=27.5-lift;
+function drawLegPiece(g,id,lx,lift,back){ const r=(x,y,w,h,c)=>R(g,x,y,w,h,back?shade(c,.82):c), y0=22.8, bot=27.6-lift, cx=lx+1.5;
   switch(id){
-    case "cargo": r(lx,y0,3,bot-y0,"#6a6448"); r(lx,y0,.5,bot-y0,"#857e5c"); r(lx,y0+1.5,3,1.5,"#55503a"); r(lx,y0+1.5,3,.5,"#7a7354"); break;
-    case "kneepads": r(lx,y0,3,bot-y0,"#30363a"); r(lx-.25,y0+1.5,3.5,1.5,"#55554c"); r(lx-.25,y0+1.5,3.5,.5,"#8a8a7e"); r(lx-.5,bot-1,4,3.5,"#1a1a18"); r(lx-.5,bot-1,4,.5,"#3a3a34"); break;
-    case "hazlegs": r(lx,y0,3,bot-y0,"#9a7a22"); r(lx,y0,.5,bot-y0,"#c9a240"); for(let k=0;k<3;k++) r(lx+k,y0+2,1,.75,k%2?"#e0c040":"#141210"); r(lx-.5,bot,4,3,"#2a2a24"); break;
-    case "greaves": r(lx,y0,3,bot-y0,"#2e2a26"); r(lx-.25,y0+.5,3.5,bot-y0-.5,"#7a7e76"); r(lx-.25,y0+.5,.75,bot-y0-.5,"#b0b4aa"); r(lx-.25,y0+.5,3.5,.75,"#c8ccc2"); r(lx-.5,bot,4,3,"#6a6e66"); r(lx-.5,bot,4,.5,"#9a9e96"); break;
-    case "bonegreaves": r(lx,y0,3,bot-y0,"#3a3028"); r(lx+1,y0,1,bot-y0,"#d8cdb4"); r(lx,y0+1,3,.75,"#cfc4aa"); r(lx,y0+3,3,.75,"#cfc4aa"); r(lx-.5,bot,4,3,"#cfc4aa"); r(lx-.5,bot+2.5,4,.5,"#8a8068"); break;
-    case "strider": r(lx,y0,3,bot-y0,"#26282a"); r(lx+2.5,y0,.75,bot-y0+1,"#8a8a80"); r(lx+.5,y0+1.5,2,2,"#e8b048"); hp(g,lx+.5,y0+1.5,"#fff0a0"); r(lx-.5,bot,4,3,"#3a3a34"); r(lx-.5,bot,4,.5,"#5a5a50"); break;
-    case "hardlegs": r(lx-.25,y0,3.5,bot-y0,"#b8bcb4"); r(lx-.25,y0,.75,bot-y0,"#e0e4dc"); r(lx-.25,y0+2,3.5,1.25,"#6a6e68"); r(lx+.5,y0+2.25,2,.75,"#8a8e86"); r(lx-.75,bot-.5,4.5,3.5,"#3a3e42"); r(lx-.75,bot-.5,4.5,.75,"#6a7076"); r(lx-.75,bot+2.5,4.5,.5,"#5ad0d0"); break;
-    case "magboots": r(lx,y0,3,bot-y0,"#2a3038"); r(lx,y0,.5,bot-y0,"#3e4650"); r(lx-.75,bot-1.5,4.5,4.5,"#3a3e42"); r(lx-.75,bot-1.5,4.5,.75,"#6a7076"); r(lx-.75,bot+.5,4.5,.75,"#8a8e86"); r(lx-.75,bot+2.5,4.5,.5,"#5ad0d0"); break;
-    case "aegislegs": r(lx-.5,y0-.5,4,2,"#8a1a12"); r(lx-.5,y0-.5,4,.5,"#b02a1c"); r(lx,y0+1.5,3,bot-y0-1.5,"#a8842a"); r(lx,y0+1.5,.75,bot-y0-1.5,"#e8c868"); r(lx-.5,bot,4,3,"#a8842a"); r(lx-.5,bot,4,.5,"#e8c868"); break;
-  } }
+    case "cargo": r(lx,y0,3,bot-y0,"#5a5a44"); r(lx+.2,y0+1.4,2.6,1.8,"#4a4a38"); r(lx+.2,y0+1.4,2.6,.5,"#6e6e56"); break;
+    case "kneepads": r(lx,y0,3,bot-y0,"#30363a"); ell(g,cx,y0+2.6,1.8,1.1,back?"#3a3a34":"#4a4a44"); ell(g,cx-.3,y0+2.3,1,.4,"#7a7a6e"); break;
+    case "hazlegs": r(lx,y0,3,bot-y0,"#9a7a22"); for(let k=0;k<3;k++) r(lx+k,y0+2,1,.75,k%2?"#e0c040":"#141210"); break;
+    case "greaves": r(lx,y0,3,bot-y0,"#2e322a"); poly(g,[[lx-.2,y0+1.6],[lx+3.2,y0+1.6],[lx+2.8,bot],[lx+.2,bot]],back?"#3e423a":"#565a50"); ell(g,cx,y0+1.8,1.8,1.1,back?"#4a4e46":"#6a6e64"); hp(g,cx-.4,y0+1.4,"#9a9e94"); break;
+    case "bonegreaves": r(lx,y0,3,bot-y0,"#24262a"); for(let y=y0+.6;y<bot;y+=1.4){ r(lx-.3,y,3.6,1,"#3a3c40"); r(lx-.3,y,3.6,.35,"#5e6268"); } ell(g,cx,y0+2,1.9,1.2,"#3a3c40"); hp(g,cx,y0+2,"#8a8e94"); break;
+    case "strider": r(lx,y0,3,bot-y0,"#26282a"); r(lx+2.5,y0,.75,bot-y0+1,"#8a8a80"); ell(g,cx-.4,y0+2.4,1,1,"#e8b048"); hp(g,cx-.6,y0+2.2,"#fff0a0"); break;
+    case "aegislegs": r(lx,y0,3,bot-y0,"#1e2024"); r(lx+1.2,y0,.6,bot-y0,"#7a1a12"); ell(g,cx,y0+2.2,1.8,1.1,"#3a3e46"); hp(g,cx-.4,y0+1.9,"#8a8e94"); break;
+    case "hardlegs": r(lx-.25,y0,3.5,bot-y0,"#b8bcb4"); ell(g,cx,y0+2.4,1.9,1.1,"#6a6e68"); break;
+    case "magboots": r(lx,y0,3,bot-y0,"#2a3038"); break;
+  }
+  if(["greaves","bonegreaves","aegislegs","hardlegs","magboots","strider"].includes(id)){ const bc={greaves:"#4a4e46",bonegreaves:"#2e3034",aegislegs:"#1e2024",hardlegs:"#3a3e42",magboots:"#3a3e42",strider:"#3a3a34"}[id];
+    poly(g,[[cx-1.7,bot-.8],[cx+1.7,bot-.8],[cx+2,bot+2.4],[cx-2,bot+2.4]],back?shade(bc,.8):bc); R(g,cx-2,bot-.8,4,.6,shade(bc,1.5)); if(id==="hardlegs"||id==="magboots") R(g,cx-2,bot+2,4,.5,"#5ad0d0"); if(id==="aegislegs") R(g,cx-2,bot+1.2,4,.4,"#7a1a12"); } }
 // chest piece over the torso; returns the sleeve colour (null = keep the shirt)
-function drawChest(g,id,b,L,view){ view=view||"f"; const r=(x,y,w,h,c)=>R(g,x,y+b,w,h,c), rr=(x,y,w,h,c)=>R(g,x,y,w,h,c), back=view==="b", sd=view==="s";
-  const X=sd?8:7.5, W=sd?8.5:9;
-  const plate=(c,hi,lo)=>{ r(X,14,W,8,c); r(X,14,W,.75,hi); r(X,14,.75,8,hi); r(X+W-.75,14.5,.75,7.5,lo); };
+function drawChest(g,id,b,L,view){ view=view||"f"; const r=(x,y,w,h,c)=>R(g,x,y+b,w,h,c), rr=(x,y,w,h,c)=>R(g,x,y,w,h,c), back=view==="b", sd=view==="s", f=view==="f";
+  const X=sd?8:6, W=sd?8.5:12, mid=sd?13:12;
   switch(id){
-    case "suit": plate("#525849","#7a816d","#2f322b"); if(!back){ r(X+W/2-.25,15,.5,6.5,"#2f322b"); r(9.5,13.5,5,.75,"#6a6e66"); r(X+1,18,W-2,.5,"#2f322b"); hp(g,X+1.5,16,"#e8b048"); } else { r(9,15,6,5,"#3e443a"); r(9,15,6,.5,"#6a7066"); r(10,16,1,3.5,"#2a2a26"); r(13,16,1,3.5,"#2a2a26"); }
-      rr(X,22,W,1,"#2e2418"); return "#3b3f38";
-    case "scrapvest": r(X,14.5,W,7,"#5a5448"); r(X,14.5,W,.75,"#8a826e"); r(X+W-.75,15,.75,6.5,"#3a362e"); for(const [vx,vy] of [[1,1],[W-1.5,1],[1,5],[W-1.5,5]]) hp(g,X+vx,14.5+vy+b,"#c0b8a0"); r(X+1,18,W-2,.5,"#3a362e"); return null;
-    case "brigandine": plate("#5a3a20","#7a5030","#3a2414"); rr(X,22,W,3,"#5a3a20"); rr(X,24.5,W,.5,"#3a2414"); for(let y=15;y<24;y+=2) for(let x=X+1;x<X+W-.5;x+=2) R(g,x,y+(y<22?b:0),.5,.5,"#c9a24a"); rr(X,21.5,W,.75,"#2a1a10"); return "#4a3020";
-    case "flak": plate("#4a4438","#736a52","#2c2820"); r(X+1,16.5,W-2,.5,"#2c2820"); r(X+1,19,W-2,.5,"#2c2820"); r(X,21.5,W,.75,"#c9a24a"); rr(X,22,W,1,"#2e2418");
-      if(!sd){ r(4.5,13,4,3.5,"#4a4438"); r(4.5,13,4,.75,"#736a52"); r(4.5,16,4,.5,"#c9a24a"); r(15.5,13,4,3.5,"#4a4438"); r(15.5,13,4,.75,"#736a52"); r(15.5,16,4,.5,"#c9a24a"); } else { r(9,13,5,3.5,"#4a4438"); r(9,13,5,.75,"#736a52"); } return "#34322c";
-    case "hazard": plate("#7a5e1a","#a8842a","#4a380e"); for(let k=0;k<W*2;k++) r(X+k/2,19.5,.5,.75,k%2?"#141210":"#e0c040"); if(!back) r(9.5,13.5,5,.75,"#141210");
-      if(back){ r(8.5,14.5,7,7,"#5a5a50"); r(8.5,14.5,7,.75,"#8a8a80"); r(9.5,15.5,2,5,"#3a4448"); r(12.5,15.5,2,5,"#3a4448"); } rr(X,22,W,1,"#2a2a24"); return "#7a5e1a";
-    case "exo": r(X+.5,14,W-1,8,"#26282a"); r(X,14,W,.75,"#8a8a80"); if(!back){ r(11,16.5,2,2,"#5ad0d0"); hp(g,11,16.5+b,"#c8ffff"); r(X+.5,14,.75,8,"#8a8a80"); r(X+W-1.25,14,.75,8,"#8a8a80"); } else { r(11.5,14,1,8,"#8a8a80"); for(let y=15;y<22;y+=2) r(10.5,y,3,.5,"#6a6a60"); } rr(X,21.5,W,1,"#6a6a60"); return "#26282a";
-    case "ossuary": r(X,14,W,8,"#3a3028"); for(let y=15;y<22;y+=1.5) r(X+1,y,W-2,.5,"#d8cdb4"); r(11.25,14.5,1.5,7,back?"#cfc4aa":"#e8dcc4"); if(!back) skull(g,10,13.5+b,"#f0e8d4","#3a3028"); rr(X,22,W,1,"#2a2018"); return "#3a3028";
-    case "shroud": r(X,14,W,8,"#1a1a20"); rr(X-.5,22,W+1,5.5,"#1a1a20"); rr(X-.5,27,W+1,.5,"#8a3ad0"); r(X,14,.75,8,"#34343e"); if(!back) r(11.75,14,.5,8,"#8a3ad0"); rr(10,23,.5,4,"#34343e"); rr(14,23,.5,4,"#101014"); return "#1a1a20";
-    case "hardsuit": r(X-1,13.5,W+2,9,"#c0c4bc"); r(X-1,13.5,W+2,.75,"#e8ece4"); r(X-1,13.5,.75,9,"#e0e4dc"); r(X+W+.25,14,.75,8.5,"#7a7e78"); r(X-1,18,W+2,.75,"#c8761a");
-      if(!back){ r(9.5,15,5,3,"#3a3e42"); r(9.5,15,5,.5,"#6a7076"); for(let k=0;k<4;k++) hp(g,10+k*1.2,16.25+b,k%2?"#5ad06a":"#e04030"); hp(g,10,19.5+b,"#fff4c0"); hp(g,14,19.5+b,"#fff4c0"); } else { r(8,14,8,8,"#9a9e98"); r(8,14,8,.75,"#c0c4bc"); r(9,15,2.5,6,"#6a6e68"); r(12.5,15,2.5,6,"#6a6e68"); hp(g,11.75,15+b,"#5ad0d0"); }
-      if(!sd){ r(4.5,13,4,3.5,"#c0c4bc"); r(4.5,13,4,.75,"#e8ece4"); r(15.5,13,4,3.5,"#c0c4bc"); r(15.5,13,4,.75,"#e8ece4"); } rr(X-1,22.5,W+2,.75,"#3a3e42"); return "#b0b4ac";
-    case "harness": r(X+.5,14,1.5,8,"#9a7a22"); r(X+W-2,14,1.5,8,"#9a7a22"); r(X+.5,14,1.5,.5,"#c9a240"); r(X+W-2,14,1.5,.5,"#c9a240"); if(!back){ r(9.5,17,5,2.5,"#4a4e46"); r(9.5,17,5,.5,"#7a7e76"); hp(g,11.75,18+b,"#e8b048"); } else { r(11.25,14,1.5,8,"#5a5e56"); for(let y=15;y<22;y+=2) r(10.5,y,3,.5,"#3a3e36"); }
-      if(!sd){ r(5,12.75,3.5,2.5,"#9a7a22"); r(15.5,12.75,3.5,2.5,"#9a7a22"); for(let k=0;k<7;k++){ R(g,5+k*.5,15+b,.5,.5,k%2?"#141210":"#e0c040"); R(g,15.5+k*.5,15+b,.5,.5,k%2?"#141210":"#e0c040"); } } rr(X,21.5,W,1,"#3a2a1a"); return null;
-    case "medcoat": r(X-.5,14,W+1,8,"#c8c4b4"); r(X-.5,14,W+1,.75,"#e8e4d4"); rr(X-.5,22,W+1,5,"#c8c4b4"); rr(X-.5,26.5,W+1,.5,"#8a8676"); if(!back){ r(11,14,2,13-b,"#2a2826"); rr(11,22,2,5,"#2a2826"); for(const [bx,by] of [[8.5,19],[9,24.5],[15,21]]) hp(g,bx,by+b,"#7a1410"); r(8.5,15.5,2,1.5,"#e8e4d4"); }
-      else { r(11.75,15,.5,7,"#a8a494"); } return "#c0bcac";
-    case "aegis": plate("#a8842a","#e8c868","#6a5014"); if(!back){ r(10.5,15.5,3,4,"#c9a24a"); r(10.5,15.5,3,.5,"#f0d890"); rr(10.5,22,3,5.5,"#8a1a12"); rr(10.5,22,.75,5.5,"#b02a1c"); rr(10.5,27,3,.5,"#e8c868"); } else { r(9,15,6,6,"#8a1a12"); r(9,15,6,.5,"#b02a1c"); }
-      if(!sd){ r(5,13,3.5,3,"#a8842a"); r(5,13,3.5,.75,"#e8c868"); r(15.5,13,3.5,3,"#a8842a"); r(15.5,13,3.5,.75,"#e8c868"); } rr(X,21.5,W,1,"#6a5014"); return "#a8842a";
+    case "suit": r(X,14,W,9,"#4a5240"); r(X,14,W,.6,"#66705a"); if(!back){ limb(g,8.6,14.6+b,mid-.6,19.6+b,.45,.45,"#2a2c24"); limb(g,15.4,14.6+b,mid+.6,19.6+b,.45,.45,"#2a2c24"); r(mid-.5,19.4,1,3,"#2a2c24"); r(8.4,19.6,2.2,1.8,"#3a4030"); r(13.4,19.6,2.2,1.8,"#3a4030"); ell(g,12,14.2+b,2.8,.8,"#7a7e74"); }
+      else { limb(g,8.4,14.6+b,15.6,21+b,.45,.45,"#2a2c24"); limb(g,15.6,14.6+b,8.4,21+b,.45,.45,"#2a2c24"); r(9.6,15.4,4.8,3,"#3a4030"); } rr(6,22,12,.9,"#2a2a22"); return "#4a5240";
+    case "scrapvest": poly(g,[[7,14.6+b],[12.4,14.4+b],[12,19.6+b],[7.2,19+b]],"#5a5448"); poly(g,[[12.2,14.4+b],[17,14.8+b],[16.8,18.8+b],[12,19.4+b]],"#4a4038"); poly(g,[[7.4,19.2+b],[16.6,18.8+b],[16.2,22.2],[7.8,22.2]],"#6a4a2c");
+      for(const [x,y] of [[8,15.4],[11.6,15.2],[13,15.4],[16,15.6],[8.4,20],[15.6,19.8],[12,21.4]]) hp(g,x,y+b,"#b0a890"); r(7,19.2,10,.4,"#2a2420"); hp(g,10,17+b,"#8a3a1a"); hp(g,14.6,21+b,"#8a3a1a"); return null;
+    case "brigandine": { const c="#3a3428", d="#2a2620"; r(X,14,W,9,c); if(!back){ poly(g,[[9.4,14.2+b],[12,18.6+b],[10.4,18.6+b],[8,14.4+b]],d); poly(g,[[14.6,14.2+b],[12,18.6+b],[13.6,18.6+b],[16,14.4+b]],d); for(let k=0;k<3;k++){ hp(g,10.4,17.4+k*1.4+b,"#a07e38"); hp(g,13.4,17.4+k*1.4+b,"#a07e38"); } r(mid-.25,18.6,.5,4,d); ell(g,12,13.9+b,3.6,1,d); }
+      else { r(11.8,14.6,.5,8,d); ell(g,12,14.2+b,3.8,1.1,d); } rr(6,21.4,12,1,"#1a1814"); rr(11.2,21.4,1.6,1,"#8a8a80"); return c; }
+    case "flak": { const c="#4a5038", d="#363a28"; r(X,14,W,9,c); for(let y=15.4;y<22;y+=1.5) r(X,y,W,.4,d); ell(g,12,14.1+b,4.2,1.2,"#3a3e2c"); ell(g,12,13.8+b,3.4,.6,"#5a6048"); if(f) r(11.8,14.8,.4,7,"#6a6a60"); rr(6,22,12,.9,"#2a2a22"); return null; }
+    case "carrier": { const c="#3a3e34", d="#24271f"; poly(g,[[8.4,15+b],[15.6,15+b],[15.8,21.8],[8.2,21.8]],c); r(8.4,15,7.2,.5,"#565c4c"); r(8.6,14.2,1.2,1.2,c); r(14.2,14.2,1.2,1.2,c);
+      if(!back){ for(let k=0;k<3;k++){ r(9+k*2.1,18.4,1.8,3,d); r(9+k*2.1,18.4,1.8,.6,"#4a5040"); hp(g,9.7+k*2.1,18+b,"#c9a24a"); } r(9.4,16,5.2,1.2,"#2e3228"); } else { r(9,15.6,6,1,"#24271f"); r(11,15,2,.8,"#6a6e64"); }
+      r(6,19,2.4,3,d); r(15.6,19,2.4,3,d); return null; }
+    case "hazard": r(X,14,W,9,"#7a5e1a"); r(X,14,W,.6,"#a8842a"); for(let k=0;k<W*2;k++) r(X+k/2,19.4,.5,.7,k%2?"#141210":"#e0c040"); if(!back) ell(g,12,14.1+b,2.6,.8,"#141210");
+      if(back){ ell(g,12,18+b,3.6,3.8,"#5a5a50"); ell(g,12,17.6+b,3.2,3.4,"#7a7a70"); r(9.8,15.4,1.6,5,"#3a4448"); r(12.6,15.4,1.6,5,"#3a4448"); } rr(6,22,12,1,"#2a2a24"); return "#7a5e1a";
+    case "exo": r(X+1,14,W-2,8,"#26282a"); if(!back){ ell(g,12,17.4+b,1.2,1.2,"#5ad0d0"); hp(g,11.7,17.1+b,"#c8ffff"); limb(g,8.6,14.4+b,8.8,21.6+b,.4,.4,"#8a8a80"); limb(g,15.4,14.4+b,15.2,21.6+b,.4,.4,"#8a8a80"); } else { r(11.5,14,1,8,"#8a8a80"); for(let y=15;y<22;y+=2) r(10.5,y,3,.5,"#6a6a60"); } rr(6,21.5,12,1,"#6a6a60"); return "#26282a";
+    case "hardsuit": r(X,13.5,W,9.5,"#c0c4bc"); r(X,13.5,W,.6,"#e8ece4"); r(X,18,W,.75,"#c8761a");
+      if(!back){ r(9.5,15,5,3,"#3a3e42"); r(9.5,15,5,.5,"#6a7076"); for(let k=0;k<4;k++) hp(g,10+k*1.2,16.25+b,k%2?"#5ad06a":"#e04030"); hp(g,10,19.5+b,"#fff4c0"); hp(g,14,19.5+b,"#fff4c0"); } else { ell(g,12,18+b,3.8,4,"#9a9e98"); r(9.4,15.4,2,5,"#6a6e68"); r(12.6,15.4,2,5,"#6a6e68"); } rr(6,22.4,12,.8,"#3a3e42"); return "#b0b4ac";
+    case "harness": r(X+2,14,1.5,8,"#9a7a22"); r(X+W-3.5,14,1.5,8,"#9a7a22"); if(!back){ r(9.5,17,5,2.5,"#4a4e46"); r(9.5,17,5,.5,"#7a7e76"); hp(g,11.75,18+b,"#e8b048"); } else { r(11.25,14,1.5,8,"#5a5e56"); for(let y=15;y<22;y+=2) r(10.5,y,3,.5,"#3a3e36"); } rr(6,21.5,12,1,"#3a2a1a"); return null;
+    case "medcoat": r(X,14,W,9,"#c8c4b4"); if(!back){ r(11,14,2,9,"#2a2826"); for(const [bx,by] of [[8.5,19],[15,21]]) hp(g,bx,by+b,"#7a1410"); r(6.2,16,1.6,1.2,"#e8e4d4"); r(6.6,16.2,.8,.8,"#b02a1c"); } else r(11.75,15,.5,7,"#a8a494"); return "#c0bcac";
+    case "ossuary": { const c="#3a3c40", hi="#5e6268", d="#24262a"; r(X,14,W,9,c); for(let y=15;y<22;y+=1.6){ r(X,y,W,.5,hi); r(X,y+.5,W,.4,d); } if(!back){ ell(g,12,16.4+b,2.4,1.6,d); ell(g,12,16.2+b,2,1.2,"#4a4e54"); for(let k=0;k<4;k++) hp(g,8+k*2.6,21.4+b,"#8a8e94"); } else { r(11.4,14,1.2,8,d); } rr(6,22,12,1,d); return c; }
+    case "shroud": { const c="#4a4e3a"; r(X,14,W,9,c); rr(6,22,12,6,c); for(let k=0;k<26;k++){ const v=hh(k,11,4); R(g,6+(v%24)/2,14+((v>>5)%26)/2+(k%2?b:0),1+(v>>9)%2,.8,(v>>3)%2?"#3a3e2c":"#5e6448"); } ell(g,12,14.3+b,4,1.3,"#3e4230"); for(let k=0;k<12;k++) rr(6.2+k,27.6,.5,.6+(k%3)*.3,c); return c; }
+    case "aegis": { const c="#1e2024", hi="#4a4e56"; r(X,14,W,9,c); r(X,14,W,.6,hi); if(!back){ limb(g,15.6,14.4+b,8.6,21.6+b,.9,.9,"#7a1a12"); limb(g,15.2,14.2+b,8.2,21.4+b,.3,.3,"#a02a1c"); for(let k=0;k<3;k++){ r(8.2+k*1.1,15.6,.8,1,["#c02a1a","#2a5aa8","#c9a24a"][k]); ell(g,8.6+k*1.1,17.4+b,.45,.45,"#c9a24a"); } r(14,16,2,.6,"#8a8e94"); }
+      else { r(11.4,14,1.2,8,"#121316"); } rr(6,22,12,1,"#7a1a12"); return c; }
   } return null; }
+function drawChestPads(g,id,b,view){ if(view==="s"){ if(["flak","ossuary","aegis","hardsuit"].includes(id)){ const c={flak:"#4a5038",ossuary:"#3a3c40",aegis:"#1e2024",hardsuit:"#c0c4bc"}[id]; ell(g,12.4,15.4+b,2.6,2,shade(c,.8)); ell(g,12.2,15.1+b,2.4,1.7,c); } return; }
+  const pad=(x,c,hi,lo,big)=>{ ell(g,x,15+b,big?2.9:2.4,big?2.2:1.8,lo); ell(g,x-.2,14.7+b,big?2.7:2.2,big?1.9:1.5,c); ell(g,x-.6,14+b,1.2,.5,hi); };
+  switch(id){
+    case "flak": for(const x of [6.8,17.2]){ pad(x,"#4a5038","#66705a","#30352a"); R(g,x-2,15+b,4,.35,"#30352a"); } break;
+    case "ossuary": for(const x of [6.6,17.4]){ pad(x,"#3a3c40","#6a6e76","#1a1c1e",true); R(g,x-2.4,15.4+b,4.8,.4,"#5e6268"); hp(g,x,16.4+b,"#8a8e94"); } break;
+    case "aegis": for(const x of [6.8,17.2]){ pad(x,"#1e2024","#4a4e56","#0e0f10"); for(let k=0;k<5;k++) R(g,x-1.8+k*.9,16.4+b,.4,1.2,"#c9a24a"); } break;
+    case "hardsuit": for(const x of [6.8,17.2]) pad(x,"#c0c4bc","#f0f4ec","#7a7e78",true); break;
+  } }
 function drawCrest(g,b,L,col){ const vis=VISOR(L);
   switch(L.k||"plume"){
-    case "plume": R(g,11.5,-.5+b,1.5,3.5,col); R(g,10.5,.5+b,3.5,1,col); hp(g,12,-.5+b,shade(col,1.4)); break;
-    case "antenna": R(g,15.5,-1+b,.5,4,"#8a8a80"); hp(g,15.5,-1+b,vis); break;
-    case "fin": R(g,11,0+b,2,3,"#7a7e76"); R(g,11,0+b,2,.5,"#a8aca2"); break;
-    case "horns": R(g,5.5,1+b,1,3,"#d8cdb4"); R(g,4.5,0+b,1,2,"#d8cdb4"); R(g,17.5,1+b,1,3,"#d8cdb4"); R(g,18.5,0+b,1,2,"#d8cdb4"); break;
-    case "halo": R(g,8,-.5+b,8,.75,"#f0d060"); R(g,7.5,0+b,1,.5,"#f0d060"); R(g,15.5,0+b,1,.5,"#f0d060"); break;
+    case "plume": R(g,11.4,1.8+b,1.2,4,col); R(g,11.4,1.8+b,.4,4,shade(col,1.3)); break;                                          // painted stripe
+    case "antenna": R(g,16.4,-1.5+b,.5,5,"#6a6a60"); hp(g,16.4,-1.5+b,vis); R(g,16,3+b,1.4,.8,"#3a3a34"); break;
+    case "fin": ell(g,17.8,7.4+b,1,1.6,"#3a3c36"); R(g,17.4,6.4+b,.8,.5,"#6a6c64"); R(g,18.2,3.4+b,.4,3,"#5a5a50"); hp(g,17.6,8+b,"#5ad06a"); break;  // comms rig
+    case "horns": for(const x of [8.6,12,15.4]) limb(g,x,3.2+b,x+(x-12)*.15,-.2+b,.7,.15,"#9a9e98"); break;                       // raider spikes
+    case "halo": skull(g,10,3.2+b,"#e8e0d0","#1a1814"); break;                                                                     // skull decal
   } }
 // helmets cover the head box (6.5..17.5 x 2.5..13)
 function drawHelmet(g,id,b,L,view){ view=view||"f"; const r=(x,y,w,h,c)=>R(g,x,y+b,w,h,c), vis=VISOR(L), cl=CLOAK(L)[1], f=view==="f", bk=view==="b", sd=view==="s";
   const dome=(c,hi,lo,y0=2.5,y1=12.5)=>{ const cy=(y0+y1)/2, ry=(y1-y0)/2+.4; ell(g,12,cy+b,6,ry,lo); ell(g,11.6,cy-.2+b,5.8,ry-.2,c); ell(g,10,cy-ry*.45+b,2.6,ry*.35,hi); ell(g,10.4,cy-ry*.38+b,2.4,ry*.3,c); };
+  const lens=(x,y,rx,c)=>{ ell(g,x,y+b,rx+.35,rx+.3,"#121410"); ell(g,x,y+b,rx,rx-.05,c); hp(g,x-rx*.5,y-rx*.4+b,"#ffffff"); };
+  // stormer: flared steel helmet over a gas mask
+  const stormer=(hc,hH,hS,maskC,lensC,skullPaint)=>{
+    if(bk){ ell(g,12,6.4+b,6.1,4.8,hc); poly(g,[[5.2,7.2+b],[18.8,7.2+b],[19.4,12.4+b],[4.6,12.4+b]],hS); poly(g,[[5.6,7.2+b],[18.4,7.2+b],[18.9,11.8+b],[5.1,11.8+b]],hc); r(5.4,7,13.2,.6,hH); return; }
+    if(sd){ ell(g,12.4,5.8+b,5.8,4.4,hc); poly(g,[[6,6.6+b],[12,6.6+b],[11.4,12.4+b],[5.2,12.6+b]],hc); r(6,6.6,11.6,.7,hH); ell(g,15.6,10+b,2.6,2.8,maskC); lens(15.8,8.8,.9,lensC); ell(g,17.4,12.2+b,1,1.1,"#3a3c36"); hp(g,17.4,12.2+b,"#121410"); return; }
+    ell(g,12,5.6+b,6.2,4.2,hS); ell(g,11.8,5.3+b,6,3.9,hc); ell(g,10.2,3.8+b,2.4,1.2,hH);
+    poly(g,[[5.6,6.6+b],[7.6,6.6+b],[7.4,11.6+b],[4.8,12.2+b]],hc); poly(g,[[16.4,6.6+b],[18.4,6.6+b],[19.2,12.2+b],[16.6,11.6+b]],hS);
+    ell(g,12,10.5+b,4,2.9,maskC); ell(g,11.7,10.2+b,3.6,2.5,shade(maskC,1.12));
+    if(skullPaint){ ell(g,12,10.3+b,3.2,2.4,"#d8cdb4"); ell(g,11.4,9.8+b,1.6,.8,"#f0e6d0"); r(11.6,10.6,.8,.8,"#1a1814"); for(let k=0;k<6;k++) r(9.6+k*.85,11.8,.45,.9,k%2?"#1a1814":"#e8dcc4"); }
+    lens(10.1,9.3,1.05,lensC); lens(13.9,9.3,1.05,lensC); ell(g,12,12.7+b,1.15,1,"#3a3c36"); ell(g,12,12.7+b,.55,.5,"#121410");
+    r(5.6,7,12.8,.7,hH); hp(g,6.6,8+b,"#9a9e96"); hp(g,17.4,8+b,"#6a6e66"); };
   switch(id){
-    case "visor": dome("#3b3f38","#5f6458","#25271f");
-      if(f){ r(8,6.5,8,3,vis); r(8,8.75,8,.75,shade(vis,.55)); r(8.5,6.75,2.5,.5,"#ffffff"); r(7.5,6,9,.5,"#1a1c18"); r(7.5,9.5,9,.5,"#1a1c18"); r(8.5,10.5,7,1.5,"#2e3230"); for(let k=0;k<4;k++) hp(g,9+k*1.7,11+b,"#5a5e56"); }
-      else if(sd){ r(11.5,6.5,5.5,3,vis); r(11.5,8.75,5.5,.75,shade(vis,.55)); r(12,6.75,2,.5,"#fff"); r(11,6,6.5,.5,"#1a1c18"); r(7.5,8,2,2,"#2e3230"); }
-      else { r(9,5,6,5,"#33372f"); for(let k=0;k<3;k++) r(9.5,6+k*1.3,5,.5,"#1a1c18"); }
+    case "visor": dome("#4a4e44","#6e7366","#2c2f28",2,13);
+      if(f){ r(7.6,7,8.8,1.8,"#0c0f0e"); r(8,7.4,8,1,vis); r(8.2,7.4,2.6,.4,"#ffffff"); ell(g,12,11.6+b,2.8,1.7,"#2e302a"); for(const x of [9.6,14.4]){ ell(g,x,12+b,1,1,"#3e403a"); ell(g,x,12+b,.45,.45,"#121410"); } ell(g,6.3,8.8+b,1,1.6,"#34362f"); ell(g,17.7,8.8+b,1,1.6,"#26281f"); }
+      else if(sd){ r(11.4,7,6.4,1.8,"#0c0f0e"); r(11.8,7.4,5.8,1,vis); ell(g,15.2,11.6+b,2.2,1.6,"#2e302a"); ell(g,16.6,12+b,.9,.9,"#3e403a"); ell(g,9.8,8.8+b,1.2,1.7,"#34362f"); }
+      else { r(8.6,5.6,6.8,4.6,"#34372f"); for(let k=0;k<3;k++) r(9.2,6.4+k*1.2,5.6,.4,"#1a1c18"); limb(g,12,10.2+b,12,13.4+b,.5,.5,"#2a2a26"); }
       drawCrest(g,b,L,cl); break;
-    case "welder": r(7,3.5,10,1,"#2a2a24"); if(f){ r(7.5,4,9,8.5,"#3a3a34"); r(7.5,4,9,.75,"#5a5a50"); r(8.5,7,7,1.5,"#1a2a1a"); r(9,7.25,6,1,"#3aa04a"); hp(g,9.5,7.25+b,"#9aff9a"); r(11,11,2,1.5,"#2a2a24"); } else if(sd){ r(12.5,4,5,8.5,"#3a3a34"); r(12.5,4,5,.75,"#5a5a50"); r(14,7,3,1,"#3aa04a"); } else { r(7,4,10,.75,"#2a2a24"); r(11,4,2,2,"#4a4a40"); } break;
-    case "flakhelm": r(7,1.5,10,4.5,"#4a5040"); r(7.5,1,9,.75,"#6a705e"); r(7,1.5,10,.75,"#6a705e"); r(5.5,5.5,13,1,"#3a4032"); r(5.5,5.5,13,.5,"#5a6050");
-      if(f){ r(8,3.5,3,1.5,"#2a2a24"); r(13,3.5,3,1.5,"#2a2a24"); r(8.5,3.75,2,1,"#c9a24a"); r(13.5,3.75,2,1,"#c9a24a"); hp(g,8.5,3.75+b,"#fff4c0"); r(7,6.5,.5,5,"#2a2a24"); r(16.5,6.5,.5,5,"#2a2a24"); }
-      else if(sd){ r(13,3.5,3,1.5,"#2a2a24"); r(13.5,3.75,2,1,"#c9a24a"); r(10,6.5,.5,5,"#2a2a24"); } else r(7,3.5,10,1,"#2a2a24"); break;
-    case "gasmask": dome("#3a4030","#56603c","#262a1e",2.5,13);
-      if(f){ r(8.5,6.5,7,6,"#55574e"); r(8.5,6.5,7,.75,"#6a6c62"); for(const ex of [9,13]){ r(ex,7,2.5,2.5,"#1a1c18"); r(ex+.5,7.5,1.5,1.5,vis); hp(g,ex+.5,7.5+b,"#fff"); } r(10.5,10.5,3,3,"#2a2a24"); r(10.5,10.5,3,.5,"#6a6a60"); for(let k=0;k<3;k++) hp(g,11+k,12+b,"#121210"); }
-      else if(sd){ r(12,6.5,5,6,"#55574e"); r(13,7,2.5,2.5,"#1a1c18"); r(13.5,7.5,1.5,1.5,vis); r(15.5,10.5,3,2.5,"#2a2a24"); r(18,11,.5,1.5,"#6a6a60"); } else { r(7,7,10,.5,"#2a2c26"); r(7,10,10,.5,"#2a2c26"); } break;
-    case "sallet": dome("#7e827a","#a8aca2","#4a4e46");
-      if(f){ r(7.5,7.5,9,1,"#121210"); r(7.5,7,9,.5,"#d0d4ca"); hp(g,9.5,7.75+b,vis); hp(g,14,7.75+b,vis); r(11.75,3,.5,4,"#5a5e56"); for(const [a2,c2] of [[8,10.5],[16,10.5],[9,4],[15,4]]){ hp(g,a2,c2+b,"#e0e4da"); } r(7.5,10,9,.5,"#4a4e46"); }
-      else if(sd){ r(11,7.5,6.5,1,"#121210"); hp(g,15,7.75+b,vis); r(5.5,10,3,3,"#6a6e66"); r(5.5,10,3,.5,"#a8aca2"); } else { r(7,10,10,3.5,"#6a6e66"); r(7,10,10,.5,"#a8aca2"); for(let k=0;k<4;k++) hp(g,8+k*2.5,11.5+b,"#e0e4da"); }
-      drawCrest(g,b,L,cl); break;
-    case "deathmask": dome("#2a2420","#3a322c","#16120f",2,13.5);
-      if(f){ r(8.5,4.5,7,7.5,"#d8cdb4"); r(8.5,4.5,7,.75,"#f0e8d4"); r(9,7,2,2,"#0a0806"); r(13,7,2,2,"#0a0806"); hp(g,9.5,7.5+b,"#ff3a26"); hp(g,13.5,7.5+b,"#ff3a26"); r(11.5,9.5,1,1,"#5a5040"); for(let k=0;k<5;k++) r(9.5+k,11,.5,1,k%2?"#5a5040":"#f0e8d4"); }
-      else if(sd){ r(12.5,4.5,4.5,7.5,"#d8cdb4"); r(13.5,7,2,2,"#0a0806"); hp(g,14,7.5+b,"#ff3a26"); for(let k=0;k<3;k++) r(13.5+k,11,.5,1,k%2?"#5a5040":"#f0e8d4"); } break;
-    case "cowl": dome("#141418","#26262e","#08080a",2,14); r(10.5,0,3,2.5,"#141418"); r(11,-1,2,1.5,"#141418");
-      if(f){ r(8.5,5,7,7,"#050506"); r(9.5,7.5,1.5,1,"#c070ff"); r(13,7.5,1.5,1,"#c070ff"); hp(g,9.5,7.5+b,"#f0d0ff"); hp(g,13,7.5+b,"#f0d0ff"); }
-      else if(sd){ r(12.5,5,5,7,"#050506"); r(14.5,7.5,1.5,1,"#c070ff"); } r(6.5,13.5,11,.75,"#26262e"); break;
-    case "eva": { const ring="#a8d8e8"; R(g,5.5,1.5+b,13,.5,ring); R(g,5,2+b,.5,10.5,ring); R(g,18.5,2+b,.5,10.5,ring); R(g,6,1+b,12,.5,"rgba(168,216,232,.6)"); R(g,7,2.5+b,2,.5,"#ffffff"); R(g,6,3.5+b,.5,2,"#ffffff"); R(g,16,3+b,1,.5,"rgba(255,255,255,.6)");
-      r(6,12.5,12,1.75,"#8a8e86"); r(6,12.5,12,.5,"#c0c4bc"); for(let k=0;k<5;k++) hp(g,7+k*2.4,13.5+b,"#3a3e42"); break; }
-    case "hardhat": r(6.5,1.5,11,4.5,"#c8a02a"); r(7,1,10,.75,"#e8c050"); r(6.5,1.5,.75,4,"#e8c050"); r(5.5,5.5,13,1,"#9a7a1a"); r(5.5,5.5,13,.5,"#d8b040"); r(11.5,1.5,1,4,"#a8841e");
-      if(!bk){ const lx2=sd?14:10.5; r(lx2,2.5,3,2.5,"#3a3a34"); r(lx2+.5,3,2,1.5,"#fff4c0"); hp(g,lx2+.5,3+b,"#ffffff"); } break;
+    case "welder": r(6.2,7.4,11.6,.9,"#2a2016");
+      if(f){ poly(g,[[7.8,5.4+b],[16.4,5+b],[17,10.8+b],[13.6,13+b],[10.4,13+b],[7.2,11+b]],"#5a5448"); poly(g,[[12,5.2+b],[16.4,5+b],[17,10.8+b],[13.6,13+b],[12,13+b]],"#4a463c"); r(7.8,5.4,8.6,.5,"#7a7262");
+        lens(9.9,8.2,1.25,"#d8a040"); lens(14.1,8.2,1.25,"#d8a040"); for(let k=0;k<4;k++) r(10.6+k*.8,10.8,.4,1.6,"#121210"); for(const [x,y] of [[8.4,6.2],[15.8,6],[8.2,10.4],[16.2,10.2],[12,12.4]]) hp(g,x,y+b,"#a8a090"); hp(g,12,5.6+b,"#8a3a1a"); }
+      else if(sd){ poly(g,[[12,5.4+b],[17.4,5.6+b],[17.6,11+b],[14.6,13+b],[12,12.6+b]],"#5a5448"); lens(15.2,8.2,1.2,"#d8a040"); for(let k=0;k<3;k++) r(15+k*.8,10.8,.4,1.6,"#121210"); }
+      else { ell(g,12,7.8+b,1.2,.8,"#6a5a3a"); } break;
+    case "flakhelm": ell(g,12,6.2+b,7.2,1.3,"#363c2e"); ell(g,12,5.9+b,7,1,"#4a5040"); ell(g,12,4.4+b,5.6,3.3,"#4a5040"); ell(g,10.4,3+b,2.2,1,"#626a56");
+      for(let y=2;y<6;y+=1) for(let x=7.5;x<16.5;x+=1.2) hp(g,x+(y%2)*.6,y+b,"#2a2e22");
+      if(!bk){ r(7,4,10,.9,"#2a2a24"); if(f){ lens(9.6,4.4,1,"#c9a24a"); lens(14.4,4.4,1,"#c9a24a"); r(7,6.8,.5,4.6,"#2a2a24"); r(16.5,6.8,.5,4.6,"#2a2a24"); } else { lens(15,4.4,1,"#c9a24a"); r(10,6.8,.5,4.6,"#2a2a24"); } } break;
+    case "gasmask": dome("#2e3228","#4a5040","#1a1e16",2.2,13.4);
+      if(f){ poly(g,[[7.4,3.4+b],[16.6,3.4+b],[16,5.8+b],[8,5.8+b]],"#4a4e44"); r(7.4,3.4,9.2,.5,"#6a6e64"); hp(g,8,4.6+b,"#9a9e96"); hp(g,16,4.6+b,"#9a9e96");
+        ell(g,12,9.6+b,4.3,3.7,"#3e4038"); lens(9.8,8.6,1.35,vis); lens(14.2,8.6,1.35,vis);
+        for(const x of [7.2,16.8]){ ell(g,x,11.4+b,1.6,1.4,"#55574e"); ell(g,x,11.4+b,1.1,.95,"#3a3c36"); for(let k=0;k<3;k++) R(g,x-.8+k*.6,11+b,.3,.9,"#1a1c18"); } ell(g,12,12.2+b,1.1,.9,"#2a2a24"); hp(g,12,12+b,"#6a6a60"); }
+      else if(sd){ poly(g,[[10,3.4+b],[17,3.6+b],[16.6,5.8+b],[10,5.8+b]],"#4a4e44"); ell(g,14.6,9.8+b,3,3.4,"#3e4038"); lens(15.2,8.6,1.2,vis); ell(g,17.4,11.8+b,1.5,1.4,"#55574e"); ell(g,17.4,11.8+b,1,.9,"#3a3c36"); }
+      else { limb(g,7.4,6+b,16.6,11+b,.3,.3,"#1a1c16"); limb(g,16.6,6+b,7.4,11+b,.3,.3,"#1a1c16"); ell(g,12,8.5+b,.9,.9,"#4a4e44"); } break;
+    case "sallet": stormer("#4e5248","#72786a","#30332c","#3a3c34",vis,false); if(!bk) drawCrest(g,b,L,cl); break;
+    case "deathmask": stormer("#1e1f22","#3e4046","#0e0f10","#1a1a1c","#ff3a26",true); break;
+    case "cowl": dome("#1a1c1a","#2e302c","#0c0d0c",2,13.8); ell(g,12,.9+b,2,1.4,"#1a1c1a");
+      if(f){ ell(g,12,9.2+b,4.1,3.8,"#060706"); r(10,6,4,1,"#3a3c38"); for(const [x,y] of [[9.4,8.5],[11.2,8],[12.8,8],[14.6,8.5]]){ ell(g,x,y+b,.95,.95,"#2a2c28"); ell(g,x,y+b,.55,.55,"#7cff7a"); hp(g,x-.2,y-.2+b,"#e0ffe0"); } }
+      else if(sd){ ell(g,14,9.4+b,3.4,3.8,"#060706"); for(const y of [7.6,9]){ limb(g,14.4,y+b,17.6,y+b,.55,.5,"#2a2c28"); hp(g,17.8,y+b,"#7cff7a"); } }
+      else { r(9,10.5,6,.5,"#2e302c"); } break;
+    case "halohelm": dome("#24262a","#3e4146","#121316",2.5,13);
+      if(!bk){ limb(g,10.2,11.6+b,8.4,15+b,.55,.5,"#2a2a26"); limb(g,13.8,11.6+b,15.6,15+b,.55,.5,"#2a2a26"); for(let k=0;k<4;k++){ hp(g,9.8-k*.45,12.4+k*.75+b,"#4a4a44"); hp(g,14.2+k*.45,12.4+k*.75+b,"#4a4a44"); }
+        ell(g,12,11.4+b,2.5,1.6,"#3a3c40"); if(f){ lens(9.9,8.7,1.15,"#ff3a26"); lens(14.1,8.7,1.15,"#ff3a26"); } else lens(15,8.7,1.1,"#ff3a26"); }
+      ell(g,12,4.4+b,6.6,2.9,"#2e3034"); ell(g,11.6,3.8+b,5.8,2.2,"#3a3d42"); r(5.6,5.4,12.8,1,"#7a1a12"); r(5.6,5.4,12.8,.4,"#a02a1c");
+      if(!bk){ ell(g,sd?14:12,6.9+b,sd?4:5.6,.9,"#0e0e10"); skull(g,sd?12.6:10,2.6+b,"#c9a24a","#3a2a10"); } break;
+    case "eva": { const ring="#a8d8e8"; R(g,5.5,1.5+b,13,.5,ring); R(g,5,2+b,.5,10.5,ring); R(g,18.5,2+b,.5,10.5,ring); R(g,6,1+b,12,.5,"rgba(168,216,232,.6)"); R(g,7,2.5+b,2,.5,"#ffffff"); R(g,6,3.5+b,.5,2,"#ffffff");
+      ell(g,12,13.2+b,6,1,"#8a8e86"); r(6.4,12.6,11.2,.5,"#c0c4bc"); for(let k=0;k<5;k++) hp(g,7+k*2.4,13.4+b,"#3a3e42"); break; }
+    case "hardhat": ell(g,12,6+b,7,1.1,"#9a7a1a"); ell(g,12,4.2+b,5.6,3.2,"#c8a02a"); ell(g,10.4,3+b,2.2,1,"#e8c050"); r(11.5,1.4,1,4.4,"#a8841e");
+      if(!bk){ const lx2=sd?15:12; ell(g,lx2,3.8+b,1.5,1.2,"#3a3a34"); ell(g,lx2,3.8+b,.95,.75,"#fff4c0"); hp(g,lx2-.3,3.6+b,"#ffffff"); } break;
     case "pilothelm": dome("#2e3236","#4e5458","#16181a"); r(11,2,2,4,CLOAK(L)[0]); r(11,2,2,.5,CLOAK(L)[1]);
       if(f){ r(7.5,6,9,4.5,"#1a2a30"); r(7.5,6,9,.75,"#5aa0b8"); r(8,6.75,3,.5,"#c8f0ff"); r(16.5,9.5,1.5,1,"#3a3e42"); r(14.5,11.5,3,.5,"#3a3e42"); hp(g,14,11.25+b,"#e04030"); }
       else if(sd){ r(11.5,6,6,4.5,"#1a2a30"); r(11.5,6,6,.75,"#5aa0b8"); r(16,11.5,2,.5,"#3a3e42"); r(8,7,2,2.5,"#3a3e42"); } else { r(8.5,6,7,4,"#24282c"); for(let k=0;k<3;k++) r(9,7+k*1.2,6,.5,"#16181a"); } break;
-    case "halohelm": dome("#a8842a","#e8c868","#6a5014");
-      if(f){ r(8,7.5,8,1,"#121210"); r(11.5,7.5,1,4,"#121210"); r(8,7,8,.5,"#f0d890"); } else if(sd){ r(12,7.5,5.5,1,"#121210"); r(13.5,7.5,1,4,"#121210"); }
-      r(10.5,0,3,3,"#8a1a12"); r(10.5,0,3,.75,"#b02a1c"); R(g,6,-1.5+b,12,.75,"#f0d060"); R(g,6.5,-1.75+b,11,.4,"#fff4c0"); break;
   } }
 function drawAccBack(g,id,b,L,view){ const cl=CLOAK(L), bk=view==="b", sd=view==="s";
   switch(id){
@@ -226,13 +252,13 @@ function drawAccBack(g,id,b,L,view){ const cl=CLOAK(L), bk=view==="b", sd=view==
   } }
 function drawAccFront(g,id,b,L,view){ const r=(x,y,w,h,c)=>R(g,x,y+b,w,h,c), cl=CLOAK(L), bk=view==="b", sd=view==="s";
   switch(id){
-    case "scarf": if(!bk){ r(8.5,12.5,7,2,cl[0]); r(8.5,12.5,7,.75,cl[1]); r(sd?9:9,14,2,4.5,cl[0]); r(sd?9:9,14,.5,4.5,cl[1]); } break;
+    case "scarf": { const t="#a8946a", d="#5a4a30"; if(!bk){ ell(g,sd?13:12,13.4+b,sd?3.4:4.4,1.6,t); for(let k=0;k<6;k++) hp(g,(sd?10.6:8.6)+k*1.3,13.2+(k%2)*.6+b,d); r(sd?10:8.6,14.4,2,3.4,t); r(sd?10:8.6,14.4,2,.4,d); r(sd?10:8.6,15.6,2,.4,d); } break; }
     case "bandolier": for(let k=0;k<8;k++){ const x=bk?8+k:16-k; r(x,14+k,1.5,1,"#4a3020"); if(!bk&&k%2===0) r(x+.25,14+k,.75,.75,"#c9a24a"); } break;
+    case "seals": if(!bk){ const x0=sd?13.4:13; for(let k=0;k<3;k++) r(x0+k*.9,15,.7,1,["#c02a1a","#2a5aa8","#c9a24a"][k]); ell(g,x0+.4,17+b,.5,.5,"#c9a24a"); ell(g,x0+1.6,17+b,.5,.5,"#a8acb0"); } break;
+    case "charm": if(!bk){ limb(g,10.6,13.6+b,12,17+b,.15,.15,"#8a8e86"); limb(g,13.4,13.6+b,12,17+b,.15,.15,"#8a8e86"); r(11.4,17,1.2,1.6,"#b0b4ac"); r(12.2,17.4,1.1,1.5,"#9a9e96"); } break;
+    case "censer": { const x=bk?15.4:7.6; ell(g,x,24.2,1.2,1.8,"#3a6a8a"); ell(g,x-.3,23.6,.5,1,"#7ac0e0"); R(g,x-1.2,22.2,2.4,.6,"#8a8e86"); limb(g,x,22.4,x+(bk?-2:2),21.6,.25,.25,"#2a2a26"); break; }
     case "oxytank": if(bk){ for(const tx of [8.5,12.5]){ r(tx,13.5,3,9,"#d8dcd8"); r(tx,13.5,.75,9,"#ffffff"); r(tx+2.25,14,.75,8.5,"#8a8e86"); r(tx,17,3,.75,"#2a6aa8"); r(tx+.75,12.5,1.5,1,"#8a8e86"); } } else if(!sd){ r(7.5,13.5,1,3,"#2a2a26"); r(15.5,13.5,1,3,"#2a2a26"); } break;
-    case "toolbelt": R(g,7,21.75,10,1.5,"#4a3020"); R(g,7,21.75,10,.5,"#6a4a30"); if(!bk){ R(g,7.5,22.5,2,2.5,"#3a2414"); R(g,14.5,22.5,2,2.5,"#3a2414"); R(g,15.25,23,.5,3,"#8a8a80"); R(g,14.75,25.5,1.5,.75,"#8a8a80"); } else { R(g,9,22.5,2,2,"#3a2414"); R(g,13,22.5,2,2,"#3a2414"); } break;
-    case "seals": if(!bk){ r(9,15,2,2,"#a01818"); hp(g,9,15+b,"#d03a2a"); r(9.5,17,.75,3,"#e8dcc0"); r(13.5,14.5,2,2,"#a01818"); r(14,16.5,.75,2.5,"#e8dcc0"); } break;
-    case "charm": R(g,bk?9:13.5,22,1,.5,"#8a7a4a"); R(g,bk?8.5:14,22.5,2,2,"#c9a24a"); if(!bk){ hp(g,14.25,23,"#2a2010"); hp(g,15.25,23,"#2a2010"); } break;
-    case "censer": R(g,bk?15:8.5,22,.5,2.5,"#6a5a3a"); R(g,bk?14:7.5,24.5,2.5,2.5,"#a07e38"); R(g,bk?14:7.5,24.5,2.5,.5,"#e8c060"); hp(g,bk?14.75:8.25,25.5,"#ff8a20"); R(g,bk?14.5:8,23-b,.5,.5,"#8a8a80"); R(g,bk?15:7.5,21.5-b,.5,.5,"#6a6a64"); break;
+    case "toolbelt": R(g,7,21.75,10,1.5,"#4a3020"); R(g,7,21.75,10,.5,"#6a4a30"); if(!bk){ R(g,7.5,22.5,2,2.5,"#3a2414"); R(g,14.5,22.5,2,2.5,"#3a2414"); R(g,15.25,23,.5,3,"#8a8a80"); } else { R(g,9,22.5,2,2,"#3a2414"); R(g,13,22.5,2,2,"#3a2414"); } break;
   } }
 // packs: carried on your back
 function drawPackOn(g,pk,b,view){ if(!pk) return; const r=(x,y,w,h,c)=>R(g,x,y+b,w,h,c), bk=view==="b", sd=view==="s";
@@ -244,7 +270,7 @@ function drawPackOn(g,pk,b,view){ if(!pk) return; const r=(x,y,w,h,c)=>R(g,x,y+b
     if(pk==="hauler"){ r(7,12.5,.5,11,"#3a3a2e"); r(16.5,12.5,.5,11,"#3a3a2e"); } return; }
   if(sd){ if(pk==="sling") r(7,18,2.5,4,col[0]); else { r(4,14,4.5,pk==="hauler"||pk==="mule"?9:7,col[0]); r(4,14,4.5,.75,col[1]); } return; }
   r(8.75,14,.75,6,"#2a2016"); r(14.5,14,.75,6,"#2a2016"); }
-function drawPauldron(g,b,view){ const x=view==="s"?9.5:(view==="b"?4:15); R(g,x,12.5+b,5,4,"#4a4a44"); R(g,x,12.5+b,5,.75,"#7a7a6e"); R(g,x+1,10.5+b,1,2,"#c8c8c0"); R(g,x+3,10.5+b,1,2,"#c8c8c0"); R(g,x,16+b,5,.5,"#2a2a26"); }
+function drawPauldron(g,b,view){ const x=view==="s"?12.4:(view==="b"?6.6:17.4); ell(g,x,15+b,2.8,2.2,"#2a2a26"); ell(g,x-.2,14.7+b,2.6,1.9,"#5a5a54"); ell(g,x-.6,14+b,1.2,.5,"#8a8a82"); for(const dx of [-1.2,0,1.2]) limb(g,x+dx,13.2+b,x+dx*1.3,10.8+b,.45,.1,"#b8bcb4"); }
 // ---------- smooth shape primitives (half-pixel accurate) ----------
 const snap=v=>Math.round(v*2)/2;
 function ell(g,cx,cy,rx,ry,c){ g.fillStyle=c; for(let y=-ry;y<=ry+.01;y+=.5){ const w=rx*Math.sqrt(Math.max(0,1-(y*y)/(ry*ry+.0001))); const x0=snap(cx-w), x1=snap(cx+w); if(x1>x0) g.fillRect(x0,snap(cy+y),x1-x0,.5); } }
@@ -276,8 +302,8 @@ function drawHuman(g,{step=0,b=0,view="f"},L){
       else { R(og,cx-2,bt0-.6,4.2,.6,btH); if(f){ ell(og,cx,bt0+1.9,1.4,.6,"#7a7a72"); hp(og,cx-.5,bt0+.4,"#8a8070"); hp(og,cx+.3,bt0+.9,"#8a8070"); } } }
     if(LG) drawLegPiece(og,LG,lx,lift,far); }
   // coats and robes hang over the legs
-  const skirt={shroud:27.3,medcoat:26.8,brigandine:25,aegis:0}[CH];
-  if(skirt) poly(g,[[7.8,22.3],[16.2,22.3],[16.9,skirt],[7.1,skirt]],CH==="shroud"?"#1a1a20":CH==="medcoat"?"#c8c4b4":"#5a3a20");
+  const skirt={shroud:27.8,medcoat:26.8,brigandine:27.2}[CH];
+  if(skirt) poly(g,[[7.8,22.3],[16.2,22.3],[16.9,skirt],[7.1,skirt]],CH==="shroud"?"#4a4e3a":CH==="medcoat"?"#c8c4b4":"#3a3428");
   // ---------- torso ----------
   const tcol=top==="jacket"?shade(tc,.85):tc, cl2=CLOAK(L);
   if(sd){ poly(g,[[8.4,14.6+b],[15.4,14.6+b],[15.6,22.9],[8.6,22.9]],tcol); ell(g,14.6,17.2+b,1.5,2.3,tcol); ell(g,9.6,15.6+b,1.6,1.3,tcol); }
@@ -306,6 +332,7 @@ function drawHuman(g,{step=0,b=0,view="f"},L){
     else { arm([7,15.6],[6.4,18.6],[6.6,21.3]); arm([17,15.6],[17.6,18.6],[17.4,21.3]); } }
   else if(sd){ arm([10.4,15.6],[10.2-sw,18.6],[10.6-sw*1.4,21.3],true); arm([13,15.6],[13.2+sw,18.6],[13+sw*1.4,21.3]); }
   else { arm([7,15.6],[6.4,18.6+sw],[6.6,21.3+sw]); arm([17,15.6],[17.6,18.6-sw],[17.4,21.3-sw]); }
+  if(CH) drawChestPads(g,CH,b,view);
   if(L.w&&bk) gunPix(g,L.w,4,13.5+b);
   if(L.pk&&bk) drawPackOn(g,L.pk,b,view);
   if(AC==="cape"&&bk) drawAccBack(g,AC,b,L,view);
