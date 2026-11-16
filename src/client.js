@@ -627,11 +627,15 @@ Object.assign(PROP,{
     R(g,8,10,8,18,"#062a2e"); R(g,9,11,6,16,"#2ad0d0"); R(g,10,11,2,16,"#a8ffff"); R(g,9,11,6,1,"#e8ffff"); for(let y=13;y<27;y+=3) R(g,8,y,8,.5,"#0a3a3e"); R(g,4,2,16,5,"#2a2e32"); R(g,4,2,16,.5,"#5a6268"); R(g,7,0,10,3,"#3a4044");
     R(g,0,14,5,2,"#4a4438"); R(g,19,20,5,2,"#4a4438"); R(g,0,14,5,.5,"#7a705a"); R(g,19,20,5,.5,"#7a705a"); }),
   counter:outlined(24,24,g=>{ R(g,0,6,24,17,"#4a2c18"); R(g,0,6,24,1.5,"#8a6a40"); R(g,0,7.5,24,.5,"#2a1810"); R(g,2,10,9,11,"#3a2214"); R(g,13,10,9,11,"#3a2214"); R(g,0,21,24,2,"#1a100a"); R(g,4,3,2,4,"#6a1a12"); hp(g,4,3,"#fff"); R(g,16,4,3,3,"#d8cdb4"); R(g,16.5,4.5,2,1,"#3a2010"); }),
+  strongbox:outlined(24,22,g=>{ R(g,2,5,20,16,"#3a3d40"); R(g,2,5,20,1.5,"#6a7076"); R(g,2,5,1,16,"#5a6066"); R(g,21,5,1,16,"#1a1c1e"); R(g,2,19,20,2,"#16181a");
+    for(let k=0;k<20;k+=2) R(g,2+k,17,1,1.5,(k>>1)%2?"#c9a24a":"#141210"); R(g,4,7,16,9,"#2c2f32"); R(g,4,7,16,.5,"#50565c");
+    disc(g,9,11.5,3,"#1a1c1e"); disc(g,9,11.5,2.2,"#6a7076"); disc(g,9,11.5,.8,"#141618"); for(let a=0;a<8;a++) hp(g,9+Math.cos(a*.785)*2.6,11.5+Math.sin(a*.785)*2.6,"#a8b0b6");
+    R(g,14,9,5,5,"#1a1c1e"); R(g,15,10,3,1,"#5ad06a"); R(g,15,12,3,.5,"#3a3e42"); for(const [a,b] of [[3,6],[20,6],[3,19],[20,19]]) hp(g,a,b,"#8a9096"); },"#0c0d0e"),
   fridge:outlined(24,34,g=>{ R(g,3,2,18,31,"#8a9094"); R(g,3,2,18,1,"#c0c8cc"); R(g,3,2,1,31,"#b0b8bc"); R(g,20,3,1,30,"#4a5054"); R(g,3,13,18,.5,"#4a5054"); R(g,17,6,1,5,"#3a4044"); R(g,17,16,1,8,"#3a4044"); R(g,6,5,6,2,"#e8e0c0"); R(g,6,5.5,4,.5,"#a83a2a"); hp(g,6,28,"#5ad06a"); }),
   loader:outlined(24,36,g=>{ R(g,5,28,5,7,"#7a5e1a"); R(g,14,28,5,7,"#7a5e1a"); R(g,4,33,7,2,"#2a2a24"); R(g,13,33,7,2,"#2a2a24"); R(g,6,12,12,16,"#9a7a22"); R(g,6,12,12,1,"#c9a240"); R(g,7,14,10,9,"#1a1a16"); R(g,8,15,8,7,"#2a3a3e"); R(g,8,15,3,7,"#4a5a5e");
     for(let k=0;k<4;k++) R(g,7+k*3,13,1,10,"#5a4612"); R(g,1,14,5,3,"#7a5e1a"); R(g,18,14,5,3,"#7a5e1a"); R(g,0,17,3,8,"#5a5a50"); R(g,21,17,3,8,"#5a5a50"); R(g,0,25,2,2,"#2a2a24"); R(g,22,25,2,2,"#2a2a24"); for(let k=0;k<12;k++) R(g,6+k,25,1,2,((k>>1)%2)?"#141210":"#e0c040"); R(g,10,9,4,3,"#3a3a34"); hp(g,11,10,"#e04030"); }),
 });
-const PROP_NAME={crate:"Cargo crate",bed:"Bunk",desk:"Console desk",locker:"Locker",barrel:"Fuel drum",brazier:"Brazier",generator:"Generator",tank:"Specimen tank",couch:"Couch",table:"Mess table",chair:"Chair",coffee:"Coffee machine",vending:"Vending machine",arcade:"Arcade cabinet",toilet:"Toilet",sink:"Sink and mirror",shower:"Shower",bars:"Brig bars",captive:"Gerald",gunrack:"Weapon rack",plant:"Plant",captchair:"Captain's chair",footlocker:"Footlocker",workbench:"Workbench",counter:"Bar counter",fridge:"Galley fridge",cogitator:"Cogitator bank",medcab:"Medical cabinet",surgery:"Surgical table",pipes:"Pipe manifold",pallet:"Cargo pallet",stasis:"Stasis pod",altar:"Altar",pew:"Pew",o2rack:"Oxygen rack",pump:"Coolant pump",ammocrate:"Ammo crate",shelf:"Archive shelf",cot:"Cot",drive:"Drive housing",reactor:"Reactor core",loader:"Power loader"};
+const PROP_NAME={strongbox:"Strongbox",crate:"Cargo crate",bed:"Bunk",desk:"Console desk",locker:"Locker",barrel:"Fuel drum",brazier:"Brazier",generator:"Generator",tank:"Specimen tank",couch:"Couch",table:"Mess table",chair:"Chair",coffee:"Coffee machine",vending:"Vending machine",arcade:"Arcade cabinet",toilet:"Toilet",sink:"Sink and mirror",shower:"Shower",bars:"Brig bars",captive:"Gerald",gunrack:"Weapon rack",plant:"Plant",captchair:"Captain's chair",footlocker:"Footlocker",workbench:"Workbench",counter:"Bar counter",fridge:"Galley fridge",cogitator:"Cogitator bank",medcab:"Medical cabinet",surgery:"Surgical table",pipes:"Pipe manifold",pallet:"Cargo pallet",stasis:"Stasis pod",altar:"Altar",pew:"Pew",o2rack:"Oxygen rack",pump:"Coolant pump",ammocrate:"Ammo crate",shelf:"Archive shelf",cot:"Cot",drive:"Drive housing",reactor:"Reactor core",loader:"Power loader"};
 let flavorT={};
 
 // ---------- ship terminals ----------
@@ -824,7 +828,35 @@ function drawFloor(g,x,y,force){
   const mesh=(sx,sy,w,hh2)=>{ for(let j=0;j<hh2;j++)for(let i=0;i<w;i++) R(g,sx+i,sy+j,1,1,((i+j)%2)?st.mesh:st.seam); };
   if(isW(x,y-1)) mesh(ox,oy,24,4); if(isW(x,y+1)) mesh(ox,oy+20,24,4); if(isW(x-1,y)) mesh(ox,oy,4,24); if(isW(x+1,y)) mesh(ox+20,oy,4,24);
   floorDetail(g,x,y,st);
+  if(!force&&S.mode!=="ship") floorMarks(g,x,y);
 }
+// Paint on the deck that tells you what the room is for.
+function roomRect(x,y){ const RS=S.rooms||(Sim.MAPS[S.map]||{}).rooms||[]; for(const r of RS) if(x>=r[1]&&x<=r[3]&&y>=r[2]&&y<=r[4]) return r; return null; }
+function floorMarks(g,x,y){ const r=roomRect(x,y); if(!r) return; const [n,x0,y0,x1,y1]=r, ox=x*TS, oy=y*TS, cx=(x0+x1)>>1, cy=(y0+y1)>>1, a="rgba(";
+  const paint=(f)=>{ g.save(); g.globalAlpha=.55; f(); g.restore(); };
+  if(/Cargo|Docking/.test(n)){ if(x===x0+1||x===x1-1) paint(()=>{ for(let k=0;k<24;k+=6) R(g,x===x0+1?ox+2:ox+19,oy+k,3,3,"#b8901e"); });
+    if(y===y1&&x>x0&&x<x1) paint(()=>R(g,ox,oy+20,24,1.5,"#b8901e")); if(/Docking/.test(n)&&(x+y)%9===0) paint(()=>{ for(let k=0;k<3;k++) R(g,ox+7+k*2,oy+8+k*2,8-k*4>0?8-k*4:1,1.5,"#c9a24a"); }); }
+  else if(/Medbay|Infirmary/.test(n)){ if(x===cx&&y===cy) paint(()=>{ R(g,ox+9,oy+3,6,18,"#2a8a4a"); R(g,ox+3,oy+9,18,6,"#2a8a4a"); R(g,ox+10,oy+4,4,16,"#e8f0e8"); R(g,ox+4,oy+10,16,4,"#e8f0e8"); }); }
+  else if(/Xenolab/.test(n)){ if(y===y0||y===y1) paint(()=>{ for(let k=0;k<24;k+=4) R(g,ox+k,y===y0?oy+1:oy+21,2,2,"#c9a24a"); }); }
+  else if(/Armory|Security/.test(n)){ if((x===x0||x===x1)&&y===y0) paint(()=>{ for(let k=0;k<5;k++) R(g,ox+2+k*4,oy+2,2,20,k%2?"#e8e0d0":"#9a1a12"); }); if(x===cx&&y===y1&&/Armory/.test(n)) paint(()=>{ R(g,ox+3,oy+6,18,12,"#7a1a12"); R(g,ox+5,oy+8,14,8,"rgba(0,0,0,.4)"); }); }
+  else if(/Fuel|Engineering/.test(n)){ if(y===y1||x===x0||x===x1) paint(()=>{ const vrt=x===x0||x===x1; for(let k=0;k<24;k+=4) vrt?R(g,x===x0?ox+1:ox+20,oy+k,3,2,(k>>2)%2?"#0d0b08":"#c9a24a"):R(g,ox+k,oy+20,2,3,(k>>2)%2?"#0d0b08":"#c9a24a"); }); }
+  else if(/Captain|Shrine/.test(n)){ if(x>x0&&x<x1&&y>y0+1&&y<y1&&x===cx) paint(()=>{ R(g,ox+5,oy,14,24,/Shrine/.test(n)?"#4a1410":"#4a1a14"); R(g,ox+6,oy,1,24,"#a37a32"); R(g,ox+17,oy,1,24,"#a37a32"); }); }
+  else if(/Vault/.test(n)){ if(x===x0||x===x1||y===y0||y===y1) paint(()=>R(g,ox+((x===x0)?1:0),oy+((y===y0)?1:0),x===x0||x===x1?2:24,y===y0||y===y1?2:24,"#8a6a2a")); }
+  else if(/corridor|hall/i.test(n)){ const hz=x1-x0>=y1-y0; if(hz&&y===cy&&x%2===0) paint(()=>R(g,ox+4,oy+11,12,1.5,"#9a8a4a")); if(!hz&&x===cx&&y%2===0) paint(()=>R(g,ox+11,oy+4,1.5,12,"#9a8a4a"));
+    if(hz&&y===cy&&x%12===5) paint(()=>{ for(let k=0;k<5;k++) R(g,ox+8+k,oy+7+k,1.5,1,"#d8d0b0"), R(g,ox+8+k,oy+16-k,1.5,1,"#d8d0b0"); }); }
+}
+// Room plate over a door: an icon in the room's colour.
+const PLATE=[[/Medbay|Infirmary/,"#2a9a4a","cross"],[/Xenolab/,"#c9a020","bio"],[/Armory/,"#b82a1a","ammo"],[/Security/,"#3a6aaa","eye"],[/Captain/,"#c9a24a","star"],[/Engineering|Workshop/,"#d07a20","gear"],
+  [/Cargo/,"#b8901e","box"],[/Fuel/,"#b82a1a","drop"],[/Mess/,"#c08a40","cup"],[/Crew/,"#7a8a9a","bed"],[/Shrine/,"#8a1a12","skull"],[/Vault/,"#c9a24a","lock"]];
+function doorPlate(g,x,y,ox,oy){ let n=""; for(const [a,b] of [[x,y+1],[x,y-1],[x+1,y],[x-1,y]]){ const rn=Sim.roomName(a,b); if(!/corridor|hall|shaft|crawl/i.test(rn)){ n=rn; break; } } const P=PLATE.find(p=>p[0].test(n)); if(!P) return;
+  const px=ox+7, py=oy+1, c=P[1]; R(g,px,py,10,6,"#0a0909"); R(g,px+.5,py+.5,9,5,"#1e1c1a"); R(g,px+.5,py+.5,9,.5,c); const cx=px+5, cy=py+3.2;
+  switch(P[2]){ case "cross": R(g,cx-.6,cy-2,1.2,4,c); R(g,cx-2,cy-.6,4,1.2,c); break; case "bio": disc(g,cx,cy,1.8,c); disc(g,cx,cy,.7,"#1e1c1a"); break;
+    case "ammo": for(let k=0;k<3;k++) R(g,cx-2.5+k*1.8,cy-1.5,1.2,3,c); break; case "eye": R(g,cx-2.5,cy-.6,5,1.2,c); disc(g,cx,cy,.9,c); break;
+    case "star": for(let k=0;k<5;k++){ const an=k*1.2566-1.57; R(g,cx+Math.cos(an)*1.6-.4,cy+Math.sin(an)*1.6-.4,.8,.8,c); } hp(g,cx,cy,c); break;
+    case "gear": disc(g,cx,cy,1.8,c); disc(g,cx,cy,.7,"#1e1c1a"); for(let k=0;k<4;k++) R(g,cx+Math.cos(k*1.57)*2.1-.4,cy+Math.sin(k*1.57)*2.1-.4,.8,.8,c); break;
+    case "box": R(g,cx-2,cy-1.5,4,3,c); R(g,cx-2,cy-.2,4,.4,"#1e1c1a"); break; case "drop": disc(g,cx,cy+.5,1.4,c); R(g,cx-.4,cy-2,.8,1.5,c); break;
+    case "cup": R(g,cx-1.5,cy-1.5,3,3,c); R(g,cx+1.5,cy-.8,.8,1.5,c); break; case "bed": R(g,cx-2.5,cy,5,1.4,c); R(g,cx-2.5,cy-1.2,1.4,1.2,c); break;
+    case "skull": skull(g,cx-2.5,cy-2,c,"#1e1c1a"); break; case "lock": R(g,cx-1.5,cy-.5,3,2.5,c); R(g,cx-1,cy-2,.6,1.6,c); R(g,cx+.4,cy-2,.6,1.6,c); break; } }
 // ---------- baked shading for the static layer ----------
 let GRIME=null;
 function grimeTex(){ if(GRIME) return GRIME; const S2=192, c=cvs(S2,S2), g=c.getContext("2d"); let sd=97; const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
@@ -874,15 +906,56 @@ function wallCap(g,x,y,h){ const ox=x*TS, oy=y*TS; R(g,ox,oy,24,h,"#151413");
   for(let k=0;k<3;k++){ const v=hh(x,y,k+30); const vx=ox+(v%5)*5, vy=oy+((v>>>4)%Math.max(1,h-3)); R(g,vx,vy,6,2,"#1f1d1b"); R(g,vx,vy,6,1,"#2a2825"); }
   capEdges(g,x,y,h); }
 function skull(g,x,y,c,d){ [".ccc.","cdcdc","ccccc",".c.c."].forEach((r,j)=>[...r].forEach((ch,i)=>{ if(ch==="c") R(g,x+i,y+j,1,1,c); else if(ch==="d") R(g,x+i,y+j,1,1,d); })); }
+// Light fittings that a working station would actually have: one per few tiles of every room's back wall,
+// spaced lamps down corridors, sconces on the side walls of long narrow rooms. Some are dead or flicker.
+let FIX=new Map();
+const COOLROOM=/Medbay|Xenolab|Infirmary|Security|Armory|Vault|Bridge|Comms/, WARMROOM=/Mess|Crew|Captain|Quarters|Galley|Shrine|Break/;
+function lampCol(n){ return COOLROOM.test(n)?[.82,.92,1]:WARMROOM.test(n)?[1,.78,.5]:[1,.88,.7]; }
+function planFixtures(){ const M=new Map(); if(S.mode==="ship") return M; const RS=S.rooms||(Sim.MAPS[S.map]||{}).rooms||[];
+  const st=(x,y)=>{ const v=hh(x,y,909)%20; return {dead:v<2,flick:v>=2&&v<5,emerg:v%3===0}; };
+  for(const r of RS){ const [n,x0,y0,x1,y1]=r, w=x1-x0+1, ht=y1-y0+1, wy=y0-1, cor=/corridor|shaft|hall|crawl/i.test(n), step=cor?6:(w<=5?99:4), col=lampCol(n);
+    const xs=[]; if(step===99) xs.push((x0+x1)>>1); else for(let x=x0+((w-1)%step>>1)+(cor?2:1);x<=x1;x+=step) xs.push(x);
+    for(const x of xs){ for(const dx of [0,1,-1]){ const xx=x+dx; if(T(xx,wy).t==="wall"&&T(xx,wy+1).t!=="wall"&&xx>=x0&&xx<=x1){ M.set(xx+","+wy,{...st(xx,wy),col,room:n,cor}); break; } } }
+    if(ht>=w*1.6&&ht>=7) for(let y=y0+3;y<=y1;y+=6){ for(const [sx,side] of [[x0-1,1],[x1+1,-1]]){ if(T(sx,y).t==="wall"){ M.set(sx+","+y,{...st(sx,y),col,room:n,cor:true,side}); break; } } } }
+  return M; }
+function drawFixture(g,x,y,F,fy){ const ox=x*TS;
+  if(F.side){ const bx=F.side>0?ox+19:ox+1; R(g,bx,y*TS+8,4,6,"#2a2620"); R(g,bx+(F.side>0?1:0),y*TS+9,3,4,F.dead?"#3a3428":"#d8c8a0"); R(g,bx,y*TS+8,4,.5,"#5a5446");
+    SOURCES.push({kind:"lamp",x:x+F.side,y,bx:bx+2,by:y*TS+11,emerg:F.emerg,flick:F.flick,dead:F.dead,ph:(hh(x,y)%628)/100,r:5,i:1.05,col:F.col}); return; }
+  if(F.cor){ R(g,ox+7,fy,10,4,"#1a1916"); R(g,ox+7,fy,10,.5,"#4a463e"); R(g,ox+8,fy+1,8,2,F.dead?"#2e2a22":"#e8dcb8"); R(g,ox+8,fy+1,8,.5,F.dead?"#3a3428":"#fff8e0"); R(g,ox+6,fy+3.5,12,1,"#0c0b0a"); }
+  else { R(g,ox+3,fy,18,4,"#1c1b18"); R(g,ox+3,fy,18,.5,"#55504a"); R(g,ox+4,fy+1,16,2,F.dead?"#2e2a22":"#ece2c4"); R(g,ox+4,fy+1,16,.5,F.dead?"#3a3428":"#fffaf0");
+    for(let k=6;k<20;k+=4) R(g,ox+k,fy+1,.5,2,"rgba(0,0,0,.35)"); R(g,ox+2,fy+3.5,20,1,"#0c0b0a"); if(F.dead){ R(g,ox+9,fy+1,3,2,"#121110"); hp(g,ox+10,fy+4,"#6a6050"); } }
+  SOURCES.push({kind:"lamp",x,y:y+1,bx:ox+12,by:fy+4,emerg:F.emerg,flick:F.flick,dead:F.dead,ph:(hh(x,y)%628)/100,r:F.cor?6:7.5,i:F.cor?1.15:1.4,col:F.col,strip:!F.cor}); }
+// Things you'd expect on the walls of each kind of room.
+function themedDecor(g,x,y,ox,fy,fh,n,h){ const v=h%7, top=fy+5;
+  const plaque=(px,w,c,c2)=>{ R(g,px,top,w,7,"#0c0b0a"); R(g,px+.5,top+.5,w-1,6,c); R(g,px+.5,top+.5,w-1,.5,c2); };
+  if(/Medbay|Infirmary/.test(n)){ if(v<3){ plaque(ox+7,10,"#c8ccd0","#f0f4f8"); R(g,ox+11,top+1.5,2,4,"#2a9a4a"); R(g,ox+10,top+2.5,4,2,"#2a9a4a"); return true; }
+    if(v===3){ R(g,ox+4,top-1,16,8,"#0a1210"); R(g,ox+4,top-1,16,.5,"#3a4a44"); let px=ox+5; for(let k=0;k<14;k++){ const yy=top+3+((k%5===2)?-2:(k%5===3)?2:0); R(g,px+k,yy,1,1,"#4aff7a"); } SOURCES.push({kind:"screen",x,y:y+1,bx:ox+12,by:top+3,r:2.2,i:.4,col:[.3,1,.5]}); return true; } }
+  if(/Xenolab/.test(n)&&v<3){ R(g,ox+8,top-1,8,8,"#0c0b0a"); for(let k=0;k<4;k++) R(g,ox+12-k-.5,top+k*1.7,1+k*2,1.8,"#d8b030"); disc(g,ox+12,top+4,1.2,"#1a1608"); return true; }
+  if(/Security/.test(n)&&v<4){ for(let k=0;k<2;k++){ const mx=ox+3+k*10; R(g,mx,top-2,8,7,"#0a0c0e"); R(g,mx+.5,top-1.5,7,6,k?"#14262a":"#1a2420"); for(let j=0;j<3;j++) R(g,mx+1,top+j*1.6,6,.5,"rgba(140,220,200,.35)"); } SOURCES.push({kind:"screen",x,y:y+1,bx:ox+12,by:top+2,r:2.4,i:.45,col:[.4,.9,.9]}); return true; }
+  if(/Armory/.test(n)&&v<4){ plaque(ox+4,16,"#3a1a14","#6a2a1e"); for(let k=0;k<3;k++){ R(g,ox+6+k*4.5,top+2,3,2,"#c9a24a"); R(g,ox+6+k*4.5,top+4,3,1,"#8a6a2a"); } for(let k=0;k<24;k+=3) R(g,ox+k,fy+fh-5,1.5,2,"#7a1a12"); return true; }
+  if(/Cargo|Docking/.test(n)&&v<4){ R(g,ox+5,top-1,14,8,"#2a2618"); R(g,ox+5,top-1,14,.5,"#4a4428"); const dg=(h>>4)%10; for(const [i,b] of [[0,dg],[1,(dg+3)%10]]) for(let j=0;j<5;j++) if(((b+1)*37>>j)&1) R(g,ox+8+i*5,top+j*1.2,3,1,"#d8b030"); for(let k=0;k<24;k++) R(g,ox+k,fy+fh-5,1,3,((k>>1)%2)?"#a8841e":"#0d0b08"); return true; }
+  if(/Fuel/.test(n)&&v<4){ g.save(); g.translate(ox+12,top+3); g.rotate(.785); R(g,-3.5,-3.5,7,7,"#0c0b0a"); R(g,-3,-3,6,6,"#b82a1a"); g.restore(); R(g,ox+11,top+1.5,2,3,"#ffd060"); hp(g,ox+12,top+1,"#fff0b0"); return true; }
+  if(/Engineering|Workshop|Engine/.test(n)&&v<4){ for(let k=0;k<2;k++){ const cx=ox+7+k*10; disc(g,cx,top+2,3.2,"#0c0b0a"); disc(g,cx,top+2,2.6,"#c8c0a8"); const a=(h>>(k*3))%5*.6-1.2; R(g,cx-.25,top+2-.25,.5,.5,"#111"); g.save(); g.translate(cx,top+2); g.rotate(a); R(g,-.25,-2.2,.5,2.2,"#a32a1d"); g.restore(); }
+    R(g,ox,fy+fh-6,24,2,"#3c3329"); R(g,ox,fy+fh-6,24,.5,"#56483a"); R(g,ox+12,top+5,1.5,fh-11,"#3c3329"); return true; }
+  if(/Mess|Galley/.test(n)&&v<3){ R(g,ox+4,top-2,16,9,"#141a14"); R(g,ox+4,top-2,16,.5,"#4a4030"); R(g,ox+3.5,top-2.5,17,.5,"#5a4a30"); for(let k=0;k<4;k++){ R(g,ox+6,top+k*1.8,6+((h>>k)%4),.6,"#d8d0b0"); R(g,ox+16,top+k*1.8,2,.6,"#e8b048"); } return true; }
+  if(/Crew|Quarters/.test(n)&&v<3){ const c=["#7a3a2a","#2a4a6a","#5a6a3a"][(h>>3)%3]; R(g,ox+6,top-2,9,11,"#0c0b0a"); R(g,ox+6.5,top-1.5,8,10,c); R(g,ox+8,top,5,4,"rgba(255,230,200,.35)"); R(g,ox+7.5,top+5,6,.5,"#d8d0b0"); R(g,ox+7.5,top+6.5,4,.5,"#d8d0b0"); R(g,ox+16,top+1,4,3,"#c8c0a8"); R(g,ox+16.5,top+1.5,3,2,"#5a4a3a"); return true; }
+  if(/Captain/.test(n)&&v<3){ R(g,ox+6,top-3,12,12,"#6a4a1a"); R(g,ox+6,top-3,12,.5,"#c9a24a"); R(g,ox+7,top-2,10,10,"#1a1210"); disc(g,ox+12,top+1,2,"#8a6a50"); R(g,ox+9,top+3,6,4,"#2a1a14"); R(g,ox+11,top+3,2,3,"#a32a1d"); return true; }
+  if(/Vault/.test(n)){ R(g,ox+2,top-2,20,10,"#2a2418"); for(const [a,b] of [[3,-1],[20,-1],[3,6],[20,6]]) disc(g,ox+a,top+b,1,"#8a7040"); R(g,ox+4,top+2,16,2,"#5a4520"); return true; }
+  if(/corridor|hall/i.test(n)&&v<2){ plaque(ox+5,14,"#1a2a28","#3a5a52"); const L=(h>>5)%2; for(let k=0;k<3;k++) R(g,ox+(L?8+k:16-k),top+3-k,1,1+k*2,"#d8d0b0"); R(g,ox+(L?10:8),top+3,6,1,"#d8d0b0"); return true; }
+  return false; }
 function drawWall(g,x,y){
   const ox=x*TS, oy=y*TS, below=T(x,y+1).t, front=!(below==="wall"||below==="window"), ext=below==="space", h=hh(x,y);
-  if(!front){ wallCap(g,x,y,24); return; }
+  if(!front){ wallCap(g,x,y,24); const F=FIX.get(x+","+y); if(F&&F.side) drawFixture(g,x,y,F,0); return; }
   wallCap(g,x,y,8); const fy=oy+8, fh=16;
   R(g,ox,fy,24,fh,ext?"#141312":"#2c2b28"); R(g,ox,fy,24,1,ext?"#222120":"#4b4842");
   if(ext){ for(let k=3;k<24;k+=8) R(g,ox+k,fy+1,1,fh-1,"#0b0a0a"); wallDetail(g,x,y,fy,fh,true); return; }
   for(let k=0;k<24;k+=8){ R(g,ox+k,fy+1,1,fh-3,"#191816"); R(g,ox+k+1,fy+1,1,fh-3,"#3b3935"); }
   R(g,ox,fy+8,24,1,"#1f1e1b"); R(g,ox,oy+22,24,2,"#121110");
-  const d=h%15;
+  const rn=S.mode==="ship"?"":Sim.roomName(x,y+1), F=FIX.get(x+","+y);
+  if(F&&!F.side){ drawFixture(g,x,y,F,fy); if(h%3===0) themedDecor(g,x,y,ox,fy+2,fh,rn,h>>2); wallDetail(g,x,y,fy,fh,false); return; }
+  if(F) drawFixture(g,x,y,F,fy);
+  if(rn&&themedDecor(g,x,y,ox,fy,fh,rn,h)){ wallDetail(g,x,y,fy,fh,false); return; }
+  const d=S.mode==="ship"||!S.power?h%15:(h%15===0?4:h%15);
   if(d===0){ R(g,ox+8,fy+2,8,2,"#5a4526"); R(g,ox+9,fy+4,6,1,"#3a2c18"); R(g,ox+10,fy+5,4,3,"#2a2015"); SOURCES.push({kind:"lamp",x,y:y+1,bx:ox+12,by:fy+6,emerg:h%3===0,ph:(h%628)/100,flick:h%4===0,r:7,i:1.45}); }
   else if(d===1||d===2){ if(h%3===0) EMIT.push({type:"steam",x,y:y+1,bx:ox+((h>>4)%18)+1,by:fy+5,rate:.9}); R(g,ox,fy+3,24,3,"#3c3329"); R(g,ox,fy+3,24,1,"#56483a"); R(g,ox+(h>>4)%18,fy+2,3,5,"#1a1611"); if(d===2){ R(g,ox,fy+10,24,2,"#2e2419"); R(g,ox,fy+10,24,1,"#3f3224"); } }
   else if(d===3){ R(g,ox+7,fy+2,10,9,"#2b241b"); R(g,ox+7,fy+2,10,1,"#4a3d2a"); R(g,ox+7,fy+10,10,1,"#120f0b"); skull(g,ox+9+1,fy+4,"#b3a68c","#0b0908"); R(g,ox+9,fy+11,1,3,"#5a1812"); R(g,ox+15,fy+11,1,4,"#5a1812"); }
@@ -917,8 +990,8 @@ function drawDoor(g,x,y,t){
   drawFloor(g,x,y,nb?styleAt(nb[0],nb[1]):null);
   if(!vert){
     if(t.open){ R(g,ox,oy,24,6,"#1c1b19"); R(g,ox,oy+5,24,1,"#4b4842"); R(g,ox,oy,3,24,"#33312d"); R(g,ox+21,oy,3,24,"#33312d"); R(g,ox,oy,1,24,"#6a6458"); R(g,ox+23,oy,1,24,"#6a6458"); R(g,ox+3,oy+6,18,3,"rgba(0,0,0,.45)");
-      if(t.broken){ R(g,ox+5,oy+13,5,2,"#4a463f"); R(g,ox+13,oy+18,6,2,"#3a3732"); R(g,ox+16,oy+9,3,3,"#2a2825"); } return; }
-    wallCap(g,x,y,8);
+      if(t.broken){ R(g,ox+5,oy+13,5,2,"#4a463f"); R(g,ox+13,oy+18,6,2,"#3a3732"); R(g,ox+16,oy+9,3,3,"#2a2825"); } if(S.mode!=="ship") doorPlate(g,x,y,ox,oy); return; }
+    wallCap(g,x,y,8); if(S.mode!=="ship") doorPlate(g,x,y,ox,oy);
     const c=t.vault?"#5a4520":"#4a463f", ch=t.vault?"#7a5e2c":"#625d54";
     R(g,ox,oy+8,24,16,"#1c1b19"); R(g,ox+2,oy+8,10,16,c); R(g,ox+12,oy+8,10,16,c); R(g,ox+2,oy+8,10,1,ch); R(g,ox+12,oy+8,10,1,ch); R(g,ox+11,oy+8,2,16,"#0e0d0c");
     for(let k=2;k<22;k++) R(g,ox+k,oy+19,1,3,((k>>1)%2)?"#9a7a22":"#0e0c09");
@@ -956,7 +1029,7 @@ function makeConduit(){ const c=cvs(96,96), g=c.getContext("2d"); R(g,0,0,96,96,
   return c; }
 
 function buildStatic(){
-  staticLayer.width=S.W*TS*Q; staticLayer.height=S.H*TS*Q; staticLayer._q=1; staticLayer.lw=S.W*TS; staticLayer.lh=S.H*TS; const g=staticLayer.getContext("2d"); g.setTransform(Q,0,0,Q,0,0); SOURCES=[]; EMIT=[];
+  staticLayer.width=S.W*TS*Q; staticLayer.height=S.H*TS*Q; staticLayer._q=1; staticLayer.lw=S.W*TS; staticLayer.lh=S.H*TS; const g=staticLayer.getContext("2d"); g.setTransform(Q,0,0,Q,0,0); SOURCES=[]; EMIT=[]; FIX=planFixtures();
   AMB=new Float32Array(S.W*S.H*3);
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){
     const t=S.tiles[Sim.idx(S,x,y)];
@@ -1003,7 +1076,7 @@ function buildStatic(){
     const dk=S.mode==="ship"?1.05:.5; AMB[i*3]=c[0]*dk; AMB[i*3+1]=c[1]*dk; AMB[i*3+2]=c[2]*dk*1.06; }
   bakeShading(g);
 }
-const tileKey=()=>S.tiles.map(t=>t.t[0]+(t.open?1:0)+(t.hp??"")+(t.broken?"b":"")).join("");
+const tileKey=()=>S.tiles.map(t=>t.t[0]+(t.open?1:0)+(t.hp??"")+(t.broken?"b":"")+(t.searched?"s":"")).join("");
 
 // ---------- lighting ----------
 function computeLights(){
@@ -1031,7 +1104,7 @@ function buildLightmap(cx,cy,now){
   const Lr=new Float32Array(N), Lg=new Float32Array(N), Lb=new Float32Array(N), p=viewEnt(), pw=S.power;
   SOURCES.forEach((L,k)=>{
     let f=1, c=L.col||[1,.7,.4];
-    if(L.kind==="lamp"){ if(pw){ if(L.flick){ const n=Math.sin(now*.013+L.ph*7)+Math.sin(now*.031+L.ph); if(n>1.55) f=.25; } if(powerFlicker>0) f*=Math.random()<.5?.15:1; c=[1,.72,.42]; }
+    if(L.kind==="lamp"){ if(pw&&L.dead) f=0; else if(pw){ if(L.flick){ const n=Math.sin(now*.013+L.ph*7)+Math.sin(now*.031+L.ph); if(n>1.55) f=.25; } if(powerFlicker>0) f*=Math.random()<.5?.15:1; c=L.col||[1,.72,.42]; }
       else if(L.emerg){ f=.6*(.55+.45*Math.sin(now*.003+L.ph)); c=[1,.12,.06]; } else f=0; }
     else if(L.kind==="screen"||L.kind==="gen"){ if(!pw) f=0; }
     else if(L.kind==="fire"){ f=.82+.18*Math.sin(now*.02+L.ph)+.08*Math.sin(now*.053+L.ph*3); }
@@ -1043,7 +1116,7 @@ function buildLightmap(cx,cy,now){
   for(const l of lightsT){ const a=1-l.t/l.dur; if(a<=0) continue;
     for(let y=Math.max(0,Math.floor(l.y-l.r));y<=Math.min(S.H-1,Math.ceil(l.y+l.r));y++)for(let x=Math.max(0,Math.floor(l.x-l.r));x<=Math.min(W-1,Math.ceil(l.x+l.r));x++){
       const d=Math.hypot(x-l.x,y-l.y); if(d>l.r) continue; const v=(1-d/l.r)*l.i*a, i=Sim.idx(S,x,y); Lr[i]+=v*l.c[0]; Lg[i]+=v*l.c[1]; Lb[i]+=v*l.c[2]; } }
-  const d=imgCache.d.data, am=pw?1:.33; if(!LUMV||LUMV.length!==N) LUMV=new Float32Array(N);
+  const d=imgCache.d.data, am=pw?(S.mode==="ship"?1:1.3):.33; if(!LUMV||LUMV.length!==N) LUMV=new Float32Array(N);
   for(let k=0;k<N;k++) LUMV[k]=VIS[k]?(AMB[k*3]*am+Lr[k]+AMB[k*3+1]*am+Lg[k]+AMB[k*3+2]*am+Lb[k])/3+(FLASH[k]||0)*.3:0;
   for(let j=0;j<lh;j++)for(let i=0;i<lw;i++){
     const x=ox+i, y=oy+j, o=(j*lw+i)*4; let r=0,g=0,b=0;
@@ -1236,7 +1309,18 @@ function drawProp(g,t,x,y,now){
   if(t.kind==="shower"&&flavorT.shower&&now-flavorT.shower<2500) for(let k=0;k<10;k++) R(g,x+9+((k*7+((now/40)|0))%7),y+24-34+8+((k*11+((now/30)|0))%20),1,2,"#9ad0e0");
   if(t.kind==="brazier"){ for(let k=0;k<7;k++){ const fx=x+6+((k*5+((now/70)|0))%12), h=3+((k*7+((now/90)|0))%6); R(g,fx,y+11-h,1,h,k%3?"#ff8a20":"#ffd060"); R(g,fx,y+11-h,1,1,"#fff0b0"); } }
   if(t.kind==="generator"&&S.power&&(now%800)<400) R(g,x+18,y+6+14,2,1,"#5ad06a");
+  if(t.kind==="strongbox"&&!t.searched&&((now/700)|0)%2) R(g,x+15,y+24-22+10,3,1,S.power?"#9affa8":"#ff6040");
+  if(t.searched&&BOXES.has(t.kind)) drawOpened(g,t.kind,x,y+24-s.lh,s.lh);
 }
+// a searched container: doors hang open, lids are up, and it's dark inside
+function drawOpened(g,k,x,top,h){
+  if(h>=28){ const ix=x+5, iy=top+4, iw=13, ih=h-8;
+    R(g,ix,iy,iw,ih,"#07080a"); R(g,ix,iy,iw,1,"#000"); for(let j=iy+6;j<iy+ih-2;j+=7){ R(g,ix,j,iw,1,"#2a2a26"); R(g,ix,j+1,iw,.5,"#0a0a09"); }
+    R(g,ix+2,iy+ih-3,4,2,"#3a3428"); hp(g,ix+9,iy+ih-2,"#5a5446");
+    R(g,x+19,top+3,3,h-6,k==="medcab"||k==="fridge"?"#a0a8ac":"#4a5656"); R(g,x+19,top+3,1,h-6,"rgba(255,255,255,.18)"); R(g,x+22,top+3,1,h-6,"rgba(0,0,0,.5)"); return; }
+  const lid=k==="strongbox"?"#4a4e52":k==="ammocrate"?"#4a5836":k==="footlocker"?"#4a5038":"#6a6248";
+  R(g,x+3,top+5,18,4,"#050505"); R(g,x+4,top+6,4,2,"#2a2620"); hp(g,x+12,top+7,"#4a4436");
+  R(g,x+3,top,18,4,lid); R(g,x+3,top,18,1,"rgba(255,255,255,.2)"); R(g,x+3,top+4,18,1,"rgba(0,0,0,.6)"); }
 function drawUI(g,cx,cy,now){
   const p=me();
   const corners=(tx,ty,c)=>{ const x=tx*TS-cx, y=ty*TS-cy; for(const [a,b,dx,dy] of [[0,0,1,1],[23,0,-1,1],[0,23,1,-1],[23,23,-1,-1]]){ for(let s=0;s<4;s++){ R(g,x+a+dx*s,y+b,1,1,c); R(g,x+a,y+b+dy*s,1,1,c); } } };
@@ -1423,11 +1507,17 @@ function logHTML(n){ return S.log.slice(-n).map(l=>`<div class="${l.kind}"><span
 function hotHTML(p,n,keys){ let s=""; for(let i=0;i<Math.max(n,p.inv.length);i++){ const it=p.inv[i];
   s+=it?`<button class="hotslot" data-use="${i}" title="${Items.name(it)} · ${Items.RAR[Items.rarOf(it)].name}${Items.kind(it)==="throw"?" · click, then pick a spot":""}"><div class="slot" style="border-color:${rarCol(it)}"><img alt="${Items.name(it)}" src="${iconFor(it)}">${Items.kind(it)==="throw"?`<span class="v">THROW</span>`:""}</div>${keys?`<span class="kb">${i+1}</span>`:""}</button>`
        :`<div class="hotslot empty"><div class="slot"></div>${keys?`<span class="kb">${i+1}</span>`:""}</div>`; } return s; }
+const BOXES=new Set(["locker","crate","footlocker","ammocrate","medcab","shelf","strongbox","pallet","gunrack","fridge"]);
+function useLabel(p){ if(!p||!p.alive) return "Use";
+  for(const [dx,dy] of [p.face||[0,-1],[1,0],[-1,0],[0,1],[0,-1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="prop"&&BOXES.has(t.kind)&&!t.searched) return t.kind==="strongbox"?"Crack":"Search"; }
+  for(const [dx,dy] of [p.face||[0,-1],[1,0],[-1,0],[0,1],[0,-1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="door") return t.open?"Close":"Open"; if(t.t==="console") return "Breaker"; }
+  return "Use"; }
 function renderPanels(){
   if(typeof renderCrew==="function") renderCrew();
   if(S.mode==="raid"&&typeof panelKind!=="undefined"&&panelKind==="inventory") renderPanel();
   if(S.mode==="ship"){ $("end").hidden=true; if(typeof renderShipHud==="function") renderShipHud(); return; }
   const p=me(), onPad=Sim.tileAt(S,p.x,p.y).t==="extract"&&S.status==="playing";
+  { const lb=useLabel(p); const bi=$("b-int"); if(bi&&bi.dataset.l!==lb){ bi.dataset.l=lb; bi.innerHTML=`<span class="key">F</span>${lb}`; } const tu=$("t-use"); if(tu&&tu.textContent!==lb) tu.textContent=lb; }
   if(mode==="pc"){
     const wk=(Sim.gun(p)||{}).d||"none"; if($("ic-gun").dataset.w!==wk){ $("ic-gun").dataset.w=wk; $("ic-gun").src=gunURL(Sim.gun(p)?wk:null); $("ic-gun").alt=Sim.gun(p)?Items.name(Sim.gun(p)):"Unarmed"; }
     const G=Sim.gun(p), GS=G&&Items.stats(G), at=GS&&GS.ammo, an=at?(p.ammo[at]|0):0;

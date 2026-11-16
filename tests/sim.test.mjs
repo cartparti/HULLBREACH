@@ -231,4 +231,24 @@ test("inventory: stow gear back into the pack, equip a gun into a chosen slot", 
   assert.equal(s.turn, 1, "rearranging gear is free");
 });
 
+test("containers: generated stations hide loot in lockers and crates, searched once", () => {
+  let found = 0, total = 0;
+  for (let seed = 1; seed <= 6; seed++) {
+    const s = Sim.newGame(seed, null, { gen: { tier: 2 } }), p = playerOf(s);
+    const boxes = s.tiles.map((t, i) => [t, i]).filter(([t]) => t.t === "prop" && t.loot);
+    total += boxes.length; found += boxes.filter(([t]) => t.loot.length).length;
+    const [t, i] = boxes.find(([t]) => t.loot.length) || [];
+    if (!t) continue;
+    const x = i % s.W, y = (i / s.W) | 0, nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [x + a, y + b]).find(([a, b]) => Sim.walk(Sim.tileAt(s, a, b)) && !Sim.entAt(s, a, b));
+    if (!nb) continue;
+    p.x = nb[0]; p.y = nb[1]; p.face = [x - p.x, y - p.y];
+    const n0 = s.items.length, k = t.loot.length;
+    assert.ok(Sim.act(s, "p1", { type: "interact" })); assert.ok(t.searched);
+    assert.equal(s.items.filter((it) => it.x === p.x && it.y === p.y).length >= k, true); assert.equal(s.items.length, n0 + k);
+    for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = Sim.tileAt(s, p.x + a, p.y + b); if (q !== t) delete q.loot, q.searched = q.searched || q.t === "prop"; }
+    Sim.act(s, "p1", { type: "interact" }); assert.equal(s.items.length, n0 + k, "can't loot twice");
+  }
+  assert.ok(total > 20, "plenty of containers: " + total); assert.ok(found > total * .4);
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

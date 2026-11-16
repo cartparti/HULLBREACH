@@ -122,7 +122,8 @@ const Sim = (() => {
 
   // ---------- tile predicates ----------
   const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank",
-    u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench",e:"cogitator","!":"medcab",i:"surgery",D:"pipes","%":"pallet","5":"stasis","6":"altar","7":"pew","8":"o2rack","9":"pump","0":"ammocrate","$":"shelf",";":"cot","*":"drive","(":"reactor","^":"loader",_:"counter","-":"fridge"};
+    u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench",e:"cogitator","!":"medcab",i:"surgery",D:"pipes","%":"pallet","5":"stasis","6":"altar","7":"pew","8":"o2rack","9":"pump","0":"ammocrate","$":"shelf",";":"cot","*":"drive","(":"reactor","^":"loader",_:"counter","-":"fridge","[":"strongbox"};
+  const CONTAINERS=new Set(["locker","crate","footlocker","ammocrate","medcab","shelf","strongbox","pallet","gunrack","fridge"]);
   const TERMS={N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock",O:"workbench","&":"wardrobe","?":"bar"};
   const SEATS={"1":"pilot","2":"copilot","3":"nav","4":"eng"};
   const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||t.t==="seat"||(t.t==="door"&&t.open);
@@ -158,7 +159,7 @@ const Sim = (() => {
         case "E": t={t:"extract"};break;
         case "c": case "B": case "t": case "l": case "r": case "f": case "g": case "S":
         case "u": case "T": case "n": case "q": case "V": case "G": case "w": case "s": case "x": case "I": case "z": case "j": case "p": case "d": case "y": case "U":
-        case "e": case "!": case "i": case "D": case "%": case "5": case "6": case "7": case "8": case "9": case "0": case "$": case ";": case "*": case "(": case "^": case "_": case "-": t={t:"prop",kind:PROPS[c]};break;
+        case "e": case "!": case "i": case "D": case "%": case "5": case "6": case "7": case "8": case "9": case "0": case "$": case ";": case "*": case "(": case "^": case "_": case "-": case "[": t={t:"prop",kind:PROPS[c]};break;
         case "N": case "M": case "K": case "Q": case "J": case "C": case "A": case "O": case "&": case "?": t={t:"terminal",kind:TERMS[c]};break;
         case "1": case "2": case "3": case "4": t={t:"seat",kind:SEATS[c]};break;
         default: t={t:"floor"};
@@ -170,7 +171,7 @@ const Sim = (() => {
       if(c==="h") addHusk(s,x,y);
       if(ITEM[c]) addItem(s,c,x,y);
     }
-    if(G){ for(const [x,y] of G.husks) addHusk(s,x,y); for(const l of G.loot) spawnItem(s,l.item,l.x,l.y);
+    if(G){ for(const [x,y] of G.husks) addHusk(s,x,y); for(const l of G.loot) spawnItem(s,l.item,l.x,l.y); for(const c of G.caches||[]){ const t=s.tiles[idx(s,c.x,c.y)]; if(t&&t.t==="prop") t.loot=c.items.map(i=>({...i})); }
       for(const [x,y] of G.fires){ const i=idx(s,x,y); s.fire[i]=2; s.fuel[i]=14; } }
     if(s.mode==="ship"){ for(const p of players(s)) p.seen.fill(1); for(const t of s.tiles) if(t.t==="door") t.open=true; return s; }
     applyMods(s,opts.mods||{});
@@ -485,6 +486,14 @@ const Sim = (() => {
     if(s.mode==="ship"&&tileAt(s,p.x,p.y).t==="seat"){ fx(s,{type:"terminal",kind:"navtable",pid:p.id}); return false; }
     for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="terminal"){ face(p,dx,dy); fx(s,{type:"terminal",kind:t.kind,pid:p.id}); return false; } }
     if(s.mode==="ship") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="prop"){ face(p,dx,dy); fx(s,{type:"flavor",kind:t.kind,pid:p.id,x:p.x+dx,y:p.y+dy}); return false; } }
+    // search lockers, crates and the like
+    for(const [dx,dy] of [p.face||[0,-1],...N4]){ const x=p.x+dx,y=p.y+dy,t=tileAt(s,x,y); if(t.t!=="prop"||!CONTAINERS.has(t.kind)||t.searched) continue;
+      face(p,dx,dy); t.searched=true; const nm2={locker:"locker",crate:"crate",footlocker:"footlocker",ammocrate:"ammo crate",medcab:"medical cabinet",shelf:"shelf",strongbox:"strongbox",pallet:"pallet",gunrack:"gun rack",fridge:"cold locker"}[t.kind];
+      if(t.kind==="strongbox"){ p.busy=Math.max(p.busy,1); noise(s,p.x,p.y,6); }
+      const got=t.loot||[]; delete t.loot; fx(s,{type:"search",x,y,kind:t.kind});
+      if(!got.length){ say(s,`You search the ${nm2}. Nothing worth taking.`,"info"); return true; }
+      for(const it of got) spawnItem(s,it,p.x,p.y);
+      say(s,`${t.kind==="strongbox"?"You crack the strongbox open":"You search the "+nm2}: ${got.map(i=>nm(i)).join(", ")}. It's at your feet.`,"good"); return true; }
     for(const [dx,dy] of N4){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="console"){
       s.power=!s.power; fx(s,{type:"power"});
       say(s, s.power?"You slam the relay closed. Lights and door motors hum back to life.":"You pull the main breaker. The station goes dark. Doors are dead, maglocks released.", s.power?"good":"warn");
@@ -763,7 +772,7 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); let d=0; for(const t of s.tiles) if(t.t==="door"&&t.open) d++; mix(d);
+    mix(Object.keys(s.fire).join(",")); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 

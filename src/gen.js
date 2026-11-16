@@ -209,6 +209,8 @@ const Gen = (() => {
         case "workshop": if (big) { centre(m, ["^"]); sideCol(m, ["U", "D"], 2, "left"); } break;
         case "vault": backRow(m, ["$", "c", "$"], 3, 0, "mid"); break;
       }
+      if (m.type === "vault") corner(m, ["["], 2, "br"); else if ((m.type === "captain" || m.type === "armory" || m.type === "security") && ch(.6)) corner(m, ["["], 1, m.type === "captain" ? "tl" : "bl");
+      else if ((m.type === "crew" || m.type === "lab" || m.type === "workshop") && ch(.18)) corner(m, ["["], 1, "bl");
       if (m.type === "engineering") { const e = edges(m), p = takeFrom(e); if (p) G[p[1]][p[0]] = "P"; }
       if (m.type !== "vault" && m.type !== "dock") addHusks(m, R() < .35 + tier * .12 ? ri(1, Math.max(1, Math.round(a / 22))) : 0);
     }
@@ -227,12 +229,25 @@ const Gen = (() => {
     for (const l of loot.slice()) if (!seen.has(l.y * W + l.x)) {
       const m = meta.find((q) => l.x > q.x0 && l.x < q.x1 && l.y > q.y0 && l.y < q.y1);
       // open a path by clearing the nearest props first, widening until it's reachable
-      const PR = "cBtlrfgSuTnqVGwsxjpdyUe!iD%56789 0$;*(^";
+      const PR = "cBtlrfgSuTnqVGwsxjpdyUe!iD%56789 0$;*(^[";
       for (let r = 1; r <= 6 && m && !seen.has(l.y * W + l.x); r++) { for (let y = Math.max(m.y0 + 1, l.y - r); y <= Math.min(m.y1 - 1, l.y + r); y++) for (let x = Math.max(m.x0 + 1, l.x - r); x <= Math.min(m.x1 - 1, l.x + r); x++) if (Math.abs(x - l.x) + Math.abs(y - l.y) <= r && PR.includes(G[y][x])) G[y][x] = "."; seen = reach(); }
       if (!seen.has(l.y * W + l.x)) loot.splice(loot.indexOf(l), 1);
     }
     for (const h of husks.slice()) if (!seen.has(h[1] * W + h[0])) husks.splice(husks.indexOf(h), 1);
-    return { rows: G.map((r) => r.join("")), rooms, spawn, loot, husks, decals, fires, size: [W, H] };
+    // ---- what's inside the lockers, crates and cabinets ----
+    // Only containers you can stand next to get anything; contents suit the room and the box.
+    const caches = [], CONT = "lcy0!$[%j";
+    const BOX = { l: ["any", "food", "light", "armor", "val"], c: ["mat", "any", "ammo", "food", "part"], y: ["val", "any", "food", "ammo"], "0": ["ammo", "ammo", "throw"], "!": ["med", "med", "med", "food"],
+      "$": ["mat", "val", "food", "any"], "[": ["val", "val", "part", "weapon", "armor", "pack"], "%": ["mat", "mat", "food", "part"], j: ["weapon", "ammo"] };
+    const ROOMBIAS = { medbay: "med", crew: "food", security: "ammo", captain: "val", engineering: "part", cargo: "mat", lab: "med", fuel: "mat", armory: "ammo", shrine: "val", mess: "food", workshop: "mat", vault: "val", dock: "ammo" };
+    const touch = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((y + dy) * W + x + dx));
+    for (const m of [dock, ...meta]) for (let y = m.y0 + 1; y < m.y1; y++) for (let x = m.x0 + 1; x < m.x1; x++) {
+      const c = G[y][x]; if (!CONT.includes(c) || !touch(x, y)) continue;
+      const empty = c === "[" ? 0 : c === "j" ? .45 : .3; if (R() < empty) { caches.push({ x, y, items: [] }); continue; }
+      const n = c === "[" ? ri(2, 3) : R() < .3 ? 2 : 1, items = [], t = tier + (c === "[" || m.type === "vault" ? 1 : 0);
+      for (let i = 0; i < n; i++) { const cat = R() < .35 && ROOMBIAS[m.type] && c !== "j" && c !== "0" ? ROOMBIAS[m.type] : pick(BOX[c]); items.push(Items.roll(R, t, cat)); }
+      caches.push({ x, y, items }); }
+    return { rows: G.map((r) => r.join("")), rooms, spawn, loot, husks, decals, fires, caches, size: [W, H] };
   }
   return { station };
 })();
