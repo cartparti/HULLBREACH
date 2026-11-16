@@ -141,7 +141,7 @@ function onSquadMsg(m){
     case "seq": if(d.ep!==Net.ep||!S||S.mode!=="raid") return; Net.buf[d.n]=d; drain(); return;
     case "log": if(d.ep!==Net.ep||!S||S.mode!=="raid") return; d.acts.forEach((ka,i)=>{ Net.buf[d.from+i]={n:d.from+i,k:ka[0],a:ka[1]}; }); drain(); return;
     case "ship": Net.ship=d.ship; if(S&&S.mode==="ship"){ renderShipHud(); if(panelKind) renderPanel(); } return;
-    case "warp": if(S&&S.mode==="ship"){ closePanel(); warp={start:performance.now(),dur:2200,done:()=>{ toast(`Arrived at ${here().name}.`); renderShipHud(); }}; renderShipHud(); } return;
+    case "warp": if(S&&S.mode==="ship"){ travelHunger(Math.max(1,Math.min(6,d.d|0||1))); closePanel(); warp={start:performance.now(),dur:2200,done:()=>{ toast(`Arrived at ${here().name}.`); renderShipHud(); }}; renderShipHud(); } return;
     case "nack": if(d.k===Net.myKey&&d.msg&&S){ S.log.push({t:S.turn,msg:d.msg,kind:"info",pid:Net.myKey}); renderPanels(); } return;
     case "toast": if(!d.to||d.to===Net.myKey) toast(String(d.msg||"").slice(0,200)); return;
     case "bye": leaveSquad("The squad leader disbanded the squad."); return;

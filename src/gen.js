@@ -179,19 +179,19 @@ const Gen = (() => {
       const a = m.area, k = Math.max(1, Math.round(a / 14));
       switch (m.type) {
         case "medbay": backRow(m, ["!", "!", "S"], 2 + k, 0); centre(m, ["i"]) || corner(m, ["i"], 1, "br"); if (m.x1 - m.x0 > 6) sideCol(m, ["5"], 1, "right"); addLoot(m, "med", ri(2, 3)); break;
-        case "crew": bunks(m, 2 + k); corner(m, ["l"], 2, "br"); addLoot(m, "val", ri(1, 2)); addLoot(m, "any", 1); break;
+        case "crew": bunks(m, 2 + k); corner(m, ["l"], 2, "br"); addLoot(m, "val", ri(1, 2)); addLoot(m, "any", 1); addLoot(m, "food", 1); break;
         case "security": desks(m, 1 + (k > 1 ? 1 : 0)); backRow(m, ["l"], 2 + k, 0, "right"); corner(m, ["0"], 1, "bl"); addLoot(m, "ammo", ri(1, 2)); addLoot(m, ch(.6) ? "weapon" : "throw", 1); break;
         case "captain": desks(m, 1); backRow(m, ["$"], 2, 0, "right"); corner(m, ["B"], 1, "bl"); corner(m, ["f"], 1, "br"); addLoot(m, "val", ri(1, 2), tier + 1); break;
-        case "engineering": backRow(m, ["D", "9", "D", "g"], 3 + k, 0); corner(m, ["r"], 2, "bl"); sideCol(m, ["g"], 1, "right"); addLoot(m, "mat", ri(2, 3)); break;
-        case "cargo": backRow(m, ["%", "%", "c"], 2 + k, 1); corner(m, ["c", "c", "%"], 2 + k, "bl"); corner(m, ["c", "r"], 2, "br"); if (ch(.4)) corner(m, ["^"], 1, "tr"); addLoot(m, "any", ri(2, 3)); addLoot(m, "mat", 1); if (o.fireStart && !fires.length) { const p = freeTile(m); if (p) fires.push(p); } break;
+        case "engineering": backRow(m, ["D", "9", "D", "g"], 3 + k, 0); corner(m, ["r"], 2, "bl"); sideCol(m, ["g"], 1, "right"); addLoot(m, "mat", ri(2, 3)); addLoot(m, "part", ri(1, 2)); break;
+        case "cargo": backRow(m, ["%", "%", "c"], 2 + k, 1); corner(m, ["c", "c", "%"], 2 + k, "bl"); corner(m, ["c", "r"], 2, "br"); if (ch(.4)) corner(m, ["^"], 1, "tr"); addLoot(m, "any", ri(2, 3)); addLoot(m, "mat", 1); if (ch(.5)) addLoot(m, "part", 1); if (ch(.4)) addLoot(m, "food", 1); if (o.fireStart && !fires.length) { const p = freeTile(m); if (p) fires.push(p); } break;
         case "lab": backRow(m, ["S", "S", "5"], 2 + k, 1); centre(m, ["ti"]) || desks(m, 1); addLoot(m, "val", 1); addLoot(m, ch(.5) ? "med" : "dye", 1); break;
         case "fuel": corner(m, ["r"], 3 + k, "tl"); corner(m, ["r", "r", "8"], 2 + k, "br"); backRow(m, ["9"], 1, 0, "right"); addLoot(m, "mat", 1); addLoot(m, "ammo", 1); break;
-        case "armory": backRow(m, ["j", "l", "j", "l"], 3 + k, 0); corner(m, ["0"], 2, "br"); addLoot(m, "weapon", 1, tier + (ch(.3) ? 1 : 0)); addLoot(m, "ammo", ri(2, 3)); addLoot(m, ch(.5) ? "throw" : "armor", 1); break;
+        case "armory": backRow(m, ["j", "l", "j", "l"], 3 + k, 0); corner(m, ["0"], 2, "br"); if (ch(.35)) addLoot(m, "light", 1); addLoot(m, "weapon", 1, tier + (ch(.3) ? 1 : 0)); addLoot(m, "ammo", ri(2, 3)); addLoot(m, ch(.5) ? "throw" : "armor", 1); break;
         case "shrine": { const c = (m.x0 + m.x1) >> 1; if (free(c, m.y0 + 1)) { G[m.y0 + 1][c] = "6"; if (free(c - 1, m.y0 + 1)) G[m.y0 + 1][c - 1] = "f"; if (free(c + 1, m.y0 + 1)) G[m.y0 + 1][c + 1] = "f"; }
           centre(m, ["7.7", "...", "7.7"]) || centre(m, ["7.7"]); decals.push({ type: "ritual", x: c - 1, y: m.y1 - 3 }); addLoot(m, "val", 1, tier + 1); if (ch(.4)) addLoot(m, "dye", 1, tier + 1); break; }
-        case "mess": backRow(m, ["q", "V", "s"], 2 + (k > 1 ? 1 : 0), 0, "right"); centre(m, ["nnn", "TTT", "nnn"]) || centre(m, ["nn", "TT", "nn"]) || centre(m, ["T"]); addLoot(m, "med", 1); addLoot(m, "any", 1); break;
-        case "workshop": backRow(m, ["U", "D", "U"], 2 + k, 1); corner(m, ["c", "%"], 2, "br"); if (ch(.5)) corner(m, ["^"], 1, "bl"); addLoot(m, "mat", ri(2, 4)); addLoot(m, ch(.5) ? "pack" : "throw", 1); break;
-        case "vault": corner(m, ["c", "$"], 2, "tl"); corner(m, ["c"], 1, "tr"); { const p = freeTile(m); if (p) loot.push({ x: p[0], y: p[1], item: { d: "blackbox", r: 0 } }); } addLoot(m, "val", ri(2, 4), tier + 1); if (ch(.5)) addLoot(m, ch(.5) ? "armor" : "pack", 1, tier + 1); break;
+        case "mess": addLoot(m, "food", ri(2, 3)); backRow(m, ["q", "V", "s"], 2 + (k > 1 ? 1 : 0), 0, "right"); centre(m, ["nnn", "TTT", "nnn"]) || centre(m, ["nn", "TT", "nn"]) || centre(m, ["T"]); addLoot(m, "med", 1); addLoot(m, "any", 1); break;
+        case "workshop": backRow(m, ["U", "D", "U"], 2 + k, 1); corner(m, ["c", "%"], 2, "br"); if (ch(.5)) corner(m, ["^"], 1, "bl"); addLoot(m, "mat", ri(2, 4)); addLoot(m, "part", 1); addLoot(m, ch(.5) ? "pack" : "throw", 1); break;
+        case "vault": corner(m, ["c", "$"], 2, "tl"); corner(m, ["c"], 1, "tr"); { const p = freeTile(m); if (p) loot.push({ x: p[0], y: p[1], item: { d: "blackbox", r: 0 } }); } addLoot(m, "val", ri(2, 4), tier + 1); addLoot(m, "part", 1, tier + 1); if (ch(.5)) addLoot(m, ch(.5) ? "armor" : "pack", 1, tier + 1); break;
       }
       const big = a >= 30, huge = a >= 56;
       switch (m.type) {

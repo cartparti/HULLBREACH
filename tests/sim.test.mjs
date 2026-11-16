@@ -59,7 +59,7 @@ test("shooting a fuel drum chain-detonates its neighbours", () => {
 
 test("ship interior: terminals and free movement", () => {
   const s = Sim.newGame(1, null, { map: "ship", mode: "ship" });
-  assert.deepEqual([...new Set(s.tiles.filter((t) => t.t === "terminal").map((t) => t.kind))].sort(), ["airlock", "board", "helm", "navtable", "rack", "records", "stash", "wardrobe", "workbench"]);
+  assert.deepEqual([...new Set(s.tiles.filter((t) => t.t === "terminal").map((t) => t.kind))].sort(), ["airlock", "bar", "board", "helm", "navtable", "rack", "records", "stash", "wardrobe", "workbench"]);
   assert.equal(s.tiles.filter((t) => t.t === "seat").length, 4, "cockpit seats one squad of four");
   const p = playerOf(s), W = s.W, at = (k) => { const i = s.tiles.findIndex((t) => t.kind === k); return [i % W, Math.floor(i / W)]; };
   const x0 = p.x; for (let i = 0; i < 3; i++) Sim.act(s, "p1", { type: "move", dx: 1, dy: 0 });
@@ -70,7 +70,7 @@ test("ship interior: terminals and free movement", () => {
   const [sx, sy] = at("pilot"); p.x = sx; p.y = sy + 1; s.fx = []; assert.ok(Sim.act(s, "p1", { type: "move", dx: 0, dy: -1 })); // sit in the pilot's seat
   assert.deepEqual(s.fx.map((f) => [f.type, f.kind]), [["sit", "pilot"]]);
   Sim.act(s, "p1", { type: "interact" }); assert.deepEqual(s.fx.map((f) => [f.type, f.kind]), [["terminal", "navtable"]]);
-  for (const k of ["brig", "bathroom", "break room", "crew quarters", "armory", "bridge", "engine room", "infirmary", "ship hold", "airlock"])
+  for (const k of ["brig", "bathroom", "break room", "crew quarters", "armory", "bridge", "engine room", "infirmary", "ship hold", "airlock", "galley", "fabrication bay"])
     assert.ok(Sim.MAPS.ship.rooms.some((r) => r[0].toLowerCase() === k), `ship is missing its ${k}`);
 });
 
@@ -95,7 +95,7 @@ test("squads: downed crew can be revived, items can be handed over", () => {
   const crew = [{ id: "a", name: "", loadout: Sim.STARTER }, { id: "b", name: "", loadout: Sim.STARTER }];
   const s = Sim.newGame(3, null, { crew }), A = playerOf(s, "a"), B = playerOf(s, "b");
   assert.equal(Math.abs(A.x - B.x) + Math.abs(A.y - B.y), 1);
-  const nB = B.inv.length; assert.ok(Sim.act(s, "a", { type: "give", index: 0, to: "b" })); assert.equal(B.inv.length, nB + 1);
+  B.inv.pop(); const nB = B.inv.length; assert.ok(Sim.act(s, "a", { type: "give", index: 0, to: "b" })); assert.equal(B.inv.length, nB + 1);
   Sim.act(s, "b", { type: "wait" });
   B.downed = true; B.downT = 8; B.hp.torso = 0;
   assert.equal(Sim.act(s, "b", { type: "wait" }), false, "downed players cannot act");
@@ -193,6 +193,17 @@ test("armour pieces: helmet, chest, legs and accessory stack, each protects its 
   const i = p.inv.findIndex((x) => x.d === "strider"); Sim.act(s, "p1", { type: "equip", index: i }); assert.ok(Sim.gearOf(p).nolimp, "strider legs stop the limp");
   const j = p.inv.findIndex((x) => x.d === "seals"); Sim.act(s, "p1", { type: "equip", index: j }); assert.ok(Sim.hitChance(s, p, p.x + 4, p.y) > h0, "seals help aim");
   assert.equal(s.turn, 1, "dressing costs no turn");
+});
+
+test("flashlight in the starter kit, eating and drinking keep you alive", () => {
+  const s = Sim.newGame(9, { ...Sim.STARTER, food: 3, water: 50 }, { gen: { tier: 1 } }), p = s.ents.find((e) => e.kind === "player");
+  assert.equal(p.light.d, "flashlight"); assert.ok(Sim.gearOf(p).dark, "a flashlight steadies your aim in the dark");
+  const b0 = p.blood; for (let i = 0; i < 40 && p.alive; i++) { p.acted = false; Sim.act(s, "p1", { type: "wait" }); }
+  assert.equal(p.food, 0); assert.ok(p.blood < b0, "starving costs blood");
+  const r = p.inv.findIndex((it) => it.d === "ration"); assert.ok(Sim.act(s, "p1", { type: "use", index: r })); assert.ok(p.food >= 20, "eating restores food");
+  const w = p.inv.findIndex((it) => it.d === "waterflask"); const w0 = p.water; Sim.act(s, "p1", { type: "use", index: w }); assert.ok(p.water > w0 + 30);
+  assert.ok(Items.RECIPES.every((rc) => Items.DEF[rc.out.d] && rc.lvl >= 1 && rc.lvl <= 5), "every recipe makes a real item at a real fabricator level");
+  assert.equal(Items.craftRarity(Items.RECIPES.find((rc) => rc.out.d === "pistol"), 4), 2, "a better fabricator makes better guns");
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

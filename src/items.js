@@ -21,7 +21,7 @@ const Items = (() => {
     sniper: { name: "Sniper rounds", short: "SNP", stack: 4, col: "#7ab0c0" },
     rocket: { name: "Rockets", short: "RKT", stack: 2, col: "#d0703a" },
   };
-  const MATS = { scrap: "Scrap metal", prop: "Propellant", circ: "Circuitry" };
+  const MATS = { scrap: "Scrap metal", prop: "Propellant", circ: "Circuitry", org: "Organics", parts: "Ship parts", core: "Tech cores" };
   // k: weapon | armor | pack | throw | med | key | val | box | mat | ammo | dye
   const DEF = {
     // ---- pistols ----
@@ -128,6 +128,24 @@ const Items = (() => {
     scrap:    { k: "mat", name: "Scrap metal", value: 6, desc: "Crafting material." },
     prop:     { k: "mat", name: "Propellant", value: 10, desc: "Crafting material." },
     circ:     { k: "mat", name: "Circuitry", value: 16, desc: "Crafting material." },
+    org:      { k: "mat", name: "Organics", value: 8, desc: "Vat protein, seeds, water filters. Cook it at the fabricator." },
+    parts:    { k: "mat", name: "Ship parts", value: 40, desc: "Salvaged components. Upgrade your ship's fabricator with them." },
+    core:     { k: "mat", name: "Tech core", value: 160, desc: "A rare machine-heart. Top-tier fabricator upgrades need these." },
+    // ---- lights: your flashlight sets how far and how wide you can see in the dark ----
+    flashlight: { k: "light", name: "Flashlight", range: 9, cone: .72, value: 40, desc: "A battered torch. Lights a cone ahead of you and steadies your aim in the dark." },
+    floodlamp:  { k: "light", name: "Flood lamp", range: 7.5, cone: .45, value: 160, desc: "A wide, short beam. Lights up a whole room." },
+    lumen:      { k: "light", name: "Lumen beam", range: 12, cone: .82, value: 260, desc: "A tight, long-reaching beam." },
+    seraphlight:{ k: "light", name: "Lantern of the Seraph", range: 14, cone: .5, acc: .04, rar: 4, value: 2400, desc: "Holy light, wide and far. +4% to hit." },
+    // ---- food and drink: keep your strength up ----
+    ration:   { k: "food", name: "Ration bar", food: 25, water: -3, value: 15, desc: "Grey, dense, filling." },
+    paste:    { k: "food", name: "Nutrient paste", food: 30, water: 5, value: 18, desc: "Squeezed from a tube. Tastes of nothing." },
+    stew:     { k: "food", name: "Tinned stew", food: 40, water: 8, value: 30, desc: "Mystery meat in gravy. Hot if you're lucky." },
+    jerky:    { k: "food", name: "Vat jerky", food: 22, water: -6, value: 14, desc: "Salty strips of something grown in a tank." },
+    feast:    { k: "food", name: "Officer's rations", food: 60, water: 20, rar: 1, value: 90, desc: "Real food. Somebody important went hungry." },
+    waterflask:{ k: "food", name: "Water flask", water: 35, value: 12, desc: "Recycled, mostly." },
+    purewater:{ k: "food", name: "Purified water", water: 55, value: 25, desc: "Clean and cold." },
+    recaf:    { k: "food", name: "Black recaf", water: 20, food: 2, value: 16, desc: "Bitter, hot, keeps you sharp." },
+    amber:    { k: "food", name: "Amber spirits", water: 12, food: 6, heal: 5, rar: 1, value: 60, desc: "Burns going down. Restores a little blood." },
   };
   for (const a of Object.keys(AMMO)) DEF["ammo_" + a] = { k: "ammo", ammo: a, name: AMMO[a].name, value: 2, desc: "Ammunition." };
   const VALS = [["Encrypted data shard", 120], ["Gold-plated relay", 90], ["Sealed biosample", 150], ["Officer's signet", 70], ["Quantum coolant cell", 110], ["Unmarked credit chit", 80], ["Reliquary bone", 130], ["Navigator's astrolabe", 160]];
@@ -152,14 +170,15 @@ const Items = (() => {
     if (D.k === "weapon" || D.k === "throw") { const m = MULT[r] || 1; if (D.dmg) s.dmg = [Math.round(D.dmg[0] * m), Math.round(D.dmg[1] * m)]; s.acc = (D.acc || 0) + r * .03; }
     if (D.k === "armor") { s.dr = D.dr ? Math.min(.5, D.dr + r * .04) : 0; s.o2 = D.o2 ? D.o2 + r * 5 : 0; s.fire = D.fire ? Math.min(.8, D.fire + r * .05) : 0; if (D.acc) s.acc = D.acc + r * .01; if (D.tdr) s.tdr = D.tdr + r * .02; }
     if (D.k === "pack") s.slots = D.slots + (it.l | 0);
+    if (D.k === "light") s.range = D.range + r * 1.2;
     return s;
   }
-  function name(it) { const D = def(it.d); if (!D) return "Unknown"; if (D.k === "ammo") return `${D.name} ×${it.n | 0}`; if (D.k === "mat") return it.n > 1 ? `${D.name} ×${it.n}` : D.name; const r = rarOf(it); return D.name + (D.rar >= 3 || ["weapon", "armor", "throw"].indexOf(D.k) < 0 ? "" : RAR[r].tag) + (it.l ? ` +${it.l}` : ""); }
+  function name(it) { const D = def(it.d); if (!D) return "Unknown"; if (D.k === "ammo") return `${D.name} ×${it.n | 0}`; if (D.k === "mat") return it.n > 1 ? `${D.name} ×${it.n}` : D.name; const r = rarOf(it); return D.name + (D.rar >= 3 || ["weapon", "armor", "throw", "light"].indexOf(D.k) < 0 ? "" : RAR[r].tag) + (it.l ? ` +${it.l}` : ""); }
   function value(it) { const D = def(it.d); if (!D) return 0; if (D.k === "val") return it.v || D.value; if (D.k === "ammo" || D.k === "mat") return D.value * (it.n || 1); if (D.k === "dye") return D.value; const r = rarOf(it); return Math.round(D.value * (D.rar >= 3 ? 1 : [1, 1.7, 2.8][r]) * (1 + (it.l | 0) * .25)); }
   const make = (d, r = 0, extra) => ({ d, r: def(d) && def(d).rar >= 3 ? def(d).rar : r, ...(extra || {}) });
   const kind = (it) => (def(it.d) ? def(it.d).k : null);
   const PART_SLOT = { head: "head", body: "armor", legs: "legs", acc: "acc" };
-  const slotOf = (it) => { const k = kind(it); if (k === "weapon") return def(it.d).cls === "melee" ? "melee" : "gun"; return k === "armor" ? PART_SLOT[def(it.d).part || "body"] : k === "pack" ? "pack" : null; };
+  const slotOf = (it) => { const k = kind(it); if (k === "weapon") return def(it.d).cls === "melee" ? "melee" : "gun"; return k === "armor" ? PART_SLOT[def(it.d).part || "body"] : k === "pack" ? "pack" : k === "light" ? "light" : null; };
   // rarity roll for a loot tier (1 easy - 3 hard); rng() -> [0,1)
   function rollRar(rng, tier) {
     const w = [[62, 26, 9, 2.4, .6], [50, 30, 14, 4.5, 1.5], [40, 32, 18, 7, 3]][Math.max(0, Math.min(2, tier - 1))];
@@ -168,10 +187,13 @@ const Items = (() => {
   const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
   // one random loot item of a category ("any" picks by weight)
   function roll(rng, tier, cat = "any") {
-    if (cat === "any") { const c = rng(); cat = c < .2 ? "ammo" : c < .34 ? "med" : c < .5 ? "mat" : c < .66 ? "val" : c < .8 ? "weapon" : c < .86 ? "throw" : c < .92 ? "armor" : c < .96 ? "pack" : "dye"; }
+    if (cat === "any") { const c = rng(); cat = c < .17 ? "ammo" : c < .28 ? "med" : c < .36 ? "food" : c < .5 ? "mat" : c < .66 ? "val" : c < .8 ? "weapon" : c < .86 ? "throw" : c < .92 ? "armor" : c < .96 ? "pack" : "dye"; }
     const r = rollRar(rng, tier);
     if (cat === "ammo") { const a = pick(rng, ["pistol", "pistol", "rifle", "rifle", "shell", "shell", "sniper", "rocket"]); return { d: "ammo_" + a, r: 0, n: Math.max(1, Math.round(AMMO[a].stack * (.6 + rng() * .8))) }; }
-    if (cat === "mat") { const m = pick(rng, ["scrap", "scrap", "scrap", "prop", "prop", "circ"]); return { d: m, r: 0, n: 1 + Math.floor(rng() * 3) }; }
+    if (cat === "mat") { const m = pick(rng, ["scrap", "scrap", "scrap", "prop", "prop", "circ", "org", "parts"]); return { d: m, r: 0, n: 1 + Math.floor(rng() * (m === "parts" ? 2 : 3)) }; }
+    if (cat === "part") { return rng() < .1 + tier * .06 ? { d: "core", r: 0, n: 1 } : { d: "parts", r: 0, n: 1 + Math.floor(rng() * (1 + tier)) }; }
+    if (cat === "food") return make(pick(rng, ["ration", "ration", "paste", "stew", "jerky", "waterflask", "waterflask", "purewater", "recaf", rng() < .3 ? "amber" : "stew", rng() < .2 ? "feast" : "ration"]), 0);
+    if (cat === "light") return rng() < .1 * tier ? make("lumen") : rng() < .3 ? make("floodlamp") : make("flashlight", Math.min(2, r));
     if (cat === "val") { const i = Math.floor(rng() * VALS.length); return { d: "val" + i, r: 0, v: Math.round(VALS[i][1] * (.85 + rng() * .4) * (1 + (tier - 1) * .2)) }; }
     if (cat === "med") return make(pick(rng, ["bandage", "bandage", "bandage", "o2", "o2", "medkit", "medkit", "stim"]), 0);
     if (cat === "dye") { const ds = Object.keys(DEF).filter((d) => DEF[d].k === "dye" && DEF[d].rar <= Math.max(1, r)); return make(pick(rng, ds), 0); }
@@ -180,40 +202,52 @@ const Items = (() => {
     if (cat === "pack") { const p = r >= 2 ? "hauler" : r === 1 ? "field" : pick(rng, ["sling", "field"]); return make(p, 0); }
     return make(pick(rng, base), Math.min(2, r));
   }
-  function info(it) { const D = def(it.d) || { k: "?", name: "Unknown", desc: "" }, r = rarOf(it); return { name: name(it), desc: D.desc || "", sell: Math.round(value(it) * .5), value: value(it), rar: r, rarName: RAR[r].name, col: RAR[r].col, kind: D.k, cat: { weapon: "gear", armor: "gear", pack: "gear", throw: "supplies", med: "supplies", mat: "materials", ammo: "materials", val: "salvage", box: "salvage", key: "salvage", dye: "salvage" }[D.k] || "salvage" }; }
+  function info(it) { const D = def(it.d) || { k: "?", name: "Unknown", desc: "" }, r = rarOf(it); return { name: name(it), desc: D.desc || "", sell: Math.round(value(it) * .5), value: value(it), rar: r, rarName: RAR[r].name, col: RAR[r].col, kind: D.k, cat: { weapon: "gear", armor: "gear", pack: "gear", light: "gear", throw: "supplies", med: "supplies", food: "supplies", mat: "materials", ammo: "materials", val: "salvage", box: "salvage", key: "salvage", dye: "salvage" }[D.k] || "salvage" }; }
   function statLine(it) {
     const s = stats(it); if (!s) return "";
     if (s.k === "weapon") { const parts = [`${s.dmg[0]}–${s.dmg[1]} dmg`]; if (s.pellets) parts[0] = `${s.pellets}×${s.dmg[0]}–${s.dmg[1]}`; if (s.burst) parts.push(`burst ${s.burst}`); if (s.ammo) parts.push(AMMO[s.ammo].name.toLowerCase()); else parts.push("melee"); if (s.blast) parts.push(`blast ${s.blast}`); if (s.stun) parts.push(`stun ${s.stun}`); if (s.bleed >= .7) parts.push("bleeds"); if (s.bolt) parts.push("bolt-action"); if (s.pierce) parts.push("pierces"); if (s.knock) parts.push("knockback"); if (s.cleave) parts.push("cleaves"); return parts.join(" · "); }
     if (s.k === "armor") { const where = { head: "head", body: "torso", legs: "leg", acc: "" }[s.part || "body"]; return [s.dr ? `${Math.round(s.dr * 100)}% ${where} armour` : "", s.tdr ? `+${Math.round(s.tdr * 100)}% torso armour` : "", s.fire ? `${Math.round(s.fire * 100)}% fire` : "", s.o2 ? `${s.o2} O₂` : "", s.slots ? `+${s.slots} slot${s.slots > 1 ? "s" : ""}` : "", s.acc ? `+${Math.round(s.acc * 100)}% to hit` : "", s.dark ? "sees in the dark" : "", s.stealth ? "stealth" : "", s.nolimp ? "no limp" : ""].filter(Boolean).join(" · ") || "Cosmetic"; }
     if (s.k === "pack") return `${s.slots} slots`;
+    if (s.k === "light") return `${Math.round(s.range)} tile beam · ${s.cone < .6 ? "wide" : s.cone > .78 ? "narrow" : "medium"}${s.acc ? ` · +${Math.round(s.acc * 100)}% to hit` : ""}`;
+    if (s.k === "food") return [s.food ? `${s.food > 0 ? "+" : ""}${s.food} food` : "", s.water ? `${s.water > 0 ? "+" : ""}${s.water} water` : "", s.heal ? `+${s.heal} blood` : ""].filter(Boolean).join(" · ");
     if (s.k === "throw") return [s.dmg ? `${s.dmg[0]}–${s.dmg[1]} dmg` : "", s.blast ? `blast ${s.blast}` : "", s.fire ? "fire" : "", s.stun ? `stun ${s.stun}` : "", s.noise ? "lure" : ""].filter(Boolean).join(" · ");
     return s.desc || "";
   }
-  // cat: ammo | gear | supplies
+  // cat: ammo | weapon | armor | gear | meds | food. lvl: fabricator level needed. Gear made on a better
+  // fabricator comes out better: Mk II at level 3, Mk III at level 4 and up (see craftRarity).
+  const R_ = (id, cat, lvl, d, cost, extra) => ({ id, cat, lvl, out: { d, r: 0, ...(extra || {}) }, cost });
   const RECIPES = [
-    { id: "r_pistol", cat: "ammo", out: { d: "ammo_pistol", n: 12 }, cost: { scrap: 2, prop: 1 } },
-    { id: "r_rifle", cat: "ammo", out: { d: "ammo_rifle", n: 10 }, cost: { scrap: 2, prop: 2 } },
-    { id: "r_shell", cat: "ammo", out: { d: "ammo_shell", n: 6 }, cost: { scrap: 3, prop: 1 } },
-    { id: "r_sniper", cat: "ammo", out: { d: "ammo_sniper", n: 4 }, cost: { scrap: 2, prop: 2, circ: 1 } },
-    { id: "r_rocket", cat: "ammo", out: { d: "ammo_rocket", n: 1 }, cost: { scrap: 3, prop: 3, circ: 2 } },
-    { id: "g_crowbar", cat: "gear", out: { d: "crowbar", r: 0 }, cost: { scrap: 3 } },
-    { id: "g_knife", cat: "gear", out: { d: "knife", r: 0 }, cost: { scrap: 3 } },
-    { id: "g_pipe", cat: "gear", out: { d: "pipe", r: 0 }, cost: { scrap: 5, prop: 1 } },
-    { id: "g_pistol", cat: "gear", out: { d: "pistol", r: 0 }, cost: { scrap: 6, prop: 1, circ: 1 } },
-    { id: "g_welder", cat: "gear", out: { d: "welder", r: 0 }, cost: { scrap: 4, circ: 1 } },
-    { id: "g_visor", cat: "gear", out: { d: "visor", r: 0 }, cost: { scrap: 4, circ: 3 } },
-    { id: "g_vest", cat: "gear", out: { d: "scrapvest", r: 0 }, cost: { scrap: 8 } },
-    { id: "g_cargo", cat: "gear", out: { d: "cargo", r: 0 }, cost: { scrap: 3 } },
-    { id: "g_scarf", cat: "gear", out: { d: "scarf", r: 0 }, cost: { scrap: 1 } },
-    { id: "g_suit", cat: "gear", out: { d: "suit", r: 0 }, cost: { scrap: 5, circ: 2 } },
-    { id: "g_sling", cat: "gear", out: { d: "sling", r: 0 }, cost: { scrap: 4 } },
-    { id: "g_field", cat: "gear", out: { d: "field", r: 0 }, cost: { scrap: 8, circ: 2 } },
-    { id: "r_frag", cat: "supplies", out: { d: "frag", r: 0 }, cost: { scrap: 2, prop: 2 } },
-    { id: "r_incendiary", cat: "supplies", out: { d: "incendiary", r: 0 }, cost: { scrap: 1, prop: 3 } },
-    { id: "r_decoy", cat: "supplies", out: { d: "decoy", r: 0 }, cost: { scrap: 2, circ: 1 } },
-    { id: "r_bandage", cat: "supplies", out: { d: "bandage", r: 0 }, cost: { scrap: 1 } },
-    { id: "r_medkit", cat: "supplies", out: { d: "medkit", r: 1 }, cost: { scrap: 2, circ: 2 } },
+    R_("a_pistol", "ammo", 1, "ammo_pistol", { scrap: 2, prop: 1 }, { n: 12 }), R_("a_shell", "ammo", 1, "ammo_shell", { scrap: 3, prop: 1 }, { n: 6 }),
+    R_("a_rifle", "ammo", 2, "ammo_rifle", { scrap: 2, prop: 2 }, { n: 10 }), R_("a_sniper", "ammo", 3, "ammo_sniper", { scrap: 2, prop: 2, circ: 1 }, { n: 4 }),
+    R_("a_rocket", "ammo", 4, "ammo_rocket", { scrap: 3, prop: 3, circ: 2 }, { n: 1 }),
+    R_("f_paste", "food", 1, "paste", { org: 2 }), R_("f_water", "food", 1, "waterflask", { org: 1, scrap: 1 }), R_("f_stew", "food", 2, "stew", { org: 3 }),
+    R_("f_pure", "food", 2, "purewater", { org: 1, circ: 1 }), R_("f_recaf", "food", 2, "recaf", { org: 2 }), R_("f_amber", "food", 4, "amber", { org: 4, prop: 1 }), R_("f_feast", "food", 5, "feast", { org: 6 }),
+    R_("m_bandage", "meds", 1, "bandage", { scrap: 1, org: 1 }), R_("m_o2", "meds", 2, "o2", { scrap: 2, circ: 1 }), R_("m_medkit", "meds", 2, "medkit", { scrap: 2, circ: 2, org: 1 }, { r: 1 }),
+    R_("m_stim", "meds", 3, "stim", { circ: 2, org: 3 }, { r: 2 }),
+    R_("t_decoy", "meds", 2, "decoy", { scrap: 2, circ: 1 }), R_("t_frag", "weapon", 2, "frag", { scrap: 2, prop: 2 }), R_("t_inc", "weapon", 2, "incendiary", { scrap: 1, prop: 3 }), R_("t_stun", "weapon", 3, "stun", { scrap: 2, circ: 2 }),
+    R_("w_crowbar", "weapon", 1, "crowbar", { scrap: 3 }), R_("w_knife", "weapon", 1, "knife", { scrap: 3 }), R_("w_pipe", "weapon", 1, "pipe", { scrap: 5, prop: 1 }),
+    R_("w_pistol", "weapon", 2, "pistol", { scrap: 6, prop: 1, circ: 1 }), R_("w_sixgun", "weapon", 2, "sixgun", { scrap: 7, circ: 1 }), R_("w_coach", "weapon", 2, "coachgun", { scrap: 7, prop: 2 }), R_("w_machete", "weapon", 2, "machete", { scrap: 5 }),
+    R_("w_hornet", "weapon", 3, "hornet", { scrap: 8, circ: 2 }), R_("w_wasp", "weapon", 3, "wasp", { scrap: 9, circ: 2, parts: 1 }), R_("w_carbine", "weapon", 3, "carbine", { scrap: 10, circ: 2, parts: 1 }), R_("w_pump", "weapon", 3, "pump", { scrap: 9, prop: 1, parts: 1 }), R_("w_axe", "weapon", 3, "axe", { scrap: 6, parts: 1 }),
+    R_("w_bullpup", "weapon", 4, "bullpup", { scrap: 12, circ: 3, parts: 2 }), R_("w_warden", "weapon", 4, "warden", { scrap: 12, circ: 2, parts: 2 }), R_("w_hound", "weapon", 4, "hound", { scrap: 12, circ: 3, parts: 2 }), R_("w_kestrel", "weapon", 4, "kestrel", { scrap: 12, circ: 3, parts: 3 }),
+    R_("w_maul", "weapon", 4, "maul", { scrap: 8, circ: 3, parts: 1 }), R_("w_ripsaw", "weapon", 4, "ripsaw", { scrap: 10, circ: 2, parts: 2 }), R_("w_thumper", "weapon", 4, "thumper", { scrap: 12, prop: 4, parts: 3 }),
+    R_("w_launcher", "weapon", 5, "launcher", { scrap: 16, prop: 5, circ: 4, parts: 4 }), R_("w_widow", "weapon", 5, "widow", { scrap: 12, circ: 4, parts: 4, core: 1 }), R_("w_gravedigger", "weapon", 5, "gravedigger", { scrap: 16, parts: 5, core: 1 }),
+    R_("r_welder", "armor", 1, "welder", { scrap: 4, circ: 1 }), R_("r_vest", "armor", 1, "scrapvest", { scrap: 8 }), R_("r_cargo", "armor", 1, "cargo", { scrap: 3, org: 1 }), R_("r_scarf", "armor", 1, "scarf", { org: 1 }),
+    R_("r_visor", "armor", 2, "visor", { scrap: 4, circ: 3 }), R_("r_suit", "armor", 2, "suit", { scrap: 5, circ: 2 }), R_("r_knee", "armor", 2, "kneepads", { scrap: 5, org: 1 }), R_("r_cape", "armor", 2, "cape", { org: 3 }),
+    R_("r_flakhelm", "armor", 3, "flakhelm", { scrap: 8, parts: 1 }), R_("r_gasmask", "armor", 3, "gasmask", { scrap: 4, circ: 3, org: 2 }), R_("r_brig", "armor", 3, "brigandine", { scrap: 10, org: 2, parts: 1 }), R_("r_hazard", "armor", 3, "hazard", { scrap: 6, circ: 3, parts: 1 }), R_("r_hazlegs", "armor", 3, "hazlegs", { scrap: 4, org: 2 }),
+    R_("r_sallet", "armor", 4, "sallet", { scrap: 12, parts: 2 }), R_("r_flak", "armor", 4, "flak", { scrap: 14, circ: 2, parts: 2 }), R_("r_greaves", "armor", 4, "greaves", { scrap: 12, parts: 2 }), R_("r_exo", "armor", 4, "exo", { scrap: 12, circ: 5, parts: 4 }), R_("r_pauldron", "armor", 4, "pauldron", { scrap: 8, parts: 1 }),
+    R_("r_deathmask", "armor", 5, "deathmask", { scrap: 10, org: 4, parts: 4, core: 1 }), R_("r_cowl", "armor", 5, "cowl", { org: 6, circ: 4, parts: 3, core: 1 }), R_("r_strider", "armor", 5, "strider", { scrap: 14, circ: 6, parts: 5, core: 2 }), R_("r_censer", "armor", 5, "censer", { scrap: 6, org: 6, parts: 3, core: 1 }),
+    R_("g_flash", "gear", 1, "flashlight", { scrap: 2, circ: 1 }), R_("g_sling", "gear", 1, "sling", { scrap: 4 }), R_("g_flood", "gear", 2, "floodlamp", { scrap: 3, circ: 2 }), R_("g_field", "gear", 2, "field", { scrap: 8, circ: 2 }),
+    R_("g_bando", "gear", 3, "bandolier", { scrap: 4, org: 2 }), R_("g_lamp", "gear", 3, "lamp", { scrap: 3, circ: 3 }), R_("g_lumen", "gear", 4, "lumen", { scrap: 4, circ: 4, parts: 1 }), R_("g_hauler", "gear", 4, "hauler", { scrap: 12, circ: 2, parts: 2 }), R_("g_seals", "gear", 4, "seals", { org: 4, parts: 2 }),
+    R_("g_mule", "gear", 5, "mule", { scrap: 18, circ: 4, parts: 5, core: 1 }),
   ];
+  const craftRarity = (rec, fab) => { const D = DEF[rec.out.d]; if (rec.out.r || !D || D.rar >= 3 || !["weapon", "armor", "light"].includes(D.k)) return rec.out.r | 0; return Math.max(0, Math.min(2, fab - 2)); };
+  // fabricator upgrades: level n -> n+1
+  const FAB_UP = [null, { parts: 4, credits: 250 }, { parts: 8, circ: 4, credits: 600 }, { parts: 14, core: 1, credits: 1200 }, { parts: 22, core: 3, credits: 2400 }];
+  const FAB_NAME = ["", "Scrap press", "Machine shop", "Forge-fabricator", "Manufactorum", "Sanctified forge"];
+  // the ship's galley bar: eat and drink here, or take it to go
+  const BAR = [{ id: "meal", name: "Hot meal", food: 45, water: 10, price: 30 }, { id: "soup", name: "Bowl of soup", food: 25, water: 20, price: 18 }, { id: "drink", name: "Water from the tap", water: 30, price: 0 },
+    { id: "recafcup", name: "Cup of recaf", water: 20, food: 2, price: 6 }, { id: "ale", name: "Mug of engine-room ale", water: 25, food: 5, price: 12 }, { id: "feastplate", name: "Captain's plate", food: 70, water: 25, price: 80 }];
+  const BAR_TOGO = [["ration", 18], ["paste", 20], ["stew", 32], ["waterflask", 14], ["purewater", 28], ["recaf", 18], ["amber", 70]];
   // character styles: free to change in the wardrobe
   const STYLE = {
     skin: ["#f1c9a5", "#d9a77e", "#b07a52", "#8a5634", "#5e3a22", "#3e2616", "#a8b0a0"],
@@ -227,5 +261,5 @@ const Items = (() => {
   };
   const CLOTHES_O2 = 20, POCKETS = 3;
   const UPGRADE_COST = (lvl) => ({ scrap: 4 + lvl * 2, circ: 2 + lvl });
-  return { RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
+  return { RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, craftRarity, FAB_UP, FAB_NAME, BAR, BAR_TOGO, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
 })();

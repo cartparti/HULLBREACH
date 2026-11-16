@@ -259,9 +259,10 @@ function drawHuman(g,{step=0,b=0},L){
   if(CH==="exo"){ R(g,12,18+b,3,1,"#8a8a80"); }
   if(CH==="aegis"){ R(g,10,10+b,5,3,"#a8842a"); R(g,10,10+b,5,1,"#e8c868"); }
   if(AC==="pauldron") drawPauldron(g,b);
+  if(L.li){ R(g,13,13+b,2.5,1.5,"#2a2a26"); R(g,13,13+b,2.5,.5,"#5a5a50"); R(g,15.5,13+b,.5,1.5,"#fff4c0"); hp(g,15.5,13.5+b,"#ffffff"); }
 }
 function drawPlayer(g,o,L={}){ drawHuman(g,o,L); }
-function lookOf(e){ const g=e&&(Sim.gun(e)||e.melee), d=k=>e&&e[k]?e[k].d:null; return {...((e&&e.look)||{}),hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),w:g?g.d:null}; }
+function lookOf(e){ const g=e&&(Sim.gun(e)||e.melee), d=k=>e&&e[k]?e[k].d:null; return {...((e&&e.look)||{}),hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),li:e&&e.light?1:0,w:g?g.d:null}; }
 
 function drawHusk(g,{step=0,b=0,lunge=0}){
   const P={f:"#a69679",fH:"#c7b899",fS:"#76654f",fD:"#4a3d30",raw:"#6e2620",rawH:"#9a3a2c",bone:"#d6cbb0",cl:"#2b3533",clH:"#3e4a47",bl:"#5a0e0a",eye:"#ff3a26"};
@@ -288,7 +289,7 @@ function drawHusk(g,{step=0,b=0,lunge=0}){
 }
 function buildChar(fn){ const fr={}; for(const [k,o] of Object.entries({idle0:{b:0},idle1:{b:1},walk1:{step:1},walk2:{step:2},lunge:{lunge:1}})){ fr[k]=outlined(24,32,g=>fn(g,o)); fr[k+"W"]=whiteOf(fr[k]); } return fr; }
 const CH={husk:buildChar(drawHusk)}, CHP={};
-function playerFrames(L){ L=L||{}; const k=["hd","a","lg","ac","w","c","v","k","s","h","hc","f","e","t","tc","b","bc","bt"].map(f=>L[f]==null?"":L[f]).join("|"); return CHP[k]||(CHP[k]=buildChar((g,o)=>drawPlayer(g,o,L))); }
+function playerFrames(L){ L=L||{}; const k=["hd","a","lg","ac","li","w","c","v","k","s","h","hc","f","e","t","tc","b","bc","bt"].map(f=>L[f]==null?"":L[f]).join("|"); return CHP[k]||(CHP[k]=buildChar((g,o)=>drawPlayer(g,o,L))); }
 const CORPSE={
   husk:outlined(24,16,g=>{ R(g,4,6,13,4,"#a69679"); R(g,4,6,13,1,"#c7b899"); for(let k=0;k<3;k++) R(g,7+k*3,7,1,3,"#d6cbb0"); R(g,7,9,8,1,"#6e2620"); R(g,17,4,5,5,"#a69679"); R(g,19,6,2,2,"#4a3d30"); R(g,2,10,5,2,"#76654f"); R(g,10,2,2,4,"#76654f"); R(g,11,1,3,1,"#d6cbb0"); R(g,6,10,6,2,"#2b3533"); }),
   player:outlined(24,16,g=>{ R(g,3,7,4,4,"#5e1a12"); R(g,6,5,11,6,"#525849"); R(g,6,5,11,1,"#7a816d"); R(g,17,5,5,5,"#3b3f38"); R(g,19,7,2,1,"#6a5020"); R(g,8,11,9,2,"#1b1a17"); R(g,9,3,10,2,"#20201b"); }),
@@ -358,10 +359,12 @@ Object.assign(PROP,{
   reactor:outlined(24,40,g=>{ R(g,2,33,20,6,"#2a2a24"); for(let k=0;k<20;k++) R(g,2+k,35,1,2,((k>>1)%2)?"#9a7a22":"#121008"); R(g,5,6,14,28,"#33383c"); R(g,5,6,2,28,"#4e555a"); R(g,17,6,2,28,"#1a1d20");
     R(g,8,10,8,18,"#062a2e"); R(g,9,11,6,16,"#2ad0d0"); R(g,10,11,2,16,"#a8ffff"); R(g,9,11,6,1,"#e8ffff"); for(let y=13;y<27;y+=3) R(g,8,y,8,.5,"#0a3a3e"); R(g,4,2,16,5,"#2a2e32"); R(g,4,2,16,.5,"#5a6268"); R(g,7,0,10,3,"#3a4044");
     R(g,0,14,5,2,"#4a4438"); R(g,19,20,5,2,"#4a4438"); R(g,0,14,5,.5,"#7a705a"); R(g,19,20,5,.5,"#7a705a"); }),
+  counter:outlined(24,24,g=>{ R(g,0,6,24,17,"#4a2c18"); R(g,0,6,24,1.5,"#8a6a40"); R(g,0,7.5,24,.5,"#2a1810"); R(g,2,10,9,11,"#3a2214"); R(g,13,10,9,11,"#3a2214"); R(g,0,21,24,2,"#1a100a"); R(g,4,3,2,4,"#6a1a12"); hp(g,4,3,"#fff"); R(g,16,4,3,3,"#d8cdb4"); R(g,16.5,4.5,2,1,"#3a2010"); }),
+  fridge:outlined(24,34,g=>{ R(g,3,2,18,31,"#8a9094"); R(g,3,2,18,1,"#c0c8cc"); R(g,3,2,1,31,"#b0b8bc"); R(g,20,3,1,30,"#4a5054"); R(g,3,13,18,.5,"#4a5054"); R(g,17,6,1,5,"#3a4044"); R(g,17,16,1,8,"#3a4044"); R(g,6,5,6,2,"#e8e0c0"); R(g,6,5.5,4,.5,"#a83a2a"); hp(g,6,28,"#5ad06a"); }),
   loader:outlined(24,36,g=>{ R(g,5,28,5,7,"#7a5e1a"); R(g,14,28,5,7,"#7a5e1a"); R(g,4,33,7,2,"#2a2a24"); R(g,13,33,7,2,"#2a2a24"); R(g,6,12,12,16,"#9a7a22"); R(g,6,12,12,1,"#c9a240"); R(g,7,14,10,9,"#1a1a16"); R(g,8,15,8,7,"#2a3a3e"); R(g,8,15,3,7,"#4a5a5e");
     for(let k=0;k<4;k++) R(g,7+k*3,13,1,10,"#5a4612"); R(g,1,14,5,3,"#7a5e1a"); R(g,18,14,5,3,"#7a5e1a"); R(g,0,17,3,8,"#5a5a50"); R(g,21,17,3,8,"#5a5a50"); R(g,0,25,2,2,"#2a2a24"); R(g,22,25,2,2,"#2a2a24"); for(let k=0;k<12;k++) R(g,6+k,25,1,2,((k>>1)%2)?"#141210":"#e0c040"); R(g,10,9,4,3,"#3a3a34"); hp(g,11,10,"#e04030"); }),
 });
-const PROP_NAME={crate:"Cargo crate",bed:"Bunk",desk:"Console desk",locker:"Locker",barrel:"Fuel drum",brazier:"Brazier",generator:"Generator",tank:"Specimen tank",couch:"Couch",table:"Mess table",chair:"Chair",coffee:"Coffee machine",vending:"Vending machine",arcade:"Arcade cabinet",toilet:"Toilet",sink:"Sink and mirror",shower:"Shower",bars:"Brig bars",captive:"Gerald",gunrack:"Weapon rack",plant:"Plant",captchair:"Captain's chair",footlocker:"Footlocker",workbench:"Workbench",cogitator:"Cogitator bank",medcab:"Medical cabinet",surgery:"Surgical table",pipes:"Pipe manifold",pallet:"Cargo pallet",stasis:"Stasis pod",altar:"Altar",pew:"Pew",o2rack:"Oxygen rack",pump:"Coolant pump",ammocrate:"Ammo crate",shelf:"Archive shelf",cot:"Cot",drive:"Drive housing",reactor:"Reactor core",loader:"Power loader"};
+const PROP_NAME={crate:"Cargo crate",bed:"Bunk",desk:"Console desk",locker:"Locker",barrel:"Fuel drum",brazier:"Brazier",generator:"Generator",tank:"Specimen tank",couch:"Couch",table:"Mess table",chair:"Chair",coffee:"Coffee machine",vending:"Vending machine",arcade:"Arcade cabinet",toilet:"Toilet",sink:"Sink and mirror",shower:"Shower",bars:"Brig bars",captive:"Gerald",gunrack:"Weapon rack",plant:"Plant",captchair:"Captain's chair",footlocker:"Footlocker",workbench:"Workbench",counter:"Bar counter",fridge:"Galley fridge",cogitator:"Cogitator bank",medcab:"Medical cabinet",surgery:"Surgical table",pipes:"Pipe manifold",pallet:"Cargo pallet",stasis:"Stasis pod",altar:"Altar",pew:"Pew",o2rack:"Oxygen rack",pump:"Coolant pump",ammocrate:"Ammo crate",shelf:"Archive shelf",cot:"Cot",drive:"Drive housing",reactor:"Reactor core",loader:"Power loader"};
 let flavorT={};
 
 // ---------- ship terminals ----------
@@ -381,16 +384,22 @@ const TERM={
   airlock:outlined(24,26,g=>{ R(g,4,3,16,19,"#3a3732"); R(g,4,3,16,1,"#5a564e"); for(let k=0;k<16;k++){ R(g,4+k,3,1,1,((k>>1)%2)?"#9a7a22":"#15120b"); R(g,4+k,21,1,1,((k>>1)%2)?"#9a7a22":"#15120b"); }
     R(g,8,8,8,8,"#2a0806"); R(g,9,9,6,6,"#9a1e14"); R(g,9,9,6,1,"#d0402a"); R(g,7,18,3,1,"#5ad06a"); R(g,14,18,3,1,"#e04030"); R(g,10,22,4,4,"#2a2620"); }),
 };
-TERM.workbench=outlined(24,26,g=>{ R(g,1,10,22,6,"#4a3a28"); R(g,1,10,22,1,"#6a5434"); R(g,3,2,18,8,"#2a2620"); R(g,3,2,18,1,"#45403a"); for(let k=0;k<5;k++) R(g,5+k*3,4,1,4,k%2?"#8a8a80":"#a37a32");
+TERM.oldbench=outlined(24,26,g=>{ R(g,1,10,22,6,"#4a3a28"); R(g,1,10,22,1,"#6a5434"); R(g,3,2,18,8,"#2a2620"); R(g,3,2,18,1,"#45403a"); for(let k=0;k<5;k++) R(g,5+k*3,4,1,4,k%2?"#8a8a80":"#a37a32");
   R(g,4,11,6,1,"#8a8a80"); R(g,12,11,2,3,"#a32a1d"); R(g,16,11,5,2,"#3a3c38"); R(g,17,11,1,1,"#e8b048"); R(g,2,16,2,10,"#2a2018"); R(g,20,16,2,10,"#2a2018"); R(g,2,21,20,2,"#33281c"); R(g,6,19,4,2,"#9a7a22"); });
 TERM.wardrobe=outlined(24,34,g=>{ R(g,3,2,18,30,"#3a2e24"); R(g,3,2,18,2,"#5a4834"); R(g,11,4,2,28,"#241c16"); R(g,5,6,5,22,"#5e1a12"); R(g,5,6,5,2,"#8a2a1c"); R(g,14,6,5,9,"#3a4448"); R(g,15,8,3,2,"#f2b648");
   R(g,14,17,5,11,"#2e3336"); R(g,15,18,3,3,"#4a5054"); R(g,9,16,1,2,"#c9a24a"); R(g,14,16,1,2,"#c9a24a"); });
+TERM.workbench=outlined(24,40,g=>{ R(g,1,8,22,30,"#2e2a24"); R(g,1,8,22,2,"#4a4436"); R(g,1,8,2,30,"#3e382e"); R(g,21,10,2,28,"#16140f"); R(g,3,2,18,7,"#3a3428"); R(g,3,2,18,.5,"#a07e38"); skull(g,10,3,"#c8bca0","#1a1408");
+    R(g,4,12,16,12,"#0a0806"); R(g,5,13,14,10,"#1e140a"); R(g,7,20,10,2,"#ff8a20"); R(g,8,20.5,8,1,"#ffe080"); for(let k=0;k<3;k++){ R(g,6+k*5,13,1.5,6,"#6a6458"); R(g,6.5+k*5,19,.5,1,"#ff6a20"); }
+    R(g,3,26,18,3,"#4a4436"); R(g,3,26,18,.5,"#7a705a"); for(let k=0;k<6;k++) hp(g,5+k*2.5,27.5,k%2?"#5ad06a":"#e8b048"); for(let k=0;k<18;k++) R(g,3+k,34,1,2,((k>>1)%2)?"#9a7a22":"#121008"); R(g,0,16,2,10,"#4a4438"); R(g,22,14,2,12,"#4a4438"); });
+TERM.bar=outlined(24,32,g=>{ R(g,1,2,22,10,"#1a120c"); for(let k=0;k<9;k++){ const c=["#6a1a12","#2a5a3a","#c9a24a","#3a2a5a","#8a6a20"][k%5]; R(g,2+k*2.3,4+(k%2),1.5,6-(k%2),c); hp(g,2+k*2.3,4+(k%2),"#fff"); } R(g,1,11,22,1,"#3a2414");
+    R(g,1,16,22,14,"#4a2c18"); R(g,1,16,22,1.5,"#8a6a40"); R(g,1,17.5,22,.5,"#2a1810"); for(let k=0;k<4;k++) R(g,3+k*5,19,4,9,"#3a2214"); R(g,1,28,22,2,"#1a100a");
+    for(const x of [6,11,16]){ R(g,x,12,2,4,"#a07e38"); R(g,x,12,2,.5,"#f0d890"); R(g,x+.5,15.5,1,.5,"#e8b048"); } R(g,19,13,3,3,"#d8cdb4"); R(g,19.5,13.5,2,2,"#5a3a1a"); });
 TERM.navtable=outlined(48,26,g=>{ R(g,20,20,8,6,"#141a1c"); R(g,4,9,40,12,"#1e2628"); R(g,2,7,44,4,"#3a4448"); R(g,2,7,44,1,"#5a6a70"); R(g,6,8,36,2,"#0a3a40"); R(g,4,19,40,2,"#0e1214");
   for(let k=0;k<6;k++) R(g,8+k*6,15,3,2,k%2?"#5ad0d0":"#2a6a70"); R(g,22,12,4,2,"#e8b048"); });
 const SEAT=outlined(24,24,g=>{ R(g,8,16,8,6,"#1a1e20"); R(g,5,10,14,7,"#3a3f42"); R(g,5,10,14,1,"#5a6266"); R(g,6,11,12,5,"#2a2f32"); });
 const SEAT_BACK={}; for(const [k,c] of Object.entries({pilot:"#7a2416",copilot:"#2a5a5a",nav:"#2a5a5a",eng:"#5a4a20"})) SEAT_BACK[k]=outlined(24,14,g=>{ R(g,5,1,14,11,"#2e3336"); R(g,5,1,14,2,c); R(g,7,4,10,6,"#3a3f42"); R(g,3,6,3,7,"#1e2224"); R(g,18,6,3,7,"#1e2224"); });
 const SEAT_NAME={pilot:"Pilot's seat",copilot:"Co-pilot's seat",nav:"Navigator's seat",eng:"Engineer's seat"};
-const TERM_NAME={workbench:"Workbench",wardrobe:"Wardrobe",navtable:"Star map table",helm:"Helm",rack:"Loadout rack",stash:"Stash locker",records:"Records terminal",board:"Contract board",airlock:"Airlock control"};
+const TERM_NAME={workbench:"Fabricator",bar:"Galley bar",wardrobe:"Wardrobe",navtable:"Star map table",helm:"Helm",rack:"Loadout rack",stash:"Stash locker",records:"Records terminal",board:"Contract board",airlock:"Airlock control"};
 
 // ---------- space backdrop (ship view) ----------
 const BD={};
@@ -433,7 +442,7 @@ let warp=null;
 
 // ---------- item icons (16x16) ----------
 function itemIcon(g,it,x,y,blink){
-  const D=Items.def(it.d)||{k:"?"}, r=(a,b,w,h,c)=>R(g,x+a,y+b,w,h,c);
+  const D=Items.def(it.d)||{k:"?"}, r=(a,b,w,h,c)=>R(g,x+a,y+b,w,h,c), h2=(a,b,c)=>R(g,x+a,y+b,.5,.5,c);
   switch(D.k){
     case "weapon": gunPix(g,it.d,x,y+5); break;
     case "throw":
@@ -452,6 +461,18 @@ function itemIcon(g,it,x,y,blink){
       let bx=[26,0,36,0]; if(part==="head") bx=[7,19,1,17]; else { const PW=26*Q, PH=36*Q, px=mg.getImageData(0,0,PW,PH).data; for(let yy=0;yy<PH;yy++) for(let xx=0;xx<PW;xx++) if(px[(yy*PW+xx)*4+3]){ bx[0]=Math.min(bx[0],xx/Q); bx[1]=Math.max(bx[1],xx/Q); bx[2]=Math.min(bx[2],yy/Q); bx[3]=Math.max(bx[3],yy/Q); } bx=bx.map(Math.floor); }
       const cw=Math.max(1,bx[1]-bx[0]+1), ch=Math.max(1,bx[3]-bx[2]+1), sc=Math.min(14/cw,14/ch,2); g.imageSmoothingEnabled=false;
       g.drawImage(m,bx[0],bx[2],cw,ch,x+Math.round((16-cw*sc)/2),y+Math.round((16-ch*sc)/2),cw*sc,ch*sc); break; }
+    case "light": { const lens=it.d==="seraphlight"?"#fff4c0":it.d==="lumen"?"#c8f0ff":"#ffe8a0", body=it.d==="seraphlight"?"#a07e38":it.d==="floodlamp"?"#3a4a3a":"#3a3a34";
+      if(it.d==="floodlamp"){ r(3,5,10,8,body); r(3,5,10,1,shade(body,1.5)); r(4,6,8,6,lens); r(4,6,8,1,"#fff"); r(7,13,2,2,"#2a2a24"); r(5,3,6,2,"#2a2a24"); }
+      else { r(2,6,8,4,body); r(2,6,8,1,shade(body,1.5)); r(10,5,4,6,shade(body,1.2)); r(13,5.5,1,5,lens); h2(13,6,"#fff"); r(4,10,2,2,"#e04030"); for(let k=0;k<3;k++) r(3+k*2,7.5,.5,1.5,shade(body,.6)); }
+      if(blink) { r(14,6,2,4,"rgba(255,240,180,.35)"); } break; }
+    case "food": { const D2=Items.def(it.d);
+      if(it.d==="ration"||it.d==="jerky"){ r(2,6,12,5,it.d==="jerky"?"#6a3a1e":"#7a7262"); r(2,6,12,1,"#a8a08a"); r(3,7.5,7,1,"#3a3428"); r(10,7,3,3,"#c9a24a"); }
+      else if(it.d==="paste"){ r(4,3,7,10,"#8a9a7a"); r(4,3,7,1,"#b8c8a8"); r(6,13,3,2,"#4a4a40"); r(5,6,5,2,"#e8e0c0"); }
+      else if(it.d==="stew"||it.d==="feast"){ r(3,5,10,9,it.d==="feast"?"#8a6a20":"#6a6e70"); r(3,5,10,1.5,"#a8acae"); r(4,8,8,3,it.d==="feast"?"#e8c868":"#a83a2a"); r(5,8.5,4,1,"#fff"); }
+      else if(it.d==="recaf"){ r(4,6,7,8,"#d8cdb4"); r(4,6,7,1,"#f0e8d4"); r(5,7,5,2,"#3a2010"); r(11,8,2,3,"#d8cdb4"); h2(6,4,"#c8c8c0"); h2(8,3,"#c8c8c0"); }
+      else if(it.d==="amber"){ r(6,2,4,3,"#3a2a1a"); r(5,5,6,10,"#8a5a1a"); r(5,5,2,10,"#c88a3a"); r(6,9,4,3,"#e8dcc0"); }
+      else { r(5,2,6,2,"#2a2a26"); r(4,4,8,11,it.d==="purewater"?"#4a8ad0":"#5a6a7a"); r(4,4,2,11,"#a8c8e8"); r(5,8,6,3,"#e8e0c0"); }
+      break; }
     case "pack": { const col={sling:"#4a3a26",field:"#3e4a32",hauler:"#4a4a3a",mule:"#5a5a60",bottomless:"#2a1a3a"}[it.d]||"#4a3a26", hi={sling:"#6a5436",field:"#5a6a48",hauler:"#6a6a56",mule:"#8a8a92",bottomless:"#4a2e66"}[it.d]||"#6a5436";
       const w=it.d==="sling"?8:it.d==="field"?10:12; r(8-w/2,4,w,10,col); r(8-w/2,4,w,1,hi); r(6,2,4,2,"#2a2018"); r(8-w/2+1,8,w-2,1,"#1a140c"); if(it.d==="mule") { r(1,3,1,11,"#8a8a92"); r(14,3,1,11,"#8a8a92"); } if(it.d==="bottomless") r(7,10,2,2,"#b070ff"); break; }
     case "ammo": { const A=Items.AMMO[D.ammo]; if(D.ammo==="rocket"){ r(3,7,9,3,"#5a6040"); r(12,7,2,3,"#d0703a"); r(1,6,2,5,"#3a4028"); } else { r(3,8,10,5,"#3a3020"); r(3,8,10,1,"#5a4a30"); for(const k of [4,6,8,10]){ r(k,4,1,4,A.col); r(k,4,1,1,"#f4e4b0"); } } break; }
@@ -505,9 +526,10 @@ FL["Mess hall"]={type:"plank",base:"#4a3a2c",alt:"#423222",hi:"#5a4838",seam:"#1
 FL["Engine room"]={type:"grate",base:"#3a3832",hi:"#504c44",lo:"#26241f",seam:"#121110",inner:"#2e2c27",riv:"#6a6458",mesh:"#2a2824"};
 FL["Infirmary"]=FL["Medbay"];
 FL["Workshop"]={type:"plate",base:"#3e3a30",hi:"#524c3e",lo:"#2a2720",seam:"#141210",inner:"#383428",riv:"#6a6450",mesh:"#2a2620",oil:true};
+FL["Galley"]=FL["Mess hall"]; FL["Fabrication bay"]=FL["Workshop"];
 FL._=FL["Main corridor"];
 const AMBC={"Docking bay":[.44,.47,.5],"Medbay":[.42,.52,.58],"Crew quarters":[.5,.42,.33],"Security office":[.4,.42,.48],"Captain's cabin":[.5,.32,.25],
-  "Main corridor":[.34,.43,.43],"Lower corridor":[.32,.4,.42],"Service shaft":[.38,.38,.34],"Fuel storage":[.5,.4,.26],"Armory":[.38,.42,.48],"Shrine":[.42,.22,.2],"Mess hall":[.62,.5,.38],"Workshop":[.5,.46,.36],"Bridge":[.5,.58,.66],"Break room":[.66,.54,.42],"Bathroom":[.62,.68,.72],"Brig":[.54,.34,.32],"Comms":[.56,.5,.4],"Main hall":[.5,.56,.56],"Ship hold":[.52,.5,.44],"Quarters":[.6,.5,.4],"Airlock":[.5,.5,.54],"Engineering":[.52,.42,.29],"Engine room":[.46,.44,.4],"Infirmary":[.58,.66,.7],"Cargo hold":[.42,.42,.38],"Xenolab":[.3,.5,.38],"Vault":[.48,.4,.24],_:[.34,.4,.4]};
+  "Main corridor":[.34,.43,.43],"Lower corridor":[.32,.4,.42],"Service shaft":[.38,.38,.34],"Fuel storage":[.5,.4,.26],"Armory":[.38,.42,.48],"Shrine":[.42,.22,.2],"Mess hall":[.62,.5,.38],"Workshop":[.5,.46,.36],"Bridge":[.5,.58,.66],"Break room":[.66,.54,.42],"Bathroom":[.62,.68,.72],"Brig":[.54,.34,.32],"Comms":[.56,.5,.4],"Main hall":[.5,.56,.56],"Ship hold":[.52,.5,.44],"Quarters":[.6,.5,.4],"Airlock":[.5,.5,.54],"Engineering":[.52,.42,.29],"Engine room":[.46,.44,.4],"Fabrication bay":[.56,.46,.34],"Galley":[.66,.52,.38],"Infirmary":[.58,.66,.7],"Cargo hold":[.42,.42,.38],"Xenolab":[.3,.5,.38],"Vault":[.48,.4,.24],_:[.34,.4,.4]};
 FL.corrPlate={type:"plate",base:"#323b3b",hi:"#465250",lo:"#212929",seam:"#101515",inner:"#2c3535",riv:"#5a6a68",mesh:"#26302f"};
 function styleAt(x,y){ const n=Sim.roomName(x,y); if((n==="Main corridor"||n==="Lower corridor"||n==="Main hall")&&(x%6)>1) return FL.corrPlate; return FL[n]||FL._; }
 function bevel(g,x,y,w,h,base,hi,lo,seam){ R(g,x,y,w,h,seam); R(g,x+1,y+1,w-2,h-2,base); R(g,x+1,y+1,w-2,1,hi); R(g,x+1,y+1,1,h-2,hi); R(g,x+1,y+h-2,w-2,1,lo); R(g,x+w-2,y+1,1,h-2,lo); }
@@ -706,7 +728,7 @@ function buildStatic(){
     R(g,ox+10,oy+4,14,16,"#2a2e32"); R(g,ox+10,oy+4,14,1.5,"#5a6268"); R(g,ox+4,oy+2,8,20,"#3a3e42"); R(g,ox+4,oy+2,8,1,"#6a7278"); R(g,ox+2,oy+1,3,22,"#22262a"); R(g,ox+2,oy+1,1,22,"#4a5056");
     for(let k=0;k<4;k++) R(g,ox+12+k*3,oy+4.5,.5,15,"#1a1d20"); R(g,ox+1,oy+5,1.5,14,"#0a1a2a"); EMIT.push({type:"exhaust",x,y,bx:ox+1,by:oy+12}); }
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const t=S.tiles[Sim.idx(S,x,y)]; if(t.t!=="terminal") continue;
-    const L={navtable:[.3,.85,1,3.8],helm:[.3,.9,.9,3.2],board:[1,.7,.35,2.6],records:[1,.7,.3,2.2],airlock:[1,.2,.1,2.4],stash:[.3,1,.4,1.8],rack:[1,.75,.4,2],workbench:[1,.6,.25,2.2],wardrobe:[.9,.75,.5,1.6]}[t.kind];
+    const L={navtable:[.3,.85,1,3.8],helm:[.3,.9,.9,3.2],board:[1,.7,.35,2.6],records:[1,.7,.3,2.2],airlock:[1,.2,.1,2.4],stash:[.3,1,.4,1.8],rack:[1,.75,.4,2],workbench:[1,.55,.2,3],wardrobe:[.9,.75,.5,1.6],bar:[1,.7,.4,3]}[t.kind];
     if(L) SOURCES.push({kind:"term",x,y,bx:x*TS+12,by:y*TS+4,r:L[3],i:.7,col:[L[0],L[1],L[2]],tk:t.kind}); }
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const i=Sim.idx(S,x,y), t=S.tiles[i]; let c=null;
     if(t.t!=="wall"&&t.t!=="window"&&t.t!=="space") c=AMBC[Sim.roomName(x,y)]||AMBC._;
@@ -728,10 +750,10 @@ function computeLights(){
   for(const k of Object.keys(S.fire||{})){ const i=+k, lv=S.fire[i], x0=i%W, y0=(i/W)|0, r=2.5+lv;
     for(let y=Math.max(0,Math.floor(y0-r));y<=Math.min(S.H-1,Math.ceil(y0+r));y++)for(let x=Math.max(0,Math.floor(x0-r));x<=Math.min(W-1,Math.ceil(x0+r));x++){
       const d=Math.hypot(x-x0,y-y0); if(d>r) continue; if(d>0&&!Sim.los(S,x0,y0,x,y)) continue; fireContrib.push(Sim.idx(S,x,y),(1-d/r)*(.45+.22*lv)); } }
-  FLASH=new Float32Array(N); const [fx,fy]=p.face||[1,0];
+  FLASH=new Float32Array(N); const [fx,fy]=p.face||[1,0], LS=p.light?Items.stats(p.light):null, rng=LS?LS.range:0, cone=LS?LS.cone:1;
   for(let i=0;i<N;i++){ if(!VIS[i]) continue; const x=i%W,y=(i/W)|0, dx=x-p.x, dy=y-p.y, d=Math.hypot(dx,dy);
-    let v=0; if(d<2.6) v+=(1-d/2.6)*.35;
-    if(d>0&&d<9.5){ const cos=(dx*fx+dy*fy)/d; if(cos>.7) v+=Math.pow(1-d/9.5,.9)*1.05*Math.min(1,(cos-.7)/.12); }
+    let v=0; if(d<2.6) v+=(1-d/2.6)*(LS?.35:.22);
+    if(LS&&d>0&&d<rng){ const cos=(dx*fx+dy*fy)/d; if(cos>cone) v+=Math.pow(1-d/rng,.9)*1.05*Math.min(1,(cos-cone)/.12); }
     FLASH[i]=v; }
 }
 const imgCache={};
@@ -1067,6 +1089,7 @@ function vitHTML(p){ const pr=S.P[Sim.idx(S,p.x,p.y)], bl=Sim.LIMBS.filter(l=>p.
   const st=!p.alive?"Flatline":bl.length?`Bleeding: ${bl.map(l=>Sim.LNAME[l]).join(", ")}`:(pr<45?"Suit sealed · on tank air":"Stable");
   return `<span class="big" style="color:${p.blood>60?"var(--bile)":p.blood>35?"var(--brass)":"var(--blood2)"}">${Math.max(0,p.blood)}</span><canvas class="ekg" width="200" height="26"></canvas>`+
     m("O₂",p.o2,p.o2max||100,p.o2>20?"var(--cold)":"var(--blood2)",p.o2)+m("Air",pr,101,pr>70?"var(--cold)":pr>40?"var(--brass)":"var(--blood2)",Math.round(pr)+" kPa")+
+    (p.food!=null?m("Food",p.food,100,p.food>30?"#b08a4a":"var(--blood2)",Math.round(p.food))+m("Water",p.water,100,p.water>30?"#5a9ad0":"var(--blood2)",Math.round(p.water)):"")+
     `<span class="state ${bl.length||p.blood<40?"bad":""}">${st}</span>`; }
 function drawEkg(root,p){ root.querySelectorAll("canvas.ekg").forEach(c=>{ const g=c.getContext("2d"), w=c.width, h=c.height; g.clearRect(0,0,w,h); g.fillStyle=p.blood>60?"#7fa86a":p.blood>35?"#c79a4a":"#e0482f";
   const amp=Math.max(.2,p.blood/100), rate=p.blood<50?14:20; for(let x=0;x<w;x+=2){ const ph=(x+S.turn*7)%rate; let y=h/2; if(ph===4) y=h/2-9*amp; else if(ph===6) y=h/2+7*amp; else if(ph===2) y=h/2+2; g.fillRect(x,Math.round(y),2,2); if(ph===4||ph===6){ const y0=Math.min(y,h/2), y1=Math.max(y,h/2); g.fillRect(x,y0,1,y1-y0); } } }); }
@@ -1102,7 +1125,7 @@ function renderPanels(){
   } else {
     const pr=S.P[Sim.idx(S,p.x,p.y)];
     const m=(lbl,val,max,col,txt)=>`<span class="lbl">${lbl}</span><div class="meter"><i style="width:${Math.max(0,Math.min(100,val/max*100))}%;background:${col}"></i></div><span class="num">${txt}</span>`;
-    $("tvit").innerHTML=m("BLD",p.blood,100,p.blood>60?"var(--bile)":p.blood>35?"var(--brass)":"var(--blood2)",Math.max(0,p.blood))+m("O₂",p.o2,p.o2max||100,p.o2>20?"var(--cold)":"var(--blood2)",p.o2)+m("AIR",pr,101,pr>70?"var(--cold)":pr>40?"var(--brass)":"var(--blood2)",Math.round(pr))+`<span class="lbl">${(()=>{ const G=Sim.gun(p), at=G&&Items.stats(G).ammo; return at?Items.AMMO[at].short:"RDS"; })()}</span><span style="grid-column:2/4;font-size:12px">${(()=>{ const G=Sim.gun(p), at=G&&Items.stats(G).ammo; return at?(p.ammo[at]|0):"–"; })()} · <span style="color:${S.power?"var(--bile)":"var(--blood2)"}">${S.power?"POWER ON":"POWER OFF"}</span></span>`;
+    $("tvit").innerHTML=m("BLD",p.blood,100,p.blood>60?"var(--bile)":p.blood>35?"var(--brass)":"var(--blood2)",Math.max(0,p.blood))+m("O₂",p.o2,p.o2max||100,p.o2>20?"var(--cold)":"var(--blood2)",p.o2)+(p.food!=null?m("FD",p.food,100,p.food>30?"#b08a4a":"var(--blood2)",Math.round(p.food))+m("H₂O",p.water,100,p.water>30?"#5a9ad0":"var(--blood2)",Math.round(p.water)):"")+m("AIR",pr,101,pr>70?"var(--cold)":pr>40?"var(--brass)":"var(--blood2)",Math.round(pr))+`<span class="lbl">${(()=>{ const G=Sim.gun(p), at=G&&Items.stats(G).ammo; return at?Items.AMMO[at].short:"RDS"; })()}</span><span style="grid-column:2/4;font-size:12px">${(()=>{ const G=Sim.gun(p), at=G&&Items.stats(G).ammo; return at?(p.ammo[at]|0):"–"; })()} · <span style="color:${S.power?"var(--bile)":"var(--blood2)"}">${S.power?"POWER ON":"POWER OFF"}</span></span>`;
     $("tfig").innerHTML=figHTML(p); $("tick").innerHTML=logHTML(2);
     $("thot").innerHTML=hotHTML(p,Math.min(6,Math.max(4,p.inv.length)),false);
     $("dfig").innerHTML=figHTML(p); $("dvit").innerHTML=vitHTML(p); drawEkg($("dvit"),p);

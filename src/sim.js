@@ -61,31 +61,31 @@ const Sim = (() => {
   const MAPS={
     ks9:{rows:KS9,rooms:KS9_ROOMS},
     ship:{rows:[
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-      "~############=########=##=#####=##=######=~~~~~~",
-      "~#..D.D.D9#Kjj..Ol#B..B..B.&#qV.C...G#ep..=#~~~~",
-      "~#*.......#.......#y..y..y..#.......p#.....e~~~~",
-      "~#........#......l#.........#..nn....#......=~~~",
-      "~#.......e#.......#........J#..TT....#e.....#~~~",
-      "~#*.......#.......#.........#..nn....#e.t....#~~",
-      "~#........#00....c#ll......p#.....uu.#..3....#~~",
-      "~#........####+########+########+#####.......=~~",
-      "~#...(D...+...........@..............+.dMM.1N#~~",
-      "~#..D.....#..........................+.....2e#~~",
-      "~#........####+#####+###+####+####+###.......=~~",
-      "~#........#Q.%.%%.#A.8#w.w#t....#!.!.#...4...#~~",
-      "~#*.......#......c#...#...#n....#....#e..t...#~~",
-      "~#.......8#.......#...#...#.....#...5#e.....#~~~",
-      "~#........#.......#...#...#IIIII#.i..#......=~~~",
-      "~#*.......#.......#...#...#.....#....#.....e~~~~",
-      "~#.rrg.g.9#rr...cc#..l#s.x#..z.;#...S#e...=#~~~~",
-      "~############=######=#######=######=#####=~~~~~~",
-      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"],
-      rooms:[["Engine room", 2, 4, 9, 19], ["Armory", 11, 4, 17, 9], ["Crew quarters", 19, 4, 27, 9], ["Break room", 29, 4, 36, 9], ["Ship hold", 11, 14, 17, 19], ["Airlock", 19, 14, 21, 19], ["Bathroom", 23, 14, 25, 19], ["Brig", 27, 14, 31, 19], ["Infirmary", 33, 14, 36, 19], ["Main hall", 11, 11, 36, 12], ["Bridge", 38, 4, 44, 19]]},
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~############=######=####=#####=##=#####=##=######=~~~~~~",
+      "~#..D.D.D9#Kjj..Ul#DU.O.Ue$#B..B..B.&#qV.C...G#ep..=#~~~~",
+      "~#*.......#.......#........#y..y..y..#.......p#....e#~~~~",
+      "~#........#......l#.......$#.........#..nn....#......=~~~",
+      "~#.......e#.......#........#........J#..TT....#e.....#~~~",
+      "~#*.......#.......#........#.........#..nn....#e.t....#~~",
+      "~#........#00....c#^.....c%#ll......p#.....uu.#..3....#~~",
+      "~#........####+#######+#########+########+#####.......=~~",
+      "~#...(D...+....................@..............+.dMM.1N#~~",
+      "~#..D.....#...................................+.....2e#~~",
+      "~#........####+#######+######+###+####+####+###.......=~~",
+      "~#........#Q.%.%%.#-_..?__-#A.8#w.w#t....#!.!.#...4...#~~",
+      "~#*.......#......c#.n...nn.#...#...#n....#....#e..t...#~~",
+      "~#.......8#.......#........#...#...#.....#...5#e.....#~~~",
+      "~#........#.......#.nn....s#...#...#IIIII#.i..#......=~~~",
+      "~#*.......#.......#.TT.....#...#...#.....#....#....e#~~~~",
+      "~#.rrg.g.9#rr...cc#.nn....p#..l#s.x#..z.;#...S#e...=#~~~~",
+      "~############=#######=##=####=#######=######=#####=~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"],
+      rooms:[["Engine room", 2, 4, 9, 19], ["Armory", 11, 4, 17, 9], ["Crew quarters", 28, 4, 36, 9], ["Fabrication bay", 19, 4, 26, 9], ["Galley", 19, 14, 26, 19], ["Break room", 38, 4, 45, 9], ["Ship hold", 11, 14, 17, 19], ["Airlock", 28, 14, 30, 19], ["Bathroom", 32, 14, 34, 19], ["Brig", 36, 14, 40, 19], ["Infirmary", 42, 14, 45, 19], ["Main hall", 11, 11, 45, 12], ["Bridge", 47, 4, 53, 19]]},
   };
   let ROOMS=KS9_ROOMS;
   function bind(s){ ROOMS=s.rooms||(MAPS[s.map]||MAPS.ks9).rooms; }
@@ -106,12 +106,12 @@ const Sim = (() => {
   const ST = it => it ? Items.stats(it) : null;
   const WRENCH = { name:"wrench", cls:"melee", dmg:[5,9], acc:0 };
   const gun = p => p.act===2 ? (p.w2||p.w1) : (p.w1||p.w2);
-  const GEAR = ["head","armor","legs","acc"];
+  const GEAR = ["head","armor","legs","acc","light"];
   // combined armour from helmet, chest, legs and accessory
   function gearOf(e){ const g={head:0,torso:0,legs:0,fire:0,stealth:0,o2:Items.CLOTHES_O2,slots:0,acc:0,dark:0,nolimp:0};
     for(const k of GEAR){ const it=e[k]; if(!it) continue; const st=ST(it); if(!st) continue;
       const dr=st.dr||0; if(st.part==="head") g.head+=dr; else if(st.part==="legs") g.legs+=dr; else g.torso+=dr;
-      g.torso+=st.tdr||0; g.fire+=st.fire||0; g.stealth+=st.stealth||0; g.o2+=st.o2||0; g.slots+=st.slots||0; g.acc+=st.acc||0; if(st.dark) g.dark=1; if(st.nolimp) g.nolimp=1; }
+      g.torso+=st.tdr||0; g.fire+=st.fire||0; g.stealth+=st.stealth||0; g.o2+=st.o2||0; g.slots+=st.slots||0; g.acc+=st.acc||0; if(st.dark||st.k==="light") g.dark=1; if(st.nolimp) g.nolimp=1; }
     g.fire=Math.min(.8,g.fire); g.head=Math.min(.6,g.head); g.torso=Math.min(.6,g.torso); g.legs=Math.min(.6,g.legs); return g; }
   const capOf = e => (e.pack?ST(e.pack).slots:Items.POCKETS)+gearOf(e).slots;
 
@@ -122,14 +122,14 @@ const Sim = (() => {
 
   // ---------- tile predicates ----------
   const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank",
-    u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench",e:"cogitator","!":"medcab",i:"surgery",D:"pipes","%":"pallet","5":"stasis","6":"altar","7":"pew","8":"o2rack","9":"pump","0":"ammocrate","$":"shelf",";":"cot","*":"drive","(":"reactor","^":"loader"};
-  const TERMS={N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock",O:"workbench","&":"wardrobe"};
+    u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench",e:"cogitator","!":"medcab",i:"surgery",D:"pipes","%":"pallet","5":"stasis","6":"altar","7":"pew","8":"o2rack","9":"pump","0":"ammocrate","$":"shelf",";":"cot","*":"drive","(":"reactor","^":"loader",_:"counter","-":"fridge"};
+  const TERMS={N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock",O:"workbench","&":"wardrobe","?":"bar"};
   const SEATS={"1":"pilot","2":"copilot","3":"nav","4":"eng"};
   const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||t.t==="seat"||(t.t==="door"&&t.open);
   const walk = t => t.t==="floor"||t.t==="extract"||t.t==="seat"||(t.t==="door"&&t.open);
   const clear= t => !(t.t==="wall"||t.t==="console"||(t.t==="door"&&!t.open));
 
-  const STARTER={w1:{d:"pistol",r:0},w2:null,melee:null,armor:null,pack:null,ammo:{pistol:12},inv:[{d:"bandage",r:0}]};
+  const STARTER={w1:{d:"pistol",r:0},w2:null,melee:null,armor:null,pack:null,light:{d:"flashlight",r:0},ammo:{pistol:12},inv:[{d:"bandage",r:0},{d:"ration",r:0},{d:"waterflask",r:0}]};
   // accept old saves' loadouts too
   const OLD={pistol:"pistol",scatter:"scatter",rifle:"rivet",suit:"suit",flak:"flak",hazard:"hazard",sling:"sling",hauler:"hauler"};
   function normLo(lo){
@@ -158,8 +158,8 @@ const Sim = (() => {
         case "E": t={t:"extract"};break;
         case "c": case "B": case "t": case "l": case "r": case "f": case "g": case "S":
         case "u": case "T": case "n": case "q": case "V": case "G": case "w": case "s": case "x": case "I": case "z": case "j": case "p": case "d": case "y": case "U":
-        case "e": case "!": case "i": case "D": case "%": case "5": case "6": case "7": case "8": case "9": case "0": case "$": case ";": case "*": case "(": case "^": t={t:"prop",kind:PROPS[c]};break;
-        case "N": case "M": case "K": case "Q": case "J": case "C": case "A": case "O": case "&": t={t:"terminal",kind:TERMS[c]};break;
+        case "e": case "!": case "i": case "D": case "%": case "5": case "6": case "7": case "8": case "9": case "0": case "$": case ";": case "*": case "(": case "^": case "_": case "-": t={t:"prop",kind:PROPS[c]};break;
+        case "N": case "M": case "K": case "Q": case "J": case "C": case "A": case "O": case "&": case "?": t={t:"terminal",kind:TERMS[c]};break;
         case "1": case "2": case "3": case "4": t={t:"seat",kind:SEATS[c]};break;
         default: t={t:"floor"};
       }
@@ -196,10 +196,11 @@ const Sim = (() => {
   }
   function addPlayer(s,id,name,x,y,lo){
     lo=normLo(lo); const cp=v=>v&&Items.def(v.d)?{d:v.d,r:v.r|0,...(v.l?{l:v.l}:{}),...(v.v?{v:v.v}:{}),...(v.iss?{iss:1}:{})}:null;
-    const armor=cp(lo.armor), pack=cp(lo.pack), G0={head:cp(lo.head),armor,legs:cp(lo.legs),acc:cp(lo.acc),pack}, A=gearOf(G0), cap=capOf(G0);
+    const armor=cp(lo.armor), pack=cp(lo.pack), G0={head:cp(lo.head),armor,legs:cp(lo.legs),acc:cp(lo.acc),light:cp(lo.light),pack}, A=gearOf(G0), cap=capOf(G0);
     const ammo={}; for(const t of AMMO_TYPES) ammo[t]=Math.max(0,(lo.ammo&&lo.ammo[t])|0);
     s.ents.push({id,kind:"player",name,x,y,hp:{...PLAYER_HP},max:{...PLAYER_HP},bleed:{},blood:100,o2:A.o2,o2max:A.o2,
-      w1:cp(lo.w1),w2:cp(lo.w2),melee:cp(lo.melee),head:G0.head,armor,legs:G0.legs,acc:G0.acc,pack,act:1,ammo,mats:{scrap:0,prop:0,circ:0},cap,look:lo.look||null,stimT:0,
+      w1:cp(lo.w1),w2:cp(lo.w2),melee:cp(lo.melee),head:G0.head,armor,legs:G0.legs,acc:G0.acc,light:G0.light,pack,act:1,ammo,mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),cap,look:lo.look||null,stimT:0,
+      food:lo.food==null?80:Math.max(0,Math.min(100,+lo.food)),water:lo.water==null?80:Math.max(0,Math.min(100,+lo.water)),
       inv:(lo.inv||[]).slice(0,cap).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
   }
   function addHusk(s,x,y){
@@ -355,7 +356,7 @@ const Sim = (() => {
   }
   function hitChance(s,p,tx,ty){
     const st=ST(gun(p))||{acc:0,fall:.035}, d=Math.hypot(tx-p.x,ty-p.y);
-    const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d;
+    const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<15||p.water<15)) c-=.06;
     if(st.close&&d<3) c-=st.close;
     c-= p.hp.rarm<=0?.35:(1-p.hp.rarm/p.max.rarm)*.15;
     c-= p.hp.larm<=0?.12:0;
@@ -450,7 +451,7 @@ const Sim = (() => {
   }
   function doEquip(s,p,i){
     const it=p.inv[i], slot=it&&Items.slotOf(it); if(!slot){ return false; }
-    let old=null; const prev={w1:p.w1,w2:p.w2,act:p.act,melee:p.melee,head:p.head,armor:p.armor,legs:p.legs,acc:p.acc,pack:p.pack};
+    let old=null; const prev={w1:p.w1,w2:p.w2,act:p.act,melee:p.melee,head:p.head,armor:p.armor,legs:p.legs,acc:p.acc,light:p.light,pack:p.pack};
     if(slot==="gun"){ if(!p.w1){ p.w1=it; p.act=1; } else if(!p.w2){ p.w2=it; p.act=2; } else if(p.act===2){ old=p.w2; p.w2=it; } else { old=p.w1; p.w1=it; } }
     else { old=p[slot]; p[slot]=it; }
     const cap=capOf(p), after=p.inv.length-1+(old?1:0);
@@ -501,6 +502,8 @@ const Sim = (() => {
     const it=p.inv[i]; if(!it) return false; const k=K(it);
     if(Items.slotOf(it)) return doEquip(s,p,i);
     if(k==="throw"){ say(s,"Pick a spot to throw it at.","info"); return false; }
+    if(k==="food"){ const D=ST(it); p.food=Math.max(0,Math.min(100,p.food+(D.food||0))); p.water=Math.max(0,Math.min(100,p.water+(D.water||0))); if(D.heal) p.blood=Math.min(100,p.blood+D.heal);
+      p.inv.splice(i,1); say(s,D.water>(D.food||0)?`You drink the ${nm(it).toLowerCase()}.`:`You eat the ${nm(it).toLowerCase()}.`,"good"); return true; }
     const bleeding=LIMBS.filter(l=>p.bleed[l]);
     if(it.d==="bandage"){
       if(!bleeding.length){ say(s,"You're not bleeding.","info"); return false; }
@@ -688,6 +691,10 @@ const Sim = (() => {
   function vitals(s){
     for(const e of s.ents){
       if(!e.alive) continue; CTX=e.kind==="player"?e.id:null; if(e.stimT>0) e.stimT--;
+      if(e.kind==="player"&&e.food!=null){ const hf=e.food, hw=e.water; e.food=Math.max(0,+(e.food-.12).toFixed(2)); e.water=Math.max(0,+(e.water-.2).toFixed(2));
+        if(hf>=20&&e.food<20) say(s,"Your stomach knots. You need to eat.","warn"); if(hw>=20&&e.water<20) say(s,"Your mouth is dry. You need to drink.","warn");
+        if((e.food<=0||e.water<=0)&&s.turn%3===0){ e.blood-=2; if(s.turn%15===0) say(s,e.water<=0?"Dehydration is shutting you down.":"You're starving. Your strength is going.","bad"); if(e.blood<=0){ kill(s,e,e.water<=0?"Died of thirst in the dark.":"Starved in the dark."); continue; } }
+        else if(e.food>=60&&e.water>=60&&s.turn%8===0&&!LIMBS.some(l=>e.bleed[l])&&e.blood<100) e.blood=Math.min(100,e.blood+1); }
       const bl=LIMBS.filter(l=>e.bleed[l]);
       if(bl.length){ e.blood-=2*bl.length; if(chance(s,.6)) bleedDecal(s,e.x,e.y,1);
         for(const l of bl) if(chance(s,e.kind==="player"?.04:.06)) delete e.bleed[l];
@@ -713,7 +720,7 @@ const Sim = (() => {
   // Cheap fingerprint of everything the rules depend on (not view-only data like seen/log).
   function hash(s){ let h=2166136261>>>0; const mix=v=>{ const str=String(v); for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } };
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
-    for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
+    for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
     mix(Object.keys(s.fire).join(",")); let d=0; for(const t of s.tiles) if(t.t==="door"&&t.open) d++; mix(d);
     return (h>>>0).toString(36); }
