@@ -61,24 +61,29 @@ const Sim = (() => {
   const MAPS={
     ks9:{rows:KS9,rooms:KS9_ROOMS},
     ship:{rows:[
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-      "~~~~~~~~~##========##~~~~~~~~~",
-      "~#########..........#########~",
-      "~#.K.lll.#....N.....#.C...J.#~",
-      "~#.......#.t......t.#...t...#~",
-      "~#.......#..........#.......#~",
-      "~#####+#######++#######+#####~",
-      "~~~~#....................#~~~~",
-      "~~~~=.........@..........=~~~~",
-      "~~~~#....................#~~~~",
-      "~#######+######+######+######~",
-      "~#.Q......cc#B....B#........#~",
-      "~#..........#......#.EE....A#~",
-      "~#..........#......#.EE.....#~",
-      "~#cc.......c#B....S#........#~",
-      "~############################~",
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"],
-      rooms:[["Bridge",10,2,19,5],["Armory",2,3,8,5],["Comms",21,3,27,5],["Main hall",5,7,24,9],["Ship hold",2,11,11,14],["Quarters",13,11,18,14],["Airlock",20,11,27,14]]},
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~~~~~~~~~~~##============##~~~~~~~~~~~~",
+      "~############..............###==###==##~",
+      "~#.K.jj.j.U.#St..t.N.t..t.c#.C...qV..G#~",
+      "~#..........#..............#..........#~",
+      "~#..........+......d.......+..nTTn....#~",
+      "~#..........#.t..........t.#...nn...u.#~",
+      "~#cc.......c#p............p#p.......u.#~",
+      "~#####+############++###########+######~",
+      "~=.................@..................=~",
+      "~=....................................=~",
+      "~#####+########+######+#######+####+###~",
+      "~#By.....yB.#....s#......t.#Q...c#....#~",
+      "~#..........#w....#........#....c#...A#~",
+      "~#By.....yB.#....s#........#.....#....#~",
+      "~=..........#w....#IIIIIIII#.....#EE..=~",
+      "~#..........#.....#.z..#...#...g.#EE..#~",
+      "~#By......J.#.....#....#...#.....#....#~",
+      "~#..........#.....#....#...#.....#....#~",
+      "~#By.......p#xx..p#....#..B#cc..c#....#~",
+      "~######################################~",
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"],
+      rooms:[["Bridge",13,2,26,7],["Armory",2,3,11,7],["Break room",28,3,37,7],["Main hall",2,9,37,10],["Crew quarters",2,12,11,19],["Bathroom",13,12,17,19],["Brig",19,12,26,19],["Ship hold",28,12,32,19],["Airlock",34,12,37,19]]},
   };
   let ROOMS=KS9_ROOMS;
   function bind(s){ ROOMS=(MAPS[s.map]||MAPS.ks9).rooms; }
@@ -114,7 +119,8 @@ const Sim = (() => {
   const chance=(s,p)=>rand(s)<p;
 
   // ---------- tile predicates ----------
-  const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank"};
+  const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank",
+    u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench"};
   const TERMS={N:"helm",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock"};
   const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||(t.t==="door"&&t.open);
   const walk = t => t.t==="floor"||t.t==="extract"||(t.t==="door"&&t.open);
@@ -138,7 +144,8 @@ const Sim = (() => {
         case "=": t={t:"window",hp:2};break;
         case "P": t={t:"console"};break;
         case "E": t={t:"extract"};break;
-        case "c": case "B": case "t": case "l": case "r": case "f": case "g": case "S": t={t:"prop",kind:PROPS[c]};break;
+        case "c": case "B": case "t": case "l": case "r": case "f": case "g": case "S":
+        case "u": case "T": case "n": case "q": case "V": case "G": case "w": case "s": case "x": case "I": case "z": case "j": case "p": case "d": case "y": case "U": t={t:"prop",kind:PROPS[c]};break;
         case "N": case "K": case "Q": case "J": case "C": case "A": t={t:"terminal",kind:TERMS[c]};break;
         default: t={t:"floor"};
       }
@@ -288,6 +295,7 @@ const Sim = (() => {
     if(t.t==="door"&&!t.open) return tryDoor(s,p,t,x,y);
     if(t.t==="window"){ say(s,"Reinforced glass. Beyond it, nothing but stars.","info"); return false; }
     if(t.t==="terminal"){ fx(s,{type:"terminal",kind:t.kind,pid:p.id}); return false; }
+    if(s.mode==="ship"&&t.t==="prop"){ fx(s,{type:"flavor",kind:t.kind,pid:p.id,x,y}); return false; }
     if(t.t==="console"){ say(s,"Main power relay. Press F next to it to toggle station power.","info"); return false; }
     if(t.t==="prop"&&t.kind==="barrel"){ say(s,"A fuel drum. It sloshes. One good shot would light it up.","warn"); return false; }
     if(t.t==="prop"){ say(s,{crate:"A sealed cargo crate. Too heavy to move.",bed:"A bunk, sheets stiff with old blood.",desk:"A desk buried in damp printouts.",locker:"A dented locker. Someone clawed at it from inside.",barrel:"A fuel drum. It sloshes.",brazier:"Someone lit a fire in here. Recently.",generator:"A backup generator, ticking as it cools.",tank:"A specimen tank. Something inside turns to watch you."}[t.kind]||"It's in the way.","info"); return false; }
@@ -381,7 +389,8 @@ const Sim = (() => {
   }
   function doInteract(s,p){
     for(const [dx,dy] of N4){ const q=s.ents.find(e=>e.kind==="player"&&e.alive&&e.downed&&e.x===p.x+dx&&e.y===p.y+dy); if(q){ face(p,dx,dy); return doRevive(s,p,q); } }
-    for(const [dx,dy] of N4){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="terminal"){ face(p,dx,dy); fx(s,{type:"terminal",kind:t.kind,pid:p.id}); return false; } }
+    for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="terminal"){ face(p,dx,dy); fx(s,{type:"terminal",kind:t.kind,pid:p.id}); return false; } }
+    if(s.mode==="ship") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="prop"){ face(p,dx,dy); fx(s,{type:"flavor",kind:t.kind,pid:p.id,x:p.x+dx,y:p.y+dy}); return false; } }
     for(const [dx,dy] of N4){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="console"){
       s.power=!s.power; fx(s,{type:"power"});
       say(s, s.power?"You slam the relay closed. Lights and door motors hum back to life.":"You pull the main breaker. The station goes dark. Doors are dead, maglocks released.", s.power?"good":"warn");

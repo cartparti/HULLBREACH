@@ -60,9 +60,39 @@ function portrait(look){ const c=cvs(24,24), g=c.getContext("2d"); R(g,0,0,24,24
     R(q,9,10,2,1,look.eye); R(q,13,10,2,1,look.eye); R(q,11,12,2,2,shade(look.skin,.8)); R(q,10,15,4,1,shade(look.skin,.55)); R(q,6,16,12,8,shade(look.hood,.8)); R(q,11,17,2,7,"#a37a32"); });
   g.drawImage(o,0,0); return c.toDataURL(); }
 
+// ---------- life aboard ----------
+const FLAVOR={
+  coffee:[["The machine coughs out something black and scalding. Good enough.","Burnt again. You drink it anyway."],"grabs a coffee"],
+  vending:[["You thump the vending machine. A ration bar drops. Flavour: grey.","It eats your coin and gives you nothing. Classic."],"thumps the vending machine"],
+  arcade:[["One round of VOID RUNNER. High score: still Hesk.","You die on level two. The cabinet laughs at you in eight-bit."],"is playing VOID RUNNER"],
+  couch:[["You sink into the couch. Something in the cushions crunches.","Five minutes off your feet. The springs disagree."],"flops onto the couch"],
+  table:[["Someone carved a tally of jobs into the tabletop. You add a notch.","A half-finished card game. Somebody was cheating."],"sits at the mess table"],
+  chair:[["You pull up a chair.","The chair wobbles. It always has."],"takes a seat"],
+  toilet:[["You flush. The whole deck gurgles for a worrying amount of time.","Occupied. By you. Briefly."],"flushes the toilet"],
+  sink:[["You splash water on your face. The contractor in the mirror looks tired.","The mirror has a crack right where your face goes."],"checks the mirror"],
+  shower:[["Lukewarm, then cold, then briefly brown. Refreshing.","You stand under the water until the recycler complains."],"takes a shower"],
+  bars:[["Gerald lunges at the bars and gnaws on them. He seems happy to see you.","You rattle the bars. Gerald rattles back."],"is taunting Gerald"],
+  captive:[["Gerald gnaws the bars.","Gerald hisses."],"is taunting Gerald"],
+  bed:[["You lie down. Ten minutes, tops.","Your bunk still smells like the last contractor."],"takes a nap"],
+  footlocker:[["Your footlocker. Socks, a photo, a spare knife.","You check your footlocker. Still just socks."],"rummages in a footlocker"],
+  captchair:[["The captain's chair. Somebody has to sit in it.","You lean back. The stars look smaller from here."],"sits in the captain's chair"],
+  gunrack:[["Racked rifles, oiled and ready.","You check the rack. Everything's where it should be."],"checks the weapon rack"],
+  workbench:[["Half a pistol, a soldering iron and a sandwich.","You tighten a bolt that didn't need tightening."],"tinkers at the workbench"],
+  plant:[["A hardy little plant. Nobody admits to watering it.","You water the plant. It seems unimpressed."],"waters the plant"],
+  crate:[["Ship's cargo. Mostly ration bars.","A crate stencilled FRAGILE, kicked in at one corner."],null],
+  generator:[["The backup generator hums along.","You give the generator a pat. It hums louder."],null],
+  desk:[["Ship's console. Diagnostics all green, mostly.","A console scrolling engine readouts."],null],
+};
+let flavorCD=0;
+function onFlavor(kind){
+  const F=FLAVOR[kind]; if(!F) return; const lines=F[0]; toast(lines[(Math.random()*lines.length)|0]);
+  if(F[1]&&typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>3000){ flavorCD=Date.now(); emit({t:"chat",m:F[1]}); }
+}
+
 // ---------- ship HUD ----------
 function adjacentTerminal(){ const p=me(); for(const [dx,dy] of [[0,-1],[1,0],[-1,0],[0,1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="terminal") return t.kind; } return null; }
-const TERM_HINT={helm:"Helm · fly to another location",rack:"Loadout rack · choose your kit",stash:"Stash locker · your gear",records:"Records · service history",board:"Contract board · your jobs",airlock:"Airlock · leave the ship"};
+function adjacentFixture(){ const p=me(); for(const [dx,dy] of [[0,-1],[1,0],[-1,0],[0,1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="prop"&&FLAVOR[t.kind]) return t.kind; } return null; }
+const TERM_HINT={helm:"Helm · steer the ship",rack:"Loadout rack · choose your kit",stash:"Stash locker · your gear",records:"Crew log · service history",board:"Job board · the crew's contracts",airlock:"Airlock · dock or board"};
 function renderShipHud(){
   const L=here(), sh=ship(), sec=World.SECTORS.find(s=>s.id===L.sector), docked=L.type!=="derelict", cs=sh.contracts.length;
   $("s-ship").textContent=sh.name;
@@ -70,18 +100,18 @@ function renderShipHud(){
   $("s-loc").innerHTML=`<b>${L.name}</b><span>${sec.name} · ${docked?`<span class="dock">Docked</span>`:`<span class="warn">Holding beside a derelict</span>`}</span><span>${cs?`${cs} active contract${cs>1?"s":""}`:"No active contracts"}${World.siteContract(sh,L.id)?" · <span class=\"dock\">contract target</span>":""}</span>`;
   $("s-res").innerHTML=`<span>Credits</span><span style="color:var(--brass)">${profile.credits}</span><span>Fuel</span><span style="color:${sh.fuel<2?"var(--blood2)":"inherit"}">${sh.fuel}/${sh.fuelMax}</span><span>Day</span><span>${sh.day}</span><span>Crew</span><span>${inSquad()?Net.roster.length:1}/4${inSquad()?" · "+Net.code.toUpperCase():""}</span>`;
   $("s-mode").textContent=mode==="pc"?"Touch mode":"Mouse & keys";
-  const k=adjacentTerminal();
-  $("s-prompt").innerHTML=k&&!warp?(mode==="pc"?`<span class="key">F</span>${TERM_HINT[k]}`:`Tap USE · ${TERM_HINT[k]}`):"";
+  const k=adjacentTerminal(), fx2=k?null:adjacentFixture(), hint=k?TERM_HINT[k]:fx2?PROP_NAME[fx2]:"";
+  $("s-prompt").innerHTML=hint&&!warp?(mode==="pc"?`<span class="key">F</span>${hint}`:`Tap USE · ${hint}`):"";
 }
 
 // ---------- panels ----------
 const PANELS={
-  helm:{eye:"Helm",title:()=>"Star map",view:viewHelm},
+  helm:{eye:"Bridge · helm",title:()=>"Plot a course",view:viewHelm},
   rack:{eye:"Armory",title:()=>"Loadout rack",view:viewLoadout},
   stash:{eye:"Ship hold",title:()=>"Stash locker",view:viewStash},
-  records:{eye:"Comms",title:()=>"Service records",view:viewRecords},
-  board:{eye:"Comms",title:()=>"Contract board",view:viewBoard},
-  crew:{eye:"Comms",title:()=>inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew",view:viewCrew},
+  records:{eye:"Crew quarters",title:()=>"Crew log",view:viewRecords},
+  board:{eye:"Break room",title:()=>"Job board",view:viewBoard},
+  crew:{eye:"Crew",title:()=>inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew",view:viewCrew},
   airlock:{eye:"Airlock",title:()=>here().type==="derelict"?`Board ${here().name}`:here().name,view:viewAirlock},
   debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
 };
