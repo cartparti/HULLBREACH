@@ -154,8 +154,8 @@ function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
   $("p-body").innerHTML=P.view(); renderSync();
-  const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,24,32); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0); }
-  const c2=$("h-prev2"); if(c2){ const g=c2.getContext("2d"); g.clearRect(0,0,24,32); g.drawImage(playerFrames({...profile.look,a:null,w:null}).idle0,0,0); } }
+  const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,c.width,c.height); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0,c.width,c.height); }
+  const c2=$("h-prev2"); if(c2){ const g=c2.getContext("2d"); g.clearRect(0,0,c2.width,c2.height); g.drawImage(playerFrames({...profile.look,hd:null,a:null,lg:null,ac:null,w:null}).idle0,0,0,c2.width,c2.height); } }
 $("p-close").onclick=closePanel;
 $("panel").addEventListener("click",e=>{ if(e.target.id==="panel") closePanel(); });
 
@@ -188,7 +188,7 @@ function viewLoadout(){
   const k=profile.kit, custom=k.type==="custom", r=kitResolved();
   const head=`<div class="bar-row"><div class="seg"><button data-act="kit:starter" aria-pressed="${!custom}">Scav kit</button><button data-act="kit:custom" aria-pressed="${custom}">Custom kit</button></div>
     <span class="risk ${custom?"bad":"good"}">${custom?`At risk if you die: ${kitRisk(r)} cr`:"Free · nothing at risk"}</span></div>`;
-  const preview=`<div class="preview"><canvas id="h-prev" width="24" height="32" aria-label="Your contractor"></canvas></div>`;
+  const preview=`<div class="preview"><canvas id="h-prev" width="48" height="64" aria-label="Your contractor"></canvas></div>`;
   let body;
   if(!custom) body=`<div class="eq"><h3>Scav kit</h3><p>Free for every raid: your clothes, a battered pistol with 12 rounds and a bandage. No armour, no pack, nothing at risk. Anything you find and extract with is yours to keep. Find or craft real armour and gear, then build a custom kit.</p>
       ${KIT_SLOTS.map(s=>gearRow(SLOT_NAME[s],r[s],EMPTY_TXT[s])).join("")}<div class="h-eyebrow">Pack · ${r.used}/${r.cap}</div>${kitSummaryHTML({inv:r.inv,ammo:r.ammo})}</div>`;
@@ -254,7 +254,7 @@ function viewWardrobe(){
     Clothes:opt("t",ST.top,"Top",{tee:"T-shirt",long:"Long sleeve",tank:"Tank top"})+col("tc",ST.cloth,"Top colour")+opt("b",ST.bottom,"Bottoms")+col("bc",ST.cloth,"Bottoms colour")+col("bt",ST.cloth,"Boots"),
     Armour:`<p>Helmets, chest pieces, legs and accessories all show on your character. Find them on derelicts or craft them at the workbench. Dyes colour your cape and scarf, tint visors and lenses, and crest the helms that take one.</p>${dye("cloak","Cape and scarf dye")}${dye("visor","Visor tint")}${dye("crest","Helm crest")}<p class="risk">${n} dye${n===1?"":"s"} found. Rarer dyes turn up on harder stations.</p>`,
   }[wardTab];
-  return `<section class="panel h-card"><div class="lo"><div class="preview" style="gap:12px;flex-wrap:wrap"><div style="text-align:center"><canvas id="h-prev2" width="24" height="32" aria-label="You, out of armour" style="width:96px;height:128px;image-rendering:pixelated"></canvas><div class="risk">Clothes</div></div><div style="text-align:center"><canvas id="h-prev" width="24" height="32" aria-label="You in your kit" style="width:96px;height:128px"></canvas><div class="risk">In your kit</div></div></div>
+  return `<section class="panel h-card"><div class="lo"><div class="preview" style="gap:12px;flex-wrap:wrap"><div style="text-align:center"><canvas id="h-prev2" width="48" height="64" aria-label="You, out of armour" style="width:96px;height:128px;image-rendering:pixelated"></canvas><div class="risk">Clothes</div></div><div style="text-align:center"><canvas id="h-prev" width="48" height="64" aria-label="You in your kit" style="width:96px;height:128px"></canvas><div class="risk">In your kit</div></div></div>
     <div class="eq"><div class="seg">${WARD_TAB.map(t=>`<button data-act="wtab:${t}" aria-pressed="${wardTab===t}">${t}</button>`).join("")}</div>${body}</div></div></section>`;
 }
 // ---------- inventory (raid: live; ship: your kit) ----------
@@ -282,7 +282,7 @@ function viewInventory(){
       <span class="lbl">Suit O₂</span><div class="meter"><i style="width:${p.o2/(p.o2max||100)*100}%;background:var(--cold)"></i></div><span class="num">${p.o2}/${p.o2max||100}</span>${limbRows(p)}</div>
       ${p.stimT>0?`<p class="risk good">Stimmed · ${p.stimT} turns</p>`:""}</div>`
     :`<div class="panel h-card span5"><div class="h-eyebrow">Condition</div><p class="risk">Patched up and ready. Wounds only count on a raid.</p></div>`;
-  return `<section class="h-grid"><div class="panel h-card span7"><div class="lo inv-lo"><div class="preview"><canvas id="h-prev" width="24" height="32" aria-label="Your contractor"></canvas></div>
+  return `<section class="h-grid"><div class="panel h-card span7"><div class="lo inv-lo"><div class="preview"><canvas id="h-prev" width="48" height="64" aria-label="Your contractor"></canvas></div>
       <div class="eq">${eq}${raid&&p.w2?`<button class="plain" data-act="iswap">Swap guns${mode==="pc"?" (R)":""}</button>`:""}</div></div></div>${health}
     <div class="panel h-card span12"><div class="bar-row"><div class="h-eyebrow grow">Backpack · ${inv.length}/${cap}</div>${raid?"":`<button class="plain" data-act="open:rack">Loadout rack</button>`}</div><div class="inv-grid">${cells.join("")}</div>${actions}
       <div class="h-eyebrow" style="margin-top:8px">Ammo pouch${at?` · using ${Items.AMMO[at].name.toLowerCase()}`:""}</div>${ammoChips(ammo,at)}
