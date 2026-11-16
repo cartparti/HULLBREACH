@@ -161,7 +161,7 @@ test("gear: equip, swap guns, drop, typed ammo pickup, rarity scaling", () => {
   const { s, p } = arena(kit({ d: "pistol", r: 0 }, { pistol: 3 }, [{ d: "longbore", r: 2 }, { d: "flak", r: 1 }, { d: "hauler", r: 0 }]));
   assert.ok(Sim.act(s, "p1", { type: "equip", index: 0 })); assert.equal(p.w2.d, "longbore"); assert.equal(Sim.gun(p).d, "longbore");
   assert.ok(Sim.act(s, "p1", { type: "swap" })); assert.equal(Sim.gun(p).d, "pistol");
-  Sim.act(s, "p1", { type: "equip", index: 0 }); assert.equal(p.armor.d, "flak"); assert.equal(p.o2max, Items.stats({ d: "flak", r: 1 }).o2);
+  Sim.act(s, "p1", { type: "equip", index: 0 }); assert.equal(p.armor.d, "flak"); assert.equal(p.o2max, Items.CLOTHES_O2 + Items.stats({ d: "flak", r: 1 }).o2);
   Sim.act(s, "p1", { type: "equip", index: 1 }); assert.equal(p.cap, 10);
   assert.equal(s.turn, 1, "swapping and equipping cost no turn");
   s.items.push({ id: 999, d: "ammo_sniper", r: 0, n: 4, x: p.x, y: p.y }); Sim.act(s, "p1", { type: "pickup" }); assert.equal(p.ammo.sniper, 4);
@@ -178,6 +178,19 @@ test("clothes start: no armour or pack, weapon variants, bolt-action costs a tur
   const { s, p } = arena(kit({ d: "kestrel", r: 0 }, { sniper: 3 }), [[24, 13]]);
   const t0 = s.turn; assert.ok(Sim.act(s, "p1", { type: "shoot", x: 24, y: 13 })); assert.equal(s.turn, t0 + 2, "the station gets a free turn while you work the bolt");
   assert.equal(p.busy, 0); assert.ok(/work the bolt/.test(s.log.map((l) => l.msg).join(" ")));
+});
+
+test("armour pieces: helmet, chest, legs and accessory stack, each protects its own limbs", () => {
+  const { s, p } = arena(kit({ d: "pistol", r: 0 }, { pistol: 6 }, [{ d: "sallet", r: 0 }, { d: "greaves", r: 0 }, { d: "bandolier", r: 0 }, { d: "strider", r: 0 }, { d: "seals", r: 0 }], { armor: null, pack: { d: "hauler", r: 0 } }));
+  const c0 = p.cap, h0 = Sim.hitChance(s, p, p.x + 4, p.y);
+  Sim.act(s, "p1", { type: "equip", index: 0 }); assert.equal(p.head.d, "sallet");
+  Sim.act(s, "p1", { type: "equip", index: 0 }); assert.equal(p.legs.d, "greaves");
+  Sim.act(s, "p1", { type: "equip", index: 0 }); assert.equal(p.acc.d, "bandolier"); assert.equal(p.cap, c0 + 1, "bandolier adds a slot");
+  const G = Sim.gearOf(p); assert.ok(G.head >= .3 && G.legs >= .24 && G.torso === 0); assert.equal(p.o2max, Items.CLOTHES_O2 + 15);
+  p.hp.lleg = 0; assert.equal(p.legs.d, "greaves");
+  const i = p.inv.findIndex((x) => x.d === "strider"); Sim.act(s, "p1", { type: "equip", index: i }); assert.ok(Sim.gearOf(p).nolimp, "strider legs stop the limp");
+  const j = p.inv.findIndex((x) => x.d === "seals"); Sim.act(s, "p1", { type: "equip", index: j }); assert.ok(Sim.hitChance(s, p, p.x + 4, p.y) > h0, "seals help aim");
+  assert.equal(s.turn, 1, "dressing costs no turn");
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

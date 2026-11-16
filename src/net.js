@@ -68,7 +68,7 @@ function onSquadPeers(ch){
     .sort((a,b)=>a.key<b.key?-1:1).slice(0,4);
   resolveNames(ch.peers);
   // crew positions aboard the ship
-  if(S&&S.mode==="ship") for(const r of Net.roster){ if(r.key===Net.myKey) continue; const e=S.ents.find(q=>q.id===r.key); if(e&&typeof r.x==="number"){ e.x=r.x; e.y=r.y; if(r.f) e.face=r.f; if(r.look&&"a" in r.look){ const {a,w,...lk}=r.look; e.armor=a?{d:a,r:0}:null; e.w1=w?{d:w,r:0}:null; e.w2=null; e.act=1; e.look=lk; } } }
+  if(S&&S.mode==="ship") for(const r of Net.roster){ if(r.key===Net.myKey) continue; const e=S.ents.find(q=>q.id===r.key); if(e&&typeof r.x==="number"){ e.x=r.x; e.y=r.y; if(r.f) e.face=r.f; if(r.look&&"a" in r.look){ const {hd,a,lg,ac,w,...lk}=r.look, o=d=>d?{d,r:0}:null; e.head=o(hd); e.armor=o(a); e.legs=o(lg); e.acc=o(ac); e.w1=o(w); e.w2=null; e.act=1; e.look=lk; } } }
   // two crew on one tile (both grabbed the same seat): the later key steps off
   if(S&&S.mode==="ship"&&me()){ const mine=me(), clash=Net.roster.find(r=>r.key!==Net.myKey&&r.x===mine.x&&r.y===mine.y&&r.key<Net.myKey);
     if(clash){ for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1]]){ const t=Sim.tileAt(S,mine.x+dx,mine.y+dy); if(Sim.walk(t)&&t.t!=="seat"&&!S.ents.some(e=>e!==mine&&e.x===mine.x+dx&&e.y===mine.y+dy)){ mine.x+=dx; mine.y+=dy; toast("That seat's taken."); netShipMoved(); break; } } } }
@@ -89,7 +89,7 @@ function hostBroadcastShip(rebuild){
     Net.setup={t:"state",ep:Net.ep,scene:"ship",hostKey:Net.myKey,crew,ship:profile.ship}; emit(Net.setup); buildFromSetup(); }
   else emit({t:"ship",ship:profile.ship});
 }
-function lookLoadout(L){ L=L||{}; const {a,w,...lk}=L; return {w1:w?{d:w,r:0}:null,armor:a?{d:a,r:0}:null,pack:null,ammo:{},inv:[],look:lk}; }
+function lookLoadout(L){ L=L||{}; const {hd,a,lg,ac,w,...lk}=L, o=d=>d?{d,r:0}:null; return {w1:o(w),head:o(hd),armor:o(a),legs:o(lg),acc:o(ac),pack:null,ammo:{},inv:[],look:lk}; }
 function crewList(){ const rs=Net.roster.length?Net.roster:[{key:Net.myKey,look:{}}]; if(!rs.some(r=>r.key===Net.myKey)) rs.push({key:Net.myKey,look:{}});
   return rs.map(r=>({id:r.key,name:"",loadout:lookLoadout(r.look)})).sort((a,b)=>a.id<b.id?-1:1); }
 function hostLaunch(){

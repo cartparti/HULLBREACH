@@ -74,14 +74,44 @@ const Items = (() => {
     decoy:    { k: "throw", cls: "throw", name: "Noisemaker", noise: 13, value: 40, desc: "Every husk in earshot goes to look." },
     sunburst: { k: "throw", cls: "throw", name: "Sunburst Charge", dmg: [20, 30], blast: 2.4, fire: 1.2, rar: 3, value: 600, desc: "A blinding blast that leaves fire." },
     halo:     { k: "throw", cls: "throw", name: "Black Halo", dmg: [26, 40], blast: 2.8, pull: 1, stun: 2, rar: 4, value: 1500, desc: "Drags everything in, then detonates." },
-    // ---- armor (defines your silhouette) ----
-    scrapvest:{ k: "armor", name: "Scrap plate vest", dr: .15, fire: 0, o2: 20, value: 60, pal: "scrap", desc: "Riveted hull plate over your clothes. Not sealed." },
-    suit:     { k: "armor", name: "Contractor suit", dr: 0, fire: 0, o2: 60, value: 40, pal: "suit", desc: "Standard sealed suit." },
-    flak:     { k: "armor", name: "Flak carapace", dr: .25, fire: .1, o2: 50, value: 380, pal: "flak", desc: "Plated against claws and shrapnel." },
-    hazard:   { k: "armor", name: "Hazard suit", dr: .08, fire: .6, o2: 100, value: 340, pal: "hazard", desc: "Shrugs off fire. Big oxygen tank." },
-    ossuary:  { k: "armor", name: "Ossuary Plate", dr: .4, fire: .25, o2: 70, rar: 3, value: 1600, pal: "ossuary", desc: "Bone-white plate taken from a pilgrim ship." },
-    shroud:   { k: "armor", name: "Void Shroud", dr: .18, fire: .1, o2: 80, stealth: 3, rar: 3, value: 1500, pal: "shroud", desc: "Husks notice you three tiles later." },
-    aegis:    { k: "armor", name: "Saint's Aegis", dr: .5, fire: .5, o2: 90, rar: 4, value: 3400, pal: "aegis", desc: "Gilded, haloed and nearly impossible to kill." },
+    // ---- armour: part = head | body | legs | acc. Every piece is drawn on your character ----
+    // helmets
+    visor:    { k: "armor", part: "head", name: "Contractor helm", dr: .06, o2: 20, value: 70, desc: "Sealed dome helmet with a tinted visor. Takes a crest." },
+    welder:   { k: "armor", part: "head", name: "Welder's mask", dr: .14, fire: .15, value: 50, desc: "A flip-down face shield. Unsealed." },
+    flakhelm: { k: "armor", part: "head", name: "Flak helmet", dr: .24, value: 220, desc: "Steel pot, brim and goggles. Unsealed." },
+    gasmask:  { k: "armor", part: "head", name: "Gas-mask hood", dr: .06, fire: .2, o2: 25, value: 200, desc: "Rubber hood, twin lenses, filter can." },
+    sallet:   { k: "armor", part: "head", name: "Sallet helm", dr: .3, o2: 15, value: 460, desc: "Knightly steel with a vision slit. Takes a crest." },
+    deathmask:{ k: "armor", part: "head", name: "Ossuary Death Mask", dr: .36, fire: .1, o2: 25, rar: 3, value: 1300, desc: "A pilgrim's skull, worn as a faceplate." },
+    cowl:     { k: "armor", part: "head", name: "Void Cowl", dr: .16, o2: 25, stealth: 2, rar: 3, value: 1200, desc: "Nothing inside but two lights. Husks notice you later." },
+    halohelm: { k: "armor", part: "head", name: "Saint's Halo Helm", dr: .45, fire: .3, o2: 35, rar: 4, value: 3000, desc: "Gilded, plumed and crowned with a burning halo." },
+    // chest
+    suit:     { k: "armor", part: "body", name: "Contractor suit", dr: .05, o2: 20, value: 60, desc: "Sealed work suit with an air line." },
+    scrapvest:{ k: "armor", part: "body", name: "Scrap plate vest", dr: .15, value: 60, desc: "Riveted hull plate over your clothes. Not sealed." },
+    brigandine:{ k: "armor", part: "body", name: "Riveted brigandine", dr: .2, value: 300, desc: "Leather coat over hundreds of little plates." },
+    flak:     { k: "armor", part: "body", name: "Flak carapace", dr: .26, fire: .1, o2: 10, value: 400, desc: "Heavy plates and a big pauldron." },
+    hazard:   { k: "armor", part: "body", name: "Hazard suit", dr: .08, fire: .5, o2: 40, value: 360, desc: "Shrugs off fire. Big oxygen tank on the back." },
+    exo:      { k: "armor", part: "body", name: "Exo-rig", dr: .18, slots: 2, value: 650, desc: "Powered spine frame. Carry two more items." },
+    ossuary:  { k: "armor", part: "body", name: "Ossuary Plate", dr: .4, fire: .2, o2: 30, rar: 3, value: 1600, desc: "Bone-white ribs taken from a pilgrim ship." },
+    shroud:   { k: "armor", part: "body", name: "Void Shroud", dr: .18, fire: .1, o2: 30, stealth: 2, rar: 3, value: 1500, desc: "A robe of black that eats the light." },
+    aegis:    { k: "armor", part: "body", name: "Saint's Aegis", dr: .5, fire: .4, o2: 40, rar: 4, value: 3400, desc: "Gilded breastplate and a crimson tabard." },
+    // legs
+    cargo:    { k: "armor", part: "legs", name: "Cargo trousers", dr: .03, slots: 1, value: 50, desc: "Thigh pockets. One more slot." },
+    kneepads: { k: "armor", part: "legs", name: "Padded combat trousers", dr: .12, value: 140, desc: "Armoured knees and heavy boots." },
+    hazlegs:  { k: "armor", part: "legs", name: "Hazard leggings", dr: .06, fire: .2, value: 160, desc: "Rubberised, striped, fireproof." },
+    greaves:  { k: "armor", part: "legs", name: "Steel greaves", dr: .24, value: 380, desc: "Plate shins and pointed sabatons." },
+    bonegreaves:{ k: "armor", part: "legs", name: "Ossuary Greaves", dr: .32, fire: .1, rar: 3, value: 1100, desc: "Shinbones bound over shinbones." },
+    strider:  { k: "armor", part: "legs", name: "Strider Exo-legs", dr: .16, nolimp: 1, rar: 3, value: 1400, desc: "Pistoned legs. A ruined leg won't slow you." },
+    aegislegs:{ k: "armor", part: "legs", name: "Saint's Greaves", dr: .4, fire: .3, rar: 4, value: 2600, desc: "Gold plate with crimson tassets." },
+    // accessories
+    scarf:    { k: "armor", part: "acc", name: "Long scarf", value: 40, desc: "Keeps the dust out. Looks good doing it." },
+    cape:     { k: "armor", part: "acc", name: "Tattered cape", value: 90, desc: "Takes your cloak dye in the wardrobe." },
+    bandolier:{ k: "armor", part: "acc", name: "Bandolier", slots: 1, value: 150, desc: "Shell loops across the chest. One more slot." },
+    pauldron: { k: "armor", part: "acc", name: "Spiked pauldron", tdr: .06, value: 220, desc: "A single heavy shoulder. +6% torso armour." },
+    lamp:     { k: "armor", part: "acc", name: "Shoulder lamp", dark: 1, value: 260, desc: "No aim penalty in the dark." },
+    seals:    { k: "armor", part: "acc", name: "Litany seals", acc: .05, value: 300, desc: "Wax seals and prayer strips. +5% to hit." },
+    charm:    { k: "armor", part: "acc", name: "Skull charm", value: 120, desc: "A little brass skull on a chain. Lucky, probably." },
+    censer:   { k: "armor", part: "acc", name: "Censer of Orrin", fire: .2, acc: .03, rar: 3, value: 1200, desc: "Smoking at your belt. +20% fire resistance, +3% to hit." },
+    drone:    { k: "armor", part: "acc", name: "Seraph Drone", acc: .08, dark: 1, rar: 4, value: 2600, desc: "A skull-faced drone that spots for you. +8% to hit, sees in the dark." },
     // ---- backpacks ----
     sling:    { k: "pack", name: "Sling pack", slots: 6, value: 30, desc: "Small and light." },
     field:    { k: "pack", name: "Field pack", slots: 8, value: 220, desc: "A proper rucksack." },
@@ -120,7 +150,7 @@ const Items = (() => {
     const D = def(it.d); if (!D) return null; const r = rarOf(it), s = { ...D, rar: r };
     if (D.rar >= 3) return s;
     if (D.k === "weapon" || D.k === "throw") { const m = MULT[r] || 1; if (D.dmg) s.dmg = [Math.round(D.dmg[0] * m), Math.round(D.dmg[1] * m)]; s.acc = (D.acc || 0) + r * .03; }
-    if (D.k === "armor") { s.dr = Math.min(.45, (D.dr || 0) + r * .05); s.o2 = D.o2 + r * 10; s.fire = Math.min(.8, (D.fire || 0) + r * .05); }
+    if (D.k === "armor") { s.dr = D.dr ? Math.min(.5, D.dr + r * .04) : 0; s.o2 = D.o2 ? D.o2 + r * 5 : 0; s.fire = D.fire ? Math.min(.8, D.fire + r * .05) : 0; if (D.acc) s.acc = D.acc + r * .01; if (D.tdr) s.tdr = D.tdr + r * .02; }
     if (D.k === "pack") s.slots = D.slots + (it.l | 0);
     return s;
   }
@@ -128,7 +158,8 @@ const Items = (() => {
   function value(it) { const D = def(it.d); if (!D) return 0; if (D.k === "val") return it.v || D.value; if (D.k === "ammo" || D.k === "mat") return D.value * (it.n || 1); if (D.k === "dye") return D.value; const r = rarOf(it); return Math.round(D.value * (D.rar >= 3 ? 1 : [1, 1.7, 2.8][r]) * (1 + (it.l | 0) * .25)); }
   const make = (d, r = 0, extra) => ({ d, r: def(d) && def(d).rar >= 3 ? def(d).rar : r, ...(extra || {}) });
   const kind = (it) => (def(it.d) ? def(it.d).k : null);
-  const slotOf = (it) => { const k = kind(it); if (k === "weapon") return def(it.d).cls === "melee" ? "melee" : "gun"; return k === "armor" ? "armor" : k === "pack" ? "pack" : null; };
+  const PART_SLOT = { head: "head", body: "armor", legs: "legs", acc: "acc" };
+  const slotOf = (it) => { const k = kind(it); if (k === "weapon") return def(it.d).cls === "melee" ? "melee" : "gun"; return k === "armor" ? PART_SLOT[def(it.d).part || "body"] : k === "pack" ? "pack" : null; };
   // rarity roll for a loot tier (1 easy - 3 hard); rng() -> [0,1)
   function rollRar(rng, tier) {
     const w = [[62, 26, 9, 2.4, .6], [50, 30, 14, 4.5, 1.5], [40, 32, 18, 7, 3]][Math.max(0, Math.min(2, tier - 1))];
@@ -153,7 +184,7 @@ const Items = (() => {
   function statLine(it) {
     const s = stats(it); if (!s) return "";
     if (s.k === "weapon") { const parts = [`${s.dmg[0]}–${s.dmg[1]} dmg`]; if (s.pellets) parts[0] = `${s.pellets}×${s.dmg[0]}–${s.dmg[1]}`; if (s.burst) parts.push(`burst ${s.burst}`); if (s.ammo) parts.push(AMMO[s.ammo].name.toLowerCase()); else parts.push("melee"); if (s.blast) parts.push(`blast ${s.blast}`); if (s.stun) parts.push(`stun ${s.stun}`); if (s.bleed >= .7) parts.push("bleeds"); if (s.bolt) parts.push("bolt-action"); if (s.pierce) parts.push("pierces"); if (s.knock) parts.push("knockback"); if (s.cleave) parts.push("cleaves"); return parts.join(" · "); }
-    if (s.k === "armor") return `${Math.round(s.dr * 100)}% head/torso armour · ${Math.round(s.fire * 100)}% fire · ${s.o2} O₂${s.stealth ? " · stealth" : ""}`;
+    if (s.k === "armor") { const where = { head: "head", body: "torso", legs: "leg", acc: "" }[s.part || "body"]; return [s.dr ? `${Math.round(s.dr * 100)}% ${where} armour` : "", s.tdr ? `+${Math.round(s.tdr * 100)}% torso armour` : "", s.fire ? `${Math.round(s.fire * 100)}% fire` : "", s.o2 ? `${s.o2} O₂` : "", s.slots ? `+${s.slots} slot${s.slots > 1 ? "s" : ""}` : "", s.acc ? `+${Math.round(s.acc * 100)}% to hit` : "", s.dark ? "sees in the dark" : "", s.stealth ? "stealth" : "", s.nolimp ? "no limp" : ""].filter(Boolean).join(" · ") || "Cosmetic"; }
     if (s.k === "pack") return `${s.slots} slots`;
     if (s.k === "throw") return [s.dmg ? `${s.dmg[0]}–${s.dmg[1]} dmg` : "", s.blast ? `blast ${s.blast}` : "", s.fire ? "fire" : "", s.stun ? `stun ${s.stun}` : "", s.noise ? "lure" : ""].filter(Boolean).join(" · ");
     return s.desc || "";
@@ -169,8 +200,12 @@ const Items = (() => {
     { id: "g_knife", cat: "gear", out: { d: "knife", r: 0 }, cost: { scrap: 3 } },
     { id: "g_pipe", cat: "gear", out: { d: "pipe", r: 0 }, cost: { scrap: 5, prop: 1 } },
     { id: "g_pistol", cat: "gear", out: { d: "pistol", r: 0 }, cost: { scrap: 6, prop: 1, circ: 1 } },
+    { id: "g_welder", cat: "gear", out: { d: "welder", r: 0 }, cost: { scrap: 4, circ: 1 } },
+    { id: "g_visor", cat: "gear", out: { d: "visor", r: 0 }, cost: { scrap: 4, circ: 3 } },
     { id: "g_vest", cat: "gear", out: { d: "scrapvest", r: 0 }, cost: { scrap: 8 } },
-    { id: "g_suit", cat: "gear", out: { d: "suit", r: 0 }, cost: { scrap: 5, circ: 3 } },
+    { id: "g_cargo", cat: "gear", out: { d: "cargo", r: 0 }, cost: { scrap: 3 } },
+    { id: "g_scarf", cat: "gear", out: { d: "scarf", r: 0 }, cost: { scrap: 1 } },
+    { id: "g_suit", cat: "gear", out: { d: "suit", r: 0 }, cost: { scrap: 5, circ: 2 } },
     { id: "g_sling", cat: "gear", out: { d: "sling", r: 0 }, cost: { scrap: 4 } },
     { id: "g_field", cat: "gear", out: { d: "field", r: 0 }, cost: { scrap: 8, circ: 2 } },
     { id: "r_frag", cat: "supplies", out: { d: "frag", r: 0 }, cost: { scrap: 2, prop: 2 } },

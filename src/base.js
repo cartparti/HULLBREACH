@@ -2,9 +2,9 @@
 // Personal save (credits, stash, ammo, materials, looks, stats, kit) + the
 // crew ship (World ship state). Signed-in players save to db at
 // data/users/<id>/save.
-const SAVE_V=2, KIT_SLOTS=["w1","w2","melee","armor","pack"], SLOT_NAME={w1:"Primary",w2:"Secondary",melee:"Melee",armor:"Suit",pack:"Pack"};
+const SAVE_V=2, KIT_SLOTS=["w1","w2","melee","head","armor","legs","acc","pack"], SLOT_NAME={w1:"Primary",w2:"Secondary",melee:"Melee",head:"Helmet",armor:"Chest",legs:"Legs",acc:"Accessory",pack:"Pack"};
 const ISSUED={}; // nothing is issued: you start in your clothes and find or craft the rest
-const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",armor:`Street clothes · no armour · ${Items.CLOTHES_O2} O₂ rebreather`,pack:`Pockets · ${Items.POCKETS} slots`};
+const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",head:`Bare head · ${Items.CLOTHES_O2} O₂ rebreather`,armor:"Just your shirt",legs:"Just your trousers",acc:"Nothing. Find scarves, capes, charms, lamps and stranger things",pack:`Pockets · ${Items.POCKETS} slots`};
 let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all", stashSel=null, armed={}, invSel=null;
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:300,
@@ -54,20 +54,20 @@ const byUid=u=>u?profile.stash.find(q=>q.uid===u)||null:null;
 const strip=it=>{ if(!it) return null; const o={d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; if(it.n) o.n=it.n; if(it.iss) o.iss=1; return o; };
 const rc=it=>Items.RAR[Items.rarOf(it)].col;
 const nmHTML=it=>`<b style="color:${rc(it)}">${esc(Items.name(it))}</b>`;
-const capOf=pack=>pack?Items.stats(pack).slots:Items.POCKETS;
+const capOf=(pack,r)=>(pack?Items.stats(pack).slots:Items.POCKETS)+(r?["head","armor","legs","acc"].reduce((a,k)=>a+((r[k]&&Items.stats(r[k]).slots)||0),0):0);
 function slotFits(slot,it){ const s=Items.slotOf(it); return slot==="w1"||slot==="w2"?s==="gun":s===slot; }
 function kitResolved(){ const k=profile.kit;
   if(k.type==="starter"){ const st=Sim.STARTER, iss=x=>x&&{...x,iss:1};
-    return {free:true,w1:iss(st.w1),w2:iss(st.w2),melee:iss(st.melee),armor:iss(st.armor),pack:iss(st.pack),inv:st.inv.map(x=>({...x})),ammo:{...st.ammo},cap:capOf(st.pack),used:st.inv.length}; }
+    return {free:true,w1:iss(st.w1),w2:iss(st.w2),melee:iss(st.melee),armor:iss(st.armor),pack:iss(st.pack),inv:st.inv.map(x=>({...x})),ammo:{...st.ammo},cap:capOf(st.pack,st),used:st.inv.length}; }
   const used=new Set(), r={free:false};
   for(const s of KIT_SLOTS){ const it=byUid(k[s]); if(it&&!used.has(it.uid)&&slotFits(s,it)){ r[s]=it; used.add(it.uid); } else r[s]=ISSUED[s]?{...ISSUED[s]}:null; }
-  r.cap=capOf(r.pack); r.inv=[];
+  r.cap=capOf(r.pack,r); r.inv=[];
   for(const u of k.inv){ const it=byUid(u); if(it&&!used.has(u)&&r.inv.length<r.cap){ r.inv.push(it); used.add(u); } }
   r.used=r.inv.length; r.ammo={}; for(const t of AMMO_T){ const n=Math.max(0,Math.min(k.ammo[t]|0,profile.ammo[t]|0)); if(n) r.ammo[t]=n; }
   return r;
 }
 function kitRisk(r){ if(r.free) return 0; let v=0; for(const s of KIT_SLOTS) if(r[s]&&!r[s].iss) v+=Math.round(Items.value(r[s])*.5); for(const it of r.inv) v+=Math.round(Items.value(it)*.5); for(const t in r.ammo) v+=r.ammo[t]; return v; }
-function lookOfKit(r){ r=r||kitResolved(); const g=r.w1||r.w2; return {...profile.look,a:r.armor?r.armor.d:null,w:g?g.d:null}; }
+function lookOfKit(r){ r=r||kitResolved(); const g=r.w1||r.w2, d=k=>r[k]?r[k].d:null; return {...profile.look,hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),w:g?g.d:null}; }
 function slotHTML(it,title,n){ if(!it) return `<div class="slot" title="${title||"Empty"}"></div>`;
   return `<div class="slot" title="${esc(title||Items.name(it))}" style="border-color:${rc(it)}"><img alt="${esc(Items.name(it))}" src="${iconFor(it)}">${n>1?`<span class="n">×${n}</span>`:""}</div>`; }
 function toast(msg){ const t=$("h-toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3000); }
@@ -252,7 +252,7 @@ function viewWardrobe(){
     Face:col("s",ST.skin,"Skin tone")+opt("f",ST.face,"Face",{clean:"Clean-shaven",tattoo:"Face tattoo"})+col("e",ST.eyes,"Eyes"),
     Hair:opt("h",ST.hair,"Hairstyle",{none:"Shaved",buzz:"Buzz cut",topknot:"Top knot"})+col("hc",ST.hairCol,"Hair colour"),
     Clothes:opt("t",ST.top,"Top",{tee:"T-shirt",long:"Long sleeve",tank:"Tank top"})+col("tc",ST.cloth,"Top colour")+opt("b",ST.bottom,"Bottoms")+col("bc",ST.cloth,"Bottoms colour")+col("bt",ST.cloth,"Boots"),
-    Armour:`<p>Armour sets your silhouette and covers your face. Find it on derelicts or craft it at the workbench.</p>${dye("cloak","Cloak")}${dye("visor","Visor tint")}${dye("crest","Helm crest")}<p class="risk">${n} dye${n===1?"":"s"} found. Rarer dyes turn up on harder stations.</p>`,
+    Armour:`<p>Helmets, chest pieces, legs and accessories all show on your character. Find them on derelicts or craft them at the workbench. Dyes colour your cape and scarf, tint visors and lenses, and crest the helms that take one.</p>${dye("cloak","Cape and scarf dye")}${dye("visor","Visor tint")}${dye("crest","Helm crest")}<p class="risk">${n} dye${n===1?"":"s"} found. Rarer dyes turn up on harder stations.</p>`,
   }[wardTab];
   return `<section class="panel h-card"><div class="lo"><div class="preview" style="gap:12px;flex-wrap:wrap"><div style="text-align:center"><canvas id="h-prev2" width="24" height="32" aria-label="You, out of armour" style="width:96px;height:128px;image-rendering:pixelated"></canvas><div class="risk">Clothes</div></div><div style="text-align:center"><canvas id="h-prev" width="24" height="32" aria-label="You in your kit" style="width:96px;height:128px"></canvas><div class="risk">In your kit</div></div></div>
     <div class="eq"><div class="seg">${WARD_TAB.map(t=>`<button data-act="wtab:${t}" aria-pressed="${wardTab===t}">${t}</button>`).join("")}</div>${body}</div></div></section>`;
@@ -428,10 +428,10 @@ $("p-body").addEventListener("click",e=>{
   }
   renderPanel(); if(S&&S.mode==="ship") renderShipHud();
 });
-function refreshLook(){ if(inSquad()&&Net.ready) setReady(false); if(S&&S.mode==="ship"){ const r=kitResolved(), p=me(); if(p){ p.w1=strip(r.w1||r.w2); p.w2=null; p.act=1; p.armor=strip(r.armor); p.look={...profile.look}; } } if(inSquad()) squadPresence(); }
+function refreshLook(){ if(inSquad()&&Net.ready) setReady(false); if(S&&S.mode==="ship"){ const r=kitResolved(), p=me(); if(p){ p.w1=strip(r.w1||r.w2); p.w2=null; p.act=1; for(const k of ["head","armor","legs","acc"]) p[k]=strip(r[k]); p.look={...profile.look}; } } if(inSquad()) squadPresence(); }
 
 // ---------- scene changes ----------
-function shipLoadout(){ const r=kitResolved(); return {w1:strip(r.w1||r.w2),armor:strip(r.armor),pack:strip(r.pack),ammo:{},inv:[],look:{...profile.look}}; }
+function shipLoadout(){ const r=kitResolved(); return {w1:strip(r.w1||r.w2),head:strip(r.head),armor:strip(r.armor),legs:strip(r.legs),acc:strip(r.acc),pack:strip(r.pack),ammo:{},inv:[],look:{...profile.look}}; }
 function boardShipCrew(crew){
   const raidOver=S&&S.mode==="raid"; if(raidOver&&!Net.settled) settlePersonal();
   PID=crewKey();
