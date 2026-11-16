@@ -111,6 +111,7 @@ function hostSendLog(from){ for(let i=Math.max(1,from);i<=Net.n;i+=40) emit({t:"
 function onSquadMsg(m){
   const d=m.data; if(!d||typeof d!=="object") return; const fromKey=m.by||m.peer;
   if(d.t==="chat"){ if(!m.sameTab&&typeof d.m==="string") addChat(fromKey,d.m); return; }
+  if(d.t==="suggest"){ if(!m.sameTab&&World.loc(d.to)){ Net.suggest={k:fromKey,to:d.to,at:Date.now()}; if(Net.host) toast(`${nameOf(fromKey)} suggests a course to ${World.loc(d.to).name}. Open the star map to fly there.`); if(panelKind==="helm") renderPanel(); } return; }
   if(d.t==="ping"){ if(!m.sameTab&&Number.isFinite(d.x)&&Number.isFinite(d.y)) addPing(fromKey,d.x,d.y,String(d.kind),d.sc); return; }
   if(m.sameTab&&d.t!=="state") return;
   if(Net.host){

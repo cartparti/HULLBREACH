@@ -129,7 +129,12 @@ const TERM={
   airlock:outlined(24,26,g=>{ R(g,4,3,16,19,"#3a3732"); R(g,4,3,16,1,"#5a564e"); for(let k=0;k<16;k++){ R(g,4+k,3,1,1,((k>>1)%2)?"#9a7a22":"#15120b"); R(g,4+k,21,1,1,((k>>1)%2)?"#9a7a22":"#15120b"); }
     R(g,8,8,8,8,"#2a0806"); R(g,9,9,6,6,"#9a1e14"); R(g,9,9,6,1,"#d0402a"); R(g,7,18,3,1,"#5ad06a"); R(g,14,18,3,1,"#e04030"); R(g,10,22,4,4,"#2a2620"); }),
 };
-const TERM_NAME={helm:"Helm",rack:"Loadout rack",stash:"Stash locker",records:"Records terminal",board:"Contract board",airlock:"Airlock control"};
+TERM.navtable=outlined(48,26,g=>{ R(g,20,20,8,6,"#141a1c"); R(g,4,9,40,12,"#1e2628"); R(g,2,7,44,4,"#3a4448"); R(g,2,7,44,1,"#5a6a70"); R(g,6,8,36,2,"#0a3a40"); R(g,4,19,40,2,"#0e1214");
+  for(let k=0;k<6;k++) R(g,8+k*6,15,3,2,k%2?"#5ad0d0":"#2a6a70"); R(g,22,12,4,2,"#e8b048"); });
+const SEAT=outlined(24,24,g=>{ R(g,8,16,8,6,"#1a1e20"); R(g,5,10,14,7,"#3a3f42"); R(g,5,10,14,1,"#5a6266"); R(g,6,11,12,5,"#2a2f32"); });
+const SEAT_BACK={}; for(const [k,c] of Object.entries({pilot:"#7a2416",copilot:"#2a5a5a",nav:"#2a5a5a",eng:"#5a4a20"})) SEAT_BACK[k]=outlined(24,14,g=>{ R(g,5,1,14,11,"#2e3336"); R(g,5,1,14,2,c); R(g,7,4,10,6,"#3a3f42"); R(g,3,6,3,7,"#1e2224"); R(g,18,6,3,7,"#1e2224"); });
+const SEAT_NAME={pilot:"Pilot's seat",copilot:"Co-pilot's seat",nav:"Navigator's seat",eng:"Engineer's seat"};
+const TERM_NAME={navtable:"Star map table",helm:"Helm",rack:"Loadout rack",stash:"Stash locker",records:"Records terminal",board:"Contract board",airlock:"Airlock control"};
 
 // ---------- space backdrop (ship view) ----------
 const BD={};
@@ -366,7 +371,7 @@ function buildStatic(){
   }
   if(S.map==="ks9") drawRitual(g,33,29);
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const t=S.tiles[Sim.idx(S,x,y)]; if(t.t!=="terminal") continue;
-    const L={helm:[.3,.9,.9,3.2],board:[1,.7,.35,2.6],records:[1,.7,.3,2.2],airlock:[1,.2,.1,2.4],stash:[.3,1,.4,1.8],rack:[1,.75,.4,2]}[t.kind];
+    const L={navtable:[.3,.85,1,3.8],helm:[.3,.9,.9,3.2],board:[1,.7,.35,2.6],records:[1,.7,.3,2.2],airlock:[1,.2,.1,2.4],stash:[.3,1,.4,1.8],rack:[1,.75,.4,2]}[t.kind];
     if(L) SOURCES.push({kind:"term",x,y,bx:x*TS+12,by:y*TS+4,r:L[3],i:.7,col:[L[0],L[1],L[2]],tk:t.kind}); }
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const i=Sim.idx(S,x,y), t=S.tiles[i]; let c=null;
     if(t.t!=="wall"&&t.t!=="window"&&t.t!=="space") c=AMBC[Sim.roomName(x,y)]||AMBC._;
@@ -466,6 +471,7 @@ function processFx(){
         if(f.kind==="bars"||f.kind==="captive"){ flavorT.captive=now; shake=Math.max(shake,1.5); spawn(6,cpx(f.x),cpx(f.y),{col:["#8a8a80","#c9c0a8"],speed:30,life:.3,emit:true}); }
         if(f.kind==="arcade") spawn(8,cpx(f.x),f.y*TS-6,{col:["#e04030","#62cfe0","#e8b048"],speed:30,life:.4,emit:true});
         break;
+      case "sit": if(f.pid===PID&&typeof onSit==="function") setTimeout(()=>onSit(f.kind),0); break;
       case "terminal": if(f.pid===PID&&typeof onTerminal==="function") setTimeout(()=>onTerminal(f.kind),0); break;
       case "explode": spawn(46,cpx(f.x),cpx(f.y),{col:["#fff0b0","#ffb040","#ff6a20","#c02a10"],speed:150,life:.6,size:2,emit:true}); spawn(30,cpx(f.x),cpx(f.y),{col:["#2a2420","#3a3430","#1a1614"],speed:90,life:1.1,size:2});
         lightsT.push({x:f.x,y:f.y,r:7,i:2.2,c:[1,.7,.35],t:0,dur:.45}); rings.push({x:cpx(f.x),y:cpx(f.y),t:0,dur:.35}); shake=Math.max(shake,13); break;
@@ -506,6 +512,7 @@ function drawEnt(g,e,x,y,now){
   if(!isP&&atkT[e.id]&&now-atkT[e.id]<260) k="lunge";
   if(flashT[e.id]&&now-flashT[e.id]<110) k+="W";
   if(e.face&&e.face[0]) dirH[e.id]=e.face[0]; const left=(dirH[e.id]??1)<0;
+  if(isP&&S.mode==="ship"&&T(e.x,e.y).t==="seat"&&r&&Math.abs(r.x-e.x*TS)<1&&Math.abs(r.y-e.y*TS)<1) y+=3;
   g.fillStyle="rgba(0,0,0,.45)"; g.fillRect(x+6,y+21,12,2); g.fillRect(x+7,y+23,10,1);
   const spr=set[k];
   if(left){ g.save(); g.translate(x+24,y-8); g.scale(-1,1); g.drawImage(spr,0,0); g.restore(); } else g.drawImage(spr,x,y-8);
@@ -573,6 +580,8 @@ function render(now){
   // y-sorted props + characters
   const draws=[];
   for(let y=y0;y<=Math.min(S.H-1,y1+1);y++)for(let x=x0;x<=x1;x++){ const i=Sim.idx(S,x,y), t=S.tiles[i]; if(t.t==="prop"&&p.seen[i]) draws.push({y:y*TS,f:()=>drawProp(g,t,x*TS-cx,y*TS-cy,now)});
+    if(t.t==="seat"){ draws.push({y:y*TS-1,f:()=>g.drawImage(SEAT,x*TS-cx,y*TS-cy)}); draws.push({y:y*TS+1,f:()=>g.drawImage(SEAT_BACK[t.kind]||SEAT_BACK.nav,x*TS-cx,y*TS-cy+12)}); }
+    if(t.t==="terminal"&&t.kind==="navtable"&&T(x-1,y).t==="terminal"&&T(x-1,y).kind==="navtable") continue;
     if(t.t==="terminal") draws.push({y:y*TS,f:()=>{ const sp=TERM[t.kind], ox=x*TS-cx, oy=y*TS-cy; g.drawImage(sp,ox,oy+24-sp.height); if(t.kind==="helm"&&((now/400)|0)%2) R(g,ox+16,oy+5,1,1,"#e8ffff"); if(t.kind==="airlock"&&((now/700)|0)%2) R(g,ox+9,oy+7,6,1,"#ff8060"); }}); }
   for(const e of S.ents){ if(!e.alive) continue; const i=Sim.idx(S,e.x,e.y); if(!(VIS[i]||e.id===PID)) continue; const r=rp[e.id]; draws.push({y:r.y+.5,f:()=>drawEnt(g,e,Math.round(r.x)-cx,Math.round(r.y)-cy,now)}); }
   draws.sort((a,b)=>a.y-b.y).forEach(d=>d.f());
@@ -600,6 +609,10 @@ function render(now){
     else if(Lp.kind==="fire") glow(bx,by,22,`rgba(255,140,50,${.3*Lp.lit})`);
     else if(Lp.kind==="tank") glow(bx,by+10,14,`rgba(80,255,160,${.18*Lp.lit})`);
     else if(Lp.kind==="screen") glow(bx,by,10,"rgba(80,220,110,.16)");
+    else if(Lp.kind==="term"&&Lp.tk==="navtable"){ const ox=Lp.x*TS-cx, oy=Lp.y*TS-cy; if(T(Lp.x-1,Lp.y).kind==="navtable") continue;
+      const hx=ox+24, hy=oy-6; glow(hx,hy+8,30,"rgba(80,220,255,.16)"); g.fillStyle="rgba(90,208,208,.12)"; g.beginPath(); g.moveTo(ox+6,oy+9); g.lineTo(ox+42,oy+9); g.lineTo(ox+34,oy-16); g.lineTo(ox+14,oy-16); g.fill();
+      const a0=now/2400; World.LOCS.forEach((l,i)=>{ const a=a0+i*0.698, rx=14+(i%3)*2, px=hx+Math.cos(a)*rx, py=hy-2+Math.sin(a)*rx*.35-(i%3)*3; const col=l.type==="station"?"#76c2c4":l.type==="outpost"?"#c79a4a":"#e0482f"; R(g,Math.round(px),Math.round(py),2,2,col); });
+      R(g,hx-1,hy-3,3,3,"#e8f8ff"); }
     else if(Lp.kind==="term") glow(bx,by,12,`rgba(${Lp.col[0]*255|0},${Lp.col[1]*255|0},${Lp.col[2]*255|0},.22)`); }
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=Sim.idx(S,x,y), t=S.tiles[i]; if(!VIS[i]) continue; const ox=x*TS-cx, oy=y*TS-cy;
     if(t.t==="console") glow(ox+12,oy+13,12,S.power?"rgba(60,200,90,.25)":"rgba(220,40,20,.3)");
@@ -716,7 +729,7 @@ function renderPanels(){
 function describe(x,y){
   if(x<0||y<0||x>=S.W||y>=S.H) return "";
   const p=me(), i=Sim.idx(S,x,y); if(!p.seen[i]) return "Unexplored";
-  const t=S.tiles[i], names={floor:Sim.roomName(x,y),extract:"Shuttle pad",wall:"Bulkhead",space:"Open space",window:"Window",breach:"Hull breach",console:"Main power relay",door:"Door",prop:PROP_NAME[t.kind]};
+  const t=S.tiles[i], names={floor:Sim.roomName(x,y),extract:"Shuttle pad",wall:"Bulkhead",space:"Open space",window:"Window",breach:"Hull breach",console:"Main power relay",door:"Door",prop:PROP_NAME[t.kind],terminal:TERM_NAME[t.kind],seat:SEAT_NAME[t.kind]};
   let s=names[t.t]||""; if(t.t==="door") s=(t.vault?"Vault door":"Door")+(t.broken?" (wrecked)":t.open?" (open)":t.locked?" (maglocked)":" (closed)");
   if(t.t==="window"&&t.hp===1) s+=" (cracked)";
   let sub="";

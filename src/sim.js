@@ -63,10 +63,10 @@ const Sim = (() => {
     ship:{rows:[
       "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
       "~~~~~~~~~~~~##============##~~~~~~~~~~~~",
-      "~############..............###==###==##~",
-      "~#.K.jj.j.U.#St..t.N.t..t.c#.C...qV..G#~",
-      "~#..........#..............#..........#~",
-      "~#..........+......d.......+..nTTn....#~",
+      "~############.t.t..N.t.t.t.###==###==##~",
+      "~#.K.jj.j.U.#...3..1.2.4...#.C...qV..G#~",
+      "~#..........#u.............#..........#~",
+      "~#..........+u.....MM......+..nTTn....#~",
       "~#..........#.t..........t.#...nn...u.#~",
       "~#cc.......c#p............p#p.......u.#~",
       "~#####+############++###########+######~",
@@ -121,9 +121,10 @@ const Sim = (() => {
   // ---------- tile predicates ----------
   const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank",
     u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench"};
-  const TERMS={N:"helm",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock"};
-  const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||(t.t==="door"&&t.open);
-  const walk = t => t.t==="floor"||t.t==="extract"||(t.t==="door"&&t.open);
+  const TERMS={N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock"};
+  const SEATS={"1":"pilot","2":"copilot","3":"nav","4":"eng"};
+  const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||t.t==="seat"||(t.t==="door"&&t.open);
+  const walk = t => t.t==="floor"||t.t==="extract"||t.t==="seat"||(t.t==="door"&&t.open);
   const clear= t => !(t.t==="wall"||t.t==="console"||(t.t==="door"&&!t.open));
 
   const STARTER={weapon:"pistol",armor:"suit",pack:"sling",rounds:12,inv:[{kind:"bandage",name:"Bandage roll"},{kind:"bandage",name:"Bandage roll"}]};
@@ -146,7 +147,8 @@ const Sim = (() => {
         case "E": t={t:"extract"};break;
         case "c": case "B": case "t": case "l": case "r": case "f": case "g": case "S":
         case "u": case "T": case "n": case "q": case "V": case "G": case "w": case "s": case "x": case "I": case "z": case "j": case "p": case "d": case "y": case "U": t={t:"prop",kind:PROPS[c]};break;
-        case "N": case "K": case "Q": case "J": case "C": case "A": t={t:"terminal",kind:TERMS[c]};break;
+        case "N": case "M": case "K": case "Q": case "J": case "C": case "A": t={t:"terminal",kind:TERMS[c]};break;
+        case "1": case "2": case "3": case "4": t={t:"seat",kind:SEATS[c]};break;
         default: t={t:"floor"};
       }
       s.tiles.push(t); s.P.push(t.t==="space"||t.t==="wall"||t.t==="window"?0:FULL); s.wind.push(-1);
@@ -301,6 +303,7 @@ const Sim = (() => {
     if(t.t==="prop"){ say(s,{crate:"A sealed cargo crate. Too heavy to move.",bed:"A bunk, sheets stiff with old blood.",desk:"A desk buried in damp printouts.",locker:"A dented locker. Someone clawed at it from inside.",barrel:"A fuel drum. It sloshes.",brazier:"Someone lit a fire in here. Recently.",generator:"A backup generator, ticking as it cools.",tank:"A specimen tank. Something inside turns to watch you."}[t.kind]||"It's in the way.","info"); return false; }
     if(!walk(t)) return false;
     p.x=x; p.y=y;
+    if(t.t==="seat"){ p.face=[0,-1]; fx(s,{type:"sit",kind:t.kind,pid:p.id,x,y}); }
     if(s.fire[idx(s,x,y)]) say(s,"You step into the flames!","bad");
     const here=s.items.filter(i=>i.x===x&&i.y===y);
     if(here.length) say(s,`You see here: ${here.map(i=>i.name).join(", ")}. (G to pick up)`,"info");
@@ -389,6 +392,7 @@ const Sim = (() => {
   }
   function doInteract(s,p){
     for(const [dx,dy] of N4){ const q=s.ents.find(e=>e.kind==="player"&&e.alive&&e.downed&&e.x===p.x+dx&&e.y===p.y+dy); if(q){ face(p,dx,dy); return doRevive(s,p,q); } }
+    if(s.mode==="ship"&&tileAt(s,p.x,p.y).t==="seat"){ fx(s,{type:"terminal",kind:"navtable",pid:p.id}); return false; }
     for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="terminal"){ face(p,dx,dy); fx(s,{type:"terminal",kind:t.kind,pid:p.id}); return false; } }
     if(s.mode==="ship") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="prop"){ face(p,dx,dy); fx(s,{type:"flavor",kind:t.kind,pid:p.id,x:p.x+dx,y:p.y+dy}); return false; } }
     for(const [dx,dy] of N4){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="console"){

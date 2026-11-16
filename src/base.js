@@ -92,7 +92,7 @@ function onFlavor(kind){
 // ---------- ship HUD ----------
 function adjacentTerminal(){ const p=me(); for(const [dx,dy] of [[0,-1],[1,0],[-1,0],[0,1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="terminal") return t.kind; } return null; }
 function adjacentFixture(){ const p=me(); for(const [dx,dy] of [[0,-1],[1,0],[-1,0],[0,1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="prop"&&FLAVOR[t.kind]) return t.kind; } return null; }
-const TERM_HINT={helm:"Helm · steer the ship",rack:"Loadout rack · choose your kit",stash:"Stash locker · your gear",records:"Crew log · service history",board:"Job board · the crew's contracts",airlock:"Airlock · dock or board"};
+const TERM_HINT={navtable:"Star map · choose where to fly",helm:"Pilot console · choose where to fly",rack:"Loadout rack · choose your kit",stash:"Stash locker · your gear",records:"Crew log · service history",board:"Job board · the crew's contracts",airlock:"Airlock · dock or board"};
 function renderShipHud(){
   const L=here(), sh=ship(), sec=World.SECTORS.find(s=>s.id===L.sector), docked=L.type!=="derelict", cs=sh.contracts.length;
   $("s-ship").textContent=sh.name;
@@ -100,13 +100,13 @@ function renderShipHud(){
   $("s-loc").innerHTML=`<b>${L.name}</b><span>${sec.name} · ${docked?`<span class="dock">Docked</span>`:`<span class="warn">Holding beside a derelict</span>`}</span><span>${cs?`${cs} active contract${cs>1?"s":""}`:"No active contracts"}${World.siteContract(sh,L.id)?" · <span class=\"dock\">contract target</span>":""}</span>`;
   $("s-res").innerHTML=`<span>Credits</span><span style="color:var(--brass)">${profile.credits}</span><span>Fuel</span><span style="color:${sh.fuel<2?"var(--blood2)":"inherit"}">${sh.fuel}/${sh.fuelMax}</span><span>Day</span><span>${sh.day}</span><span>Crew</span><span>${inSquad()?Net.roster.length:1}/4${inSquad()?" · "+Net.code.toUpperCase():""}</span>`;
   $("s-mode").textContent=mode==="pc"?"Touch mode":"Mouse & keys";
-  const k=adjacentTerminal(), fx2=k?null:adjacentFixture(), hint=k?TERM_HINT[k]:fx2?PROP_NAME[fx2]:"";
+  const seat=Sim.tileAt(S,me().x,me().y).t==="seat", k=seat?"navtable":adjacentTerminal(), fx2=k?null:adjacentFixture(), hint=k?TERM_HINT[k]:fx2?PROP_NAME[fx2]:"";
   $("s-prompt").innerHTML=hint&&!warp?(mode==="pc"?`<span class="key">F</span>${hint}`:`Tap USE · ${hint}`):"";
 }
 
 // ---------- panels ----------
 const PANELS={
-  helm:{eye:"Bridge · helm",title:()=>"Plot a course",view:viewHelm},
+  helm:{eye:"Bridge · star map",title:()=>"Choose a destination",view:viewHelm},
   rack:{eye:"Armory",title:()=>"Loadout rack",view:viewLoadout},
   stash:{eye:"Ship hold",title:()=>"Stash locker",view:viewStash},
   records:{eye:"Crew quarters",title:()=>"Crew log",view:viewRecords},
@@ -115,7 +115,10 @@ const PANELS={
   airlock:{eye:"Airlock",title:()=>here().type==="derelict"?`Board ${here().name}`:here().name,view:viewAirlock},
   debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
 };
-function onTerminal(kind){ if(warp) return; openPanel(kind); }
+function onTerminal(kind){ if(warp) return; openPanel(kind==="navtable"?"helm":kind); }
+function onSit(kind){ const name={pilot:"pilot's seat",copilot:"co-pilot's seat",nav:"navigator's seat",eng:"engineer's seat"}[kind]||"seat";
+  toast(`You take the ${name}.${kind==="pilot"&&!isHost()?" The squad leader still has the controls.":""} Press ${mode==="pc"?"F":"USE"} for the star map.`);
+  if(typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>2000){ flavorCD=Date.now(); emit({t:"chat",m:`takes the ${name}`}); } }
 function openPanel(kind,sub){ panelKind=kind; panelSub=sub||null; stopTravel(); $("panel").hidden=false; renderPanel(); }
 function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S) renderShipHud(); }
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
@@ -130,6 +133,7 @@ function viewHelm(){
     return `<g class="node" data-act="sel:${l.id}" role="button" aria-label="${l.name}">${isSel?`<circle cx="${l.x}" cy="${Y(l.y)}" r="3.4" fill="none" stroke="#d9d2c0" stroke-width=".35"/>`:""}
       <circle cx="${l.x}" cy="${Y(l.y)}" r="${l.type==="derelict"?1.5:2}" fill="${col}" ${l.type==="derelict"?'stroke="#2a0806" stroke-width=".4"':""}/>
       ${isCur?`<path d="M${l.x-1.6} ${Y(l.y)-3.2} L${l.x+1.6} ${Y(l.y)-3.2} L${l.x} ${Y(l.y)-1.8} Z" fill="#9bc06a"/>`:""}
+      ${(typeof Net!=="undefined"&&Net.suggest&&Net.suggest.to===l.id&&Date.now()-Net.suggest.at<180000)?`<circle cx="${l.x}" cy="${Y(l.y)}" r="4.6" fill="none" stroke="${colorOf(Net.suggest.k)}" stroke-width=".45" stroke-dasharray="1 .8"/>`:""}
       ${target?`<text x="${l.x+2.4}" y="${Y(l.y)-1.6}" style="fill:#e8b048;font-size:3.4px">★</text>`:""}
       <text x="${l.x>70?l.x-2.6:l.x+2.6}" y="${Y(l.y)+1.2}" text-anchor="${l.x>70?"end":"start"}">${l.name}</text><circle cx="${l.x}" cy="${Y(l.y)}" r="4" fill="transparent"/></g>`; }).join("");
   const lanes=[]; for(const a of World.LOCS) for(const b of World.LOCS) if(a.id<b.id&&a.sector===b.sector) lanes.push(`<line x1="${a.x}" y1="${Y(a.y)}" x2="${b.x}" y2="${Y(b.y)}" stroke="#34504a" stroke-width=".25"/>`);
@@ -137,11 +141,13 @@ function viewHelm(){
   const secs=World.SECTORS.map(s=>`<circle cx="${s.x}" cy="${Y(s.y)}" r="21" fill="${s.color}" opacity=".05"/><text class="sec" x="${s.x-14}" y="${Math.max(5,Y(s.y)-16)}" style="fill:${s.color}">${s.name}</text>`).join("");
   const services=sel.type==="derelict"?"Derelict · boardable":[sel.npcs.map(n=>World.NPCS[n].role+": "+World.NPCS[n].name).join(" · "),sel.fuel?`Fuel ${sel.fuel} cr`:""].filter(Boolean).join(" · ");
   const canJump=cost>0&&sh.fuel>=cost;
-  return `<div class="galaxy"><div class="gmap"><svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid meet" aria-label="Star map">${secs}${lanes.join("")}${nodes}</svg></div>
+  const sug=typeof Net!=="undefined"&&Net.suggest&&Date.now()-Net.suggest.at<180000&&Net.suggest.to!==cur.id?Net.suggest:null;
+  const sugHTML=sug&&isHost()?`<div class="panel contract-row" style="grid-column:1/-1;border-color:${colorOf(sug.k)}"><div><b>${esc(nameOf(sug.k))} suggests ${World.loc(sug.to).name}</b><br><span>${World.travelCost(sh,sug.to)} fuel · ${World.SECTORS.find(s=>s.id===World.loc(sug.to).sector).name}</span></div><button class="plain" data-act="sel:${sug.to}">Show</button></div>`:"";
+  return `<div class="galaxy">${sugHTML}<div class="gmap"><svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid meet" aria-label="Star map">${secs}${lanes.join("")}${nodes}</svg></div>
     <div class="panel h-card"><div class="h-eyebrow">${sc.name}</div><h3>${sel.name}</h3><p>${sel.desc}</p>
       <div class="h-tags"><span>${sel.type}</span>${sh.contracts.some(c=>World.CONTRACTS[c].site===sel.id)?`<span class="hot">Contract target</span>`:""}</div>
       <div class="facts"><span>Services</span><span>${services}</span><span>Fuel aboard</span><span>${sh.fuel}/${sh.fuelMax}</span><span>Jump cost</span><span>${cost?cost+" fuel":"You are here"}</span><span>Travel time</span><span>${cost?cost+" day"+(cost>1?"s":""):"—"}</span></div>
-      ${cost?(isHost()?`<button class="deploy-btn" data-act="jump:${sel.id}" ${canJump?"":"disabled"}>${canJump?`Jump · ${cost} fuel`:"Not enough fuel"}</button>`:`<p class="risk">Only the squad leader flies the ship.</p>`):`<p class="risk good">Your ship is here.</p>`}
+      ${cost?(isHost()?`<button class="deploy-btn" data-act="jump:${sel.id}" ${canJump?"":"disabled"}>${canJump?`Jump · ${cost} fuel`:"Not enough fuel"}</button>`:`<button class="deploy-btn" data-act="suggest:${sel.id}">Suggest this course</button><p class="risk">The squad leader flies. Your suggestion shows up on their star map.</p>`):`<p class="risk good">Your ship is here.</p>`}
       ${sh.fuel<1&&cur.id!=="ninefold"?`<button class="plain" data-act="tow">Call a tug to Hangar Ninefold (free, 4 days)</button>`:""}
       <p class="risk">Jumps inside a sector cost 1 fuel. Crossing to another sector costs 3. Buy fuel when docked at stations and outposts.</p></div></div>`;
 }
@@ -272,6 +278,7 @@ $("p-body").addEventListener("click",e=>{
     case "back": panelSub=null; break;
     case "sel": if(panelKind==="helm") mapSel=x; else stashSel=stashSel===x?null:x; break;
     case "jump": { const res=worldAct({type:"travel",to:x}); if(res.ok){ if(inSquad()) emit({t:"warp"}); closePanel(); mapSel=null; warp={start:performance.now(),dur:2200,done:()=>{ toast(`Arrived at ${here().name}.`); renderShipHud(); }}; renderShipHud(); } break; }
+    case "suggest": { const L2=World.loc(x); if(!L2) break; emit({t:"suggest",to:x}); emit({t:"chat",m:`suggests a course to ${L2.name}`}); toast(`Suggested ${L2.name} to the squad leader.`); break; }
     case "tow": { const res=worldAct({type:"tow"}); if(res.ok){ closePanel(); warp={start:performance.now(),dur:2600,done:()=>renderShipHud()}; } break; }
     case "refuel": worldAct({type:"refuel"}); break;
     case "npc": panelSub="npc:"+x; break;
