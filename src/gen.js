@@ -8,7 +8,7 @@ const Gen = (() => {
   const TYPES = {
     medbay:   { name: "Medbay", w: 2 },
     crew:     { name: "Crew quarters", w: 3 },
-    security: { name: "Security office", w: 2 },
+    security: { name: "Security office", w: 1, max: 2 },
     captain:  { name: "Captain's cabin", w: 0, max: 1 },
     engineering: { name: "Engineering", w: 0, max: 1 },
     cargo:    { name: "Cargo hold", w: 3 },
@@ -145,30 +145,69 @@ const Gen = (() => {
     const edges = (m) => interior(m).filter(([x, y]) => (x === m.x0 + 1 || x === m.x1 - 1 || y === m.y0 + 1 || y === m.y1 - 1) && !isDoorAdj(x, y));
     const takeFrom = (arr) => arr.length ? arr.splice(Math.floor(R() * arr.length), 1)[0] : null;
     const putProps = (m, chars, n) => { const e = edges(m); for (let i = 0; i < n; i++) { const p = takeFrom(e); if (!p) break; G[p[1]][p[0]] = pick(chars); } };
+    // ---- furniture that sits where it should ----
+    const nearDoor = (x, y) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (Math.abs(dx) + Math.abs(dy) <= 2 && G[y + dy] && "+L".includes(G[y + dy][x + dx])) return true; return false; };
+    const free = (x, y) => G[y] && G[y][x] === "." && !nearDoor(x, y) && !loot.some((l) => l.x === x && l.y === y) && !husks.some((h) => h[0] === x && h[1] === y);
+    // along the back (top) wall, left to right, with an optional gap between pieces
+    const backRow = (m, chars, n, gap = 0, from = "left") => { let xs = []; for (let x = m.x0 + 1; x < m.x1; x++) xs.push(x); if (from === "right") xs.reverse(); if (from === "mid") { const c = (m.x0 + m.x1) >> 1; xs.sort((a, b) => Math.abs(a - c) - Math.abs(b - c)); }
+      let k = 0, skip = 0; for (const x of xs) { if (k >= n) break; if (skip) { skip--; continue; } if (free(x, m.y0 + 1)) { G[m.y0 + 1][x] = chars[k % chars.length]; k++; skip = gap; } } return k; };
+    const sideCol = (m, chars, n, side = "left") => { const x = side === "left" ? m.x0 + 1 : m.x1 - 1; let k = 0; for (let y = m.y0 + 2; y < m.y1 && k < n; y++) if (free(x, y)) { G[y][x] = chars[k % chars.length]; k++; } return k; };
+    // packed into a corner: nearest tiles to that corner first
+    const corner = (m, chars, n, which) => { const cx = which.includes("r") ? m.x1 - 1 : m.x0 + 1, cy = which.includes("b") ? m.y1 - 1 : m.y0 + 1;
+      const t = interior(m).filter(([x, y]) => free(x, y)).sort((a, b) => (Math.abs(a[0] - cx) + Math.abs(a[1] - cy)) - (Math.abs(b[0] - cx) + Math.abs(b[1] - cy)));
+      for (let i = 0; i < n && i < t.length; i++) G[t[i][1]][t[i][0]] = pick(chars); };
+    // a small arrangement in the middle, with a free ring around it so nothing gets walled off
+    const centre = (m, pat) => { const w = pat[0].length, h = pat.length, iw = m.x1 - m.x0 - 1, ih = m.y1 - m.y0 - 1; if (iw < w + 2 || ih < h + 3) return false;
+      const x0 = m.x0 + 1 + ((iw - w) >> 1), y0 = m.y0 + 2 + ((ih - 1 - h) >> 1);
+      for (let y = y0 - 1; y <= y0 + h; y++) for (let x = x0 - 1; x <= x0 + w; x++) if (G[y][x] !== "." || ((y >= y0 && y < y0 + h && x >= x0 && x < x0 + w) && !free(x, y) && pat[y - y0][x - x0] !== ".")) return false;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (pat[y][x] !== ".") G[y0 + y][x0 + x] = pat[y][x]; return true; };
+    // desks against the back wall with a chair pulled up in front
+    const desks = (m, n, desk = "t") => { let k = 0; for (let x = m.x0 + 2; x < m.x1 - 1 && k < n; x += 3) if (free(x, m.y0 + 1) && free(x, m.y0 + 2)) { G[m.y0 + 1][x] = desk; G[m.y0 + 2][x] = "n"; k++; } return k; };
+    // rows of stock with walkways between them (a free ring is kept at the walls)
+    const aisles = (m, chars, step = 3) => { for (let y = m.y0 + 3; y < m.y1 - 1; y += step) for (let x = m.x0 + 2; x < m.x1 - 1; x++) if (free(x, y) && free(x, y - 1) && free(x, y + 1) && (x - m.x0) % 6 !== 0) G[y][x] = pick(chars); };
+    const bottomBunks = (m, n) => { let k = 0; for (let x = m.x0 + 1; x < m.x1 && k < n; x += 2) if (free(x, m.y1 - 1) && free(x, m.y1 - 2)) { G[m.y1 - 1][x] = "B"; G[m.y1 - 2][x] = "y"; k++; } return k; };
+    const bunks = (m, n) => { let k = 0; for (let x = m.x0 + 1; x < m.x1 && k < n; x += 2) if (free(x, m.y0 + 1) && free(x, m.y0 + 2)) { G[m.y0 + 1][x] = "B"; G[m.y0 + 2][x] = "y"; k++; } return k; };
     const freeTile = (m) => { const a = interior(m).filter(([x, y]) => !loot.some((l) => l.x === x && l.y === y) && !husks.some((h) => h[0] === x && h[1] === y)); return takeFrom(a); };
     const addLoot = (m, cat, n, t = tier) => { for (let i = 0; i < n; i++) { const p = freeTile(m); if (p) loot.push({ x: p[0], y: p[1], item: Items.roll(R, t, cat) }); } };
     const addHusks = (m, n) => { for (let i = 0; i < n; i++) { const p = freeTile(m); if (p) husks.push(p); } };
     // docking bay: spawn, shuttle pad, crates
     G[spawn[1]][spawn[0]] = "@";
     for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) G[dock.y0 + 2 + dy][2 + dx] = "E";
-    putProps(dock, ["c"], ri(2, 4));
+    corner(dock, ["c", "%"], ri(2, 3), "tr"); corner(dock, ["r", "8"], ri(1, 2), "br");
     addLoot(dock, "med", 1); addLoot(dock, "ammo", 1);
     for (const m of meta) {
       const a = m.area, k = Math.max(1, Math.round(a / 14));
       switch (m.type) {
-        case "medbay": putProps(m, ["B", "B", "S"], k + 1); addLoot(m, "med", ri(2, 3)); break;
-        case "crew": putProps(m, ["B", "l", "l", "B"], k + 2); addLoot(m, "val", ri(1, 2)); addLoot(m, "any", 1); break;
-        case "security": putProps(m, ["t", "l", "l"], k + 1); addLoot(m, "ammo", ri(1, 2)); addLoot(m, ch(.6) ? "weapon" : "throw", 1); break;
-        case "captain": putProps(m, ["t", "B", "f"], k); addLoot(m, "val", ri(1, 2), tier + 1); break;
-        case "engineering": putProps(m, ["g", "g", "r"], k + 1); addLoot(m, "mat", ri(2, 3)); break;
-        case "cargo": putProps(m, ["c", "c", "c", "r"], k + 3); addLoot(m, "any", ri(2, 3)); addLoot(m, "mat", 1); if (o.fireStart && !fires.length) { const p = freeTile(m); if (p) fires.push(p); } break;
-        case "lab": putProps(m, ["S", "S", "t"], k + 1); addLoot(m, "val", 1); addLoot(m, ch(.5) ? "med" : "dye", 1); break;
-        case "fuel": putProps(m, ["r", "r", "r", "c"], k + 3); addLoot(m, "mat", 1); addLoot(m, "ammo", 1); break;
-        case "armory": putProps(m, ["l", "l", "c"], k + 1); addLoot(m, "weapon", 1, tier + (ch(.3) ? 1 : 0)); addLoot(m, "ammo", ri(2, 3)); addLoot(m, ch(.5) ? "throw" : "armor", 1); break;
-        case "shrine": putProps(m, ["f"], 4); decals.push({ type: "ritual", x: (m.x0 + m.x1 >> 1) - 1, y: (m.y0 + m.y1 >> 1) - 1 }); addLoot(m, "val", 1, tier + 1); if (ch(.4)) addLoot(m, "dye", 1, tier + 1); break;
-        case "mess": putProps(m, ["t", "t", "c"], k + 1); addLoot(m, "med", 1); addLoot(m, "any", 1); break;
-        case "workshop": putProps(m, ["t", "c", "g"], k + 1); addLoot(m, "mat", ri(2, 4)); addLoot(m, ch(.5) ? "pack" : "throw", 1); break;
-        case "vault": putProps(m, ["c"], 2); { const p = freeTile(m); if (p) loot.push({ x: p[0], y: p[1], item: { d: "blackbox", r: 0 } }); } addLoot(m, "val", ri(2, 4), tier + 1); if (ch(.5)) addLoot(m, ch(.5) ? "armor" : "pack", 1, tier + 1); break;
+        case "medbay": backRow(m, ["!", "!", "S"], 2 + k, 0); centre(m, ["i"]) || corner(m, ["i"], 1, "br"); if (m.x1 - m.x0 > 6) sideCol(m, ["5"], 1, "right"); addLoot(m, "med", ri(2, 3)); break;
+        case "crew": bunks(m, 2 + k); corner(m, ["l"], 2, "br"); addLoot(m, "val", ri(1, 2)); addLoot(m, "any", 1); break;
+        case "security": desks(m, 1 + (k > 1 ? 1 : 0)); backRow(m, ["l"], 2 + k, 0, "right"); corner(m, ["0"], 1, "bl"); addLoot(m, "ammo", ri(1, 2)); addLoot(m, ch(.6) ? "weapon" : "throw", 1); break;
+        case "captain": desks(m, 1); backRow(m, ["$"], 2, 0, "right"); corner(m, ["B"], 1, "bl"); corner(m, ["f"], 1, "br"); addLoot(m, "val", ri(1, 2), tier + 1); break;
+        case "engineering": backRow(m, ["D", "9", "D", "g"], 3 + k, 0); corner(m, ["r"], 2, "bl"); sideCol(m, ["g"], 1, "right"); addLoot(m, "mat", ri(2, 3)); break;
+        case "cargo": backRow(m, ["%", "%", "c"], 2 + k, 1); corner(m, ["c", "c", "%"], 2 + k, "bl"); corner(m, ["c", "r"], 2, "br"); if (ch(.4)) corner(m, ["^"], 1, "tr"); addLoot(m, "any", ri(2, 3)); addLoot(m, "mat", 1); if (o.fireStart && !fires.length) { const p = freeTile(m); if (p) fires.push(p); } break;
+        case "lab": backRow(m, ["S", "S", "5"], 2 + k, 1); centre(m, ["ti"]) || desks(m, 1); addLoot(m, "val", 1); addLoot(m, ch(.5) ? "med" : "dye", 1); break;
+        case "fuel": corner(m, ["r"], 3 + k, "tl"); corner(m, ["r", "r", "8"], 2 + k, "br"); backRow(m, ["9"], 1, 0, "right"); addLoot(m, "mat", 1); addLoot(m, "ammo", 1); break;
+        case "armory": backRow(m, ["j", "l", "j", "l"], 3 + k, 0); corner(m, ["0"], 2, "br"); addLoot(m, "weapon", 1, tier + (ch(.3) ? 1 : 0)); addLoot(m, "ammo", ri(2, 3)); addLoot(m, ch(.5) ? "throw" : "armor", 1); break;
+        case "shrine": { const c = (m.x0 + m.x1) >> 1; if (free(c, m.y0 + 1)) { G[m.y0 + 1][c] = "6"; if (free(c - 1, m.y0 + 1)) G[m.y0 + 1][c - 1] = "f"; if (free(c + 1, m.y0 + 1)) G[m.y0 + 1][c + 1] = "f"; }
+          centre(m, ["7.7", "...", "7.7"]) || centre(m, ["7.7"]); decals.push({ type: "ritual", x: c - 1, y: m.y1 - 3 }); addLoot(m, "val", 1, tier + 1); if (ch(.4)) addLoot(m, "dye", 1, tier + 1); break; }
+        case "mess": backRow(m, ["q", "V", "s"], 2 + (k > 1 ? 1 : 0), 0, "right"); centre(m, ["nnn", "TTT", "nnn"]) || centre(m, ["nn", "TT", "nn"]) || centre(m, ["T"]); addLoot(m, "med", 1); addLoot(m, "any", 1); break;
+        case "workshop": backRow(m, ["U", "D", "U"], 2 + k, 1); corner(m, ["c", "%"], 2, "br"); if (ch(.5)) corner(m, ["^"], 1, "bl"); addLoot(m, "mat", ri(2, 4)); addLoot(m, ch(.5) ? "pack" : "throw", 1); break;
+        case "vault": corner(m, ["c", "$"], 2, "tl"); corner(m, ["c"], 1, "tr"); { const p = freeTile(m); if (p) loot.push({ x: p[0], y: p[1], item: { d: "blackbox", r: 0 } }); } addLoot(m, "val", ri(2, 4), tier + 1); if (ch(.5)) addLoot(m, ch(.5) ? "armor" : "pack", 1, tier + 1); break;
+      }
+      const big = a >= 30, huge = a >= 56;
+      switch (m.type) {
+        case "medbay": if (big) { sideCol(m, ["!", "5"], 2, "left"); centre(m, ["i.i"]); } break;
+        case "crew": if (big) bottomBunks(m, 2 + k); break;
+        case "security": if (big) { centre(m, ["nnn", "TTT", "nnn"]) || centre(m, ["T", "n"]); sideCol(m, ["l"], huge ? 3 : 2, "left"); } break;
+        case "captain": centre(m, ["uTu"]) || centre(m, ["T"]); sideCol(m, ["$"], 1, "right"); break;
+        case "engineering": if (big) centre(m, ["9(9"]) || centre(m, ["("]); sideCol(m, ["D", "g"], huge ? 3 : 2, "left"); break;
+        case "cargo": if (big) aisles(m, ["c", "c", "%", "%", "r"]); break;
+        case "lab": if (big) { sideCol(m, ["S", "!"], 2, "right"); centre(m, ["S.i.S"]) || centre(m, ["S.S"]); } break;
+        case "fuel": if (big) aisles(m, ["r", "r", "r", "8"], 3); break;
+        case "armory": if (big) { centre(m, ["0.0"]) || centre(m, ["0"]); sideCol(m, ["j", "l"], 2, "left"); } break;
+        case "shrine": sideCol(m, ["f"], 1, "left"); sideCol(m, ["f"], 1, "right"); if (huge) centre(m, ["7.7", "...", "7.7", "...", "7.7"]); break;
+        case "mess": if (huge) centre(m, ["nnn.nnn", "TTT.TTT", "nnn.nnn"]); sideCol(m, ["p"], 1, "left"); break;
+        case "workshop": if (big) { centre(m, ["^"]); sideCol(m, ["U", "D"], 2, "left"); } break;
+        case "vault": backRow(m, ["$", "c", "$"], 3, 0, "mid"); break;
       }
       if (m.type === "engineering") { const e = edges(m), p = takeFrom(e); if (p) G[p[1]][p[0]] = "P"; }
       if (m.type !== "vault" && m.type !== "dock") addHusks(m, R() < .35 + tier * .12 ? ri(1, Math.max(1, Math.round(a / 22))) : 0);
@@ -187,8 +226,10 @@ const Gen = (() => {
     let seen = reach();
     for (const l of loot.slice()) if (!seen.has(l.y * W + l.x)) {
       const m = meta.find((q) => l.x > q.x0 && l.x < q.x1 && l.y > q.y0 && l.y < q.y1);
-      if (m) for (let y = m.y0 + 1; y < m.y1; y++) for (let x = m.x0 + 1; x < m.x1; x++) if ("cBtlrfgS".includes(G[y][x])) G[y][x] = ".";
-      seen = reach(); if (!seen.has(l.y * W + l.x)) loot.splice(loot.indexOf(l), 1);
+      // open a path by clearing the nearest props first, widening until it's reachable
+      const PR = "cBtlrfgSuTnqVGwsxjpdyUe!iD%56789 0$;*(^";
+      for (let r = 1; r <= 6 && m && !seen.has(l.y * W + l.x); r++) { for (let y = Math.max(m.y0 + 1, l.y - r); y <= Math.min(m.y1 - 1, l.y + r); y++) for (let x = Math.max(m.x0 + 1, l.x - r); x <= Math.min(m.x1 - 1, l.x + r); x++) if (Math.abs(x - l.x) + Math.abs(y - l.y) <= r && PR.includes(G[y][x])) G[y][x] = "."; seen = reach(); }
+      if (!seen.has(l.y * W + l.x)) loot.splice(loot.indexOf(l), 1);
     }
     for (const h of husks.slice()) if (!seen.has(h[1] * W + h[0])) husks.splice(husks.indexOf(h), 1);
     return { rows: G.map((r) => r.join("")), rooms, spawn, loot, husks, decals, fires, size: [W, H] };

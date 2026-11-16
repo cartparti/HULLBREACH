@@ -11,7 +11,7 @@ const frame=document.createElement("canvas"), fctx=frame.getContext("2d");
 const lm=document.createElement("canvas"), lctx=lm.getContext("2d");
 const staticLayer=document.createElement("canvas");
 let fireContrib=[], rings=[], arcs=[], throwMode=null;
-let staticKey="", SOURCES=[], srcContrib=[], FLASH=null, AMB=null, view={dpr:1,scale:3,fw:0,fh:0};
+let EMIT=[], LUMV=null, staticKey="", SOURCES=[], srcContrib=[], FLASH=null, AMB=null, view={dpr:1,scale:3,fw:0,fh:0};
 let camX=0,camY=0,camInit=false, rp={}, flashT={}, atkT={}, dirH={}, parts=[], tracers=[], slashes=[], lightsT=[];
 let shake=0, hurtFlash=0, powerFlicker=0, hover=null, mouse=null, target=null, travel=null, lastT=performance.now();
 let vignette=null, grain=null, scan=null, conduit=null, conduitPat=null;
@@ -325,7 +325,43 @@ Object.assign(PROP,{
   workbench:outlined(24,22,g=>{ R(g,1,6,22,6,"#4a3a28"); R(g,1,6,22,1,"#66513a"); R(g,4,7,6,1,"#8a8a80"); R(g,12,7,2,3,"#a32a1d"); R(g,16,8,5,2,"#3a3c38"); R(g,2,12,2,10,"#2a2018"); R(g,20,12,2,10,"#2a2018"); R(g,2,17,20,2,"#33281c"); R(g,6,15,4,2,"#9a7a22"); }),
   captive:cvs(24,24),
 });
-const PROP_NAME={crate:"Cargo crate",bed:"Bunk",desk:"Console desk",locker:"Locker",barrel:"Fuel drum",brazier:"Brazier",generator:"Generator",tank:"Specimen tank",couch:"Couch",table:"Mess table",chair:"Chair",coffee:"Coffee machine",vending:"Vending machine",arcade:"Arcade cabinet",toilet:"Toilet",sink:"Sink and mirror",shower:"Shower",bars:"Brig bars",captive:"Gerald",gunrack:"Weapon rack",plant:"Plant",captchair:"Captain's chair",footlocker:"Footlocker",workbench:"Workbench"};
+// ---------- machinery and furniture added for ships and stations ----------
+Object.assign(PROP,{
+  cogitator:outlined(24,34,g=>{ R(g,2,4,20,28,"#24262a"); R(g,2,4,20,2,"#3a3e44"); R(g,2,4,1,28,"#3a3e44"); R(g,21,6,1,26,"#121416"); R(g,3,2,18,3,"#5a4a22"); R(g,3,2,18,.5,"#a07e38"); skull(g,10,1,"#c8bca0","#1a1408");
+    for(let k=0;k<3;k++){ R(g,4,8+k*6,16,4,"#06120a"); R(g,4,8+k*6,16,.5,"#1a2a1e"); for(let j=0;j<4;j++) R(g,5,8.5+k*6+j,4+((k*7+j*5)%9),.5,j%2?"#3f8a52":"#6ad07a"); }
+    for(let k=0;k<5;k++) hp(g,5+k*3,27,k%2?"#e04030":"#e8b048"); R(g,3,29,18,1,"#a07e38"); R(g,4,31,2,1,"#141414"); R(g,18,31,2,1,"#141414"); for(const yy of [8,14,20]) R(g,20,yy,1,3,"#5a4a22"); }),
+  medcab:outlined(24,30,g=>{ R(g,3,4,18,24,"#8a9094"); R(g,3,4,18,1,"#b8c0c4"); R(g,3,4,1,24,"#b0b8bc"); R(g,20,5,1,23,"#4a5054"); R(g,5,7,6,14,"#1a2426"); R(g,13,7,6,14,"#1a2426"); R(g,11.5,7,1,14,"#6a7074");
+    for(const [bx,by,c] of [[6,9,"#a83a2a"],[8,9,"#e8e0c0"],[14,9,"#4a8a5a"],[16,9,"#e8e0c0"],[6,15,"#e8b048"],[15,15,"#a83a2a"],[17,15,"#c8c8c0"]]){ R(g,bx,by,1.5,3,c); hp(g,bx,by,"#fff"); }
+    R(g,5,13,6,.5,"#3a4446"); R(g,13,13,6,.5,"#3a4446"); R(g,10,22,4,4,"#e8e8e0"); R(g,11.5,22.5,1,3,"#c02a1a"); R(g,10.5,23.5,3,1,"#c02a1a"); hp(g,5.5,7.5,"rgba(255,255,255,.5)"); }),
+  surgery:outlined(24,22,g=>{ R(g,10,14,4,7,"#3a3e40"); R(g,6,19,12,2,"#2a2e30"); R(g,2,8,20,6,"#5a6266"); R(g,2,8,20,1,"#8a9296"); R(g,3,6,18,3,"#c8ccc4"); R(g,3,6,18,.5,"#f0f2ea"); R(g,4,6,4,3,"#e8eae0");
+    R(g,12,7,5,1.5,"#7a1a12"); hp(g,14,8.5,"#5a0e0a"); hp(g,9,9,"#5a0e0a"); R(g,2,13,20,1,"#2a2e30"); R(g,20,2,1,6,"#4a4e50"); R(g,17,1,5,2,"#3a3e40"); R(g,18,3,3,.5,"#fff4c0"); }),
+  pipes:outlined(24,34,g=>{ for(const [x,c] of [[4,"#4a4438"],[9,"#3a4448"],[15,"#4a3a2a"]]){ R(g,x,0,4,32,c); R(g,x,0,1,32,shade(c,1.4)); R(g,x+3,0,1,32,shade(c,.6)); for(let y=4;y<32;y+=8){ R(g,x-.5,y,5,1.5,shade(c,.75)); R(g,x-.5,y,5,.5,shade(c,1.3)); } }
+    disc(g,11,14,3,"#8a1a12"); disc(g,11,14,2,"#5a0e0a"); R(g,10.5,11,1,6,"#b02a1c"); R(g,8,13.5,6,1,"#b02a1c"); disc(g,18,22,2,"#a07e38"); disc(g,18,22,1.4,"#1a1810"); R(g,18,21,.5,1.2,"#e04030"); hp(g,17,21,"#f0e0b0"); R(g,20,8,3,2,"#2a2a26"); hp(g,21,8.5,"#5ad06a"); }),
+  pallet:outlined(24,26,g=>{ R(g,1,21,22,4,"#5a3a20"); for(const x of [1,10,19]) R(g,x,22,4,3,"#3a2414"); R(g,1,21,22,.5,"#7a5030");
+    R(g,2,9,10,12,"#46412f"); R(g,2,9,10,2,"#5f583f"); R(g,12,11,10,10,"#3e4a32"); R(g,12,11,10,2,"#56603c"); R(g,4,1,14,9,"#4a4430"); R(g,4,1,14,2,"#6a6040");
+    for(const [x,y,w,h] of [[6,1,1,20],[16,1,1,20]]) R(g,x,y,w,h,"rgba(20,16,10,.8)"); R(g,2,15,20,1,"rgba(20,16,10,.8)"); R(g,13,15,6,2,"#c9a24a"); R(g,4,5,5,1,"#d8d0bc"); R(g,4,6.5,3,.5,"#d8d0bc"); }),
+  stasis:outlined(24,36,g=>{ R(g,3,2,18,32,"#2a2e32"); R(g,3,2,18,2,"#4a5054"); R(g,4,0,16,3,"#3a4044"); R(g,6,5,12,24,"#0a2a2e"); R(g,7,6,10,22,"#1a5a5e"); R(g,7,6,3,22,"#3a8a8a");
+    R(g,10,8,4,4,"#0e3a3e"); R(g,9,12,6,9,"#0e3a3e"); R(g,10,21,1.5,6,"#0e3a3e"); R(g,12.5,21,1.5,6,"#0e3a3e"); for(let y=7;y<28;y+=3) hp(g,8+(y%5),y,"#c8ffff"); R(g,6,30,12,2,"#121618"); R(g,8,30.5,2,1,"#5ad0d0"); R(g,14,30.5,2,1,"#e8b048"); }),
+  altar:outlined(24,26,g=>{ R(g,2,12,20,13,"#4a4440"); R(g,2,12,20,1,"#6a645c"); R(g,2,23,20,2,"#2a2622"); R(g,1,9,22,4,"#6a1812"); R(g,1,9,22,1,"#8a2a1c"); R(g,10,13,4,10,"#6a1812"); R(g,10,13,4,.5,"#c9a24a"); R(g,10,22.5,4,.5,"#c9a24a");
+    skull(g,9.5,4,"#d8cdb4","#1a1410"); R(g,9,8,6,1,"#3a3430"); for(const cx of [4,7,17,20]){ R(g,cx,4,1.5,5,"#e8dcc0"); hp(g,cx+.5,3,"#ffd060"); hp(g,cx+.5,2.5,"#fff4c0"); } for(let k=0;k<4;k++) R(g,4+k*5,15,2,6,"#3a3430"); }),
+  pew:outlined(24,20,g=>{ R(g,1,4,22,7,"#4a3020"); R(g,1,4,22,1,"#6a4a30"); for(let k=0;k<5;k++) R(g,2+k*4.5,5,.5,6,"#3a2414"); R(g,1,11,22,4,"#5a3a24"); R(g,1,11,22,1,"#7a5434"); R(g,2,15,2,4,"#2a1a10"); R(g,20,15,2,4,"#2a1a10"); R(g,1,3,2,9,"#3a2414"); R(g,21,3,2,9,"#3a2414"); }),
+  o2rack:outlined(24,30,g=>{ R(g,2,26,20,3,"#2a2e30"); R(g,2,8,20,2,"#3a3e40"); for(const [x,c] of [[3,"#2a4a6a"],[9,"#e0e0d8"],[15,"#2a4a6a"]]){ R(g,x,3,5,23,c); R(g,x,3,1.5,23,shade(c,1.3)); R(g,x+4,3,1,23,shade(c,.6)); R(g,x+1.5,0,2,3,"#8a8a80"); R(g,x+1,1,3,.5,"#c8c8c0"); R(g,x,14,5,1,"#e8b048"); } }),
+  pump:outlined(24,26,g=>{ R(g,2,10,20,15,"#3a3e36"); R(g,2,10,20,1,"#5a5e54"); R(g,2,10,1,15,"#5a5e54"); for(let k=0;k<20;k++) R(g,2+k,22,1,2,((k>>1)%2)?"#9a7a22":"#121008"); disc(g,8,13,5,"#2a2c28"); disc(g,8,13,4,"#4a4e46"); disc(g,8,13,1,"#8a8a80");
+    for(let a=0;a<6;a++) R(g,8+Math.cos(a*1.047)*3-.25,13+Math.sin(a*1.047)*3-.25,.5,.5,"#1a1c18"); R(g,15,2,3,10,"#5a5e54"); R(g,15,2,1,10,"#8a8e84"); R(g,19,4,2,8,"#4a4e46"); R(g,14,0,5,3,"#2a2c28"); R(g,16,16,4,3,"#121410"); hp(g,17,17,"#5ad06a"); }),
+  ammocrate:outlined(24,20,g=>{ R(g,2,6,20,13,"#3e4a2c"); R(g,2,6,20,1,"#56603c"); R(g,2,6,1,13,"#56603c"); R(g,21,7,1,12,"#262e1a"); R(g,3,2,18,5,"#2a3220"); R(g,3,2,18,.5,"#4a5434");
+    for(let k=0;k<7;k++){ R(g,4.5+k*2.3,3,1.5,3,"#c9a24a"); hp(g,4.5+k*2.3,3,"#f0d890"); } R(g,6,11,12,4,"#2e3820"); R(g,7,12,2,2,"#d8d0bc"); R(g,10,12,2,2,"#d8d0bc"); R(g,13,12,4,.5,"#d8d0bc"); R(g,13,13.5,3,.5,"#d8d0bc"); R(g,2,17,20,2,"#1e2414"); }),
+  shelf:outlined(24,32,g=>{ R(g,2,2,20,29,"#3a2a1c"); R(g,2,2,20,1,"#5a4430"); for(let k=0;k<4;k++){ const y=4+k*7; R(g,3,y,18,6,"#1a120c"); R(g,2,y+6,20,1,"#4a3424");
+      for(let j=0;j<8;j++){ const v=hh(j,k,9); if(v%5===0){ R(g,3.5+j*2.2,y+3,2,3,"#d8cdb4"); R(g,3.5+j*2.2,y+3,2,.5,"#f0e8d4"); } else { const c=["#6a1a12","#2a3a5a","#4a5a2a","#5a4a20","#3a2a3a"][v%5]; R(g,3.5+j*2.2,y+1+(v%2),1.8,5-(v%2),c); hp(g,3.5+j*2.2,y+2+(v%2),"#c9a24a"); } } } }),
+  cot:outlined(24,16,g=>{ R(g,2,4,20,7,"#4a5048"); R(g,2,4,20,1,"#6a7066"); R(g,3,3,6,4,"#8a8a80"); R(g,10,5,11,5,"#3a4038"); for(let k=0;k<4;k++) R(g,11+k*3,5,.5,5,"#2a3028"); R(g,2,11,20,1,"#2a2e2a"); R(g,3,12,1,3,"#5a5a54"); R(g,20,12,1,3,"#5a5a54"); }),
+  drive:outlined(24,40,g=>{ R(g,3,6,18,32,"#2a2e32"); R(g,3,6,18,2,"#4a5056"); R(g,3,6,2,32,"#3e444a"); R(g,19,8,2,30,"#16191c"); for(let k=0;k<4;k++){ const y=11+k*6; R(g,5,y,14,3,"#0a1a2a"); R(g,6,y+1,12,1,"#3a8ad0"); R(g,6,y+1,4,.5,"#a8e0ff"); }
+    R(g,6,2,12,5,"#3a3e42"); R(g,6,2,12,.5,"#6a7076"); R(g,8,0,8,3,"#4a4e52"); for(let k=0;k<5;k++) hp(g,5+k*3.5,36,"#e8b048"); R(g,3,36.5,18,1.5,"#121416"); R(g,0,20,3,3,"#4a4438"); R(g,21,26,3,3,"#4a4438"); }),
+  reactor:outlined(24,40,g=>{ R(g,2,33,20,6,"#2a2a24"); for(let k=0;k<20;k++) R(g,2+k,35,1,2,((k>>1)%2)?"#9a7a22":"#121008"); R(g,5,6,14,28,"#33383c"); R(g,5,6,2,28,"#4e555a"); R(g,17,6,2,28,"#1a1d20");
+    R(g,8,10,8,18,"#062a2e"); R(g,9,11,6,16,"#2ad0d0"); R(g,10,11,2,16,"#a8ffff"); R(g,9,11,6,1,"#e8ffff"); for(let y=13;y<27;y+=3) R(g,8,y,8,.5,"#0a3a3e"); R(g,4,2,16,5,"#2a2e32"); R(g,4,2,16,.5,"#5a6268"); R(g,7,0,10,3,"#3a4044");
+    R(g,0,14,5,2,"#4a4438"); R(g,19,20,5,2,"#4a4438"); R(g,0,14,5,.5,"#7a705a"); R(g,19,20,5,.5,"#7a705a"); }),
+  loader:outlined(24,36,g=>{ R(g,5,28,5,7,"#7a5e1a"); R(g,14,28,5,7,"#7a5e1a"); R(g,4,33,7,2,"#2a2a24"); R(g,13,33,7,2,"#2a2a24"); R(g,6,12,12,16,"#9a7a22"); R(g,6,12,12,1,"#c9a240"); R(g,7,14,10,9,"#1a1a16"); R(g,8,15,8,7,"#2a3a3e"); R(g,8,15,3,7,"#4a5a5e");
+    for(let k=0;k<4;k++) R(g,7+k*3,13,1,10,"#5a4612"); R(g,1,14,5,3,"#7a5e1a"); R(g,18,14,5,3,"#7a5e1a"); R(g,0,17,3,8,"#5a5a50"); R(g,21,17,3,8,"#5a5a50"); R(g,0,25,2,2,"#2a2a24"); R(g,22,25,2,2,"#2a2a24"); for(let k=0;k<12;k++) R(g,6+k,25,1,2,((k>>1)%2)?"#141210":"#e0c040"); R(g,10,9,4,3,"#3a3a34"); hp(g,11,10,"#e04030"); }),
+});
+const PROP_NAME={crate:"Cargo crate",bed:"Bunk",desk:"Console desk",locker:"Locker",barrel:"Fuel drum",brazier:"Brazier",generator:"Generator",tank:"Specimen tank",couch:"Couch",table:"Mess table",chair:"Chair",coffee:"Coffee machine",vending:"Vending machine",arcade:"Arcade cabinet",toilet:"Toilet",sink:"Sink and mirror",shower:"Shower",bars:"Brig bars",captive:"Gerald",gunrack:"Weapon rack",plant:"Plant",captchair:"Captain's chair",footlocker:"Footlocker",workbench:"Workbench",cogitator:"Cogitator bank",medcab:"Medical cabinet",surgery:"Surgical table",pipes:"Pipe manifold",pallet:"Cargo pallet",stasis:"Stasis pod",altar:"Altar",pew:"Pew",o2rack:"Oxygen rack",pump:"Coolant pump",ammocrate:"Ammo crate",shelf:"Archive shelf",cot:"Cot",drive:"Drive housing",reactor:"Reactor core",loader:"Power loader"};
 let flavorT={};
 
 // ---------- ship terminals ----------
@@ -466,10 +502,12 @@ FL["Break room"]={type:"plank",base:"#4e3a2a",alt:"#46341f",hi:"#5e4836",seam:"#
 FL["Bathroom"]={type:"tile",base:"#7a8488",alt:"#6e787c",hi:"#929ca0",lo:"#586064",seam:"#3a4246",mesh:"#5a6266"};
 FL["Brig"]={type:"grate",base:"#2e2a2a",hi:"#403a3a",lo:"#1e1a1a",seam:"#0e0c0c",inner:"#262222",riv:"#5a4a4a",mesh:"#221e1e"};
 FL["Mess hall"]={type:"plank",base:"#4a3a2c",alt:"#423222",hi:"#5a4838",seam:"#1e150e",mesh:"#30241a"};
+FL["Engine room"]={type:"grate",base:"#3a3832",hi:"#504c44",lo:"#26241f",seam:"#121110",inner:"#2e2c27",riv:"#6a6458",mesh:"#2a2824"};
+FL["Infirmary"]=FL["Medbay"];
 FL["Workshop"]={type:"plate",base:"#3e3a30",hi:"#524c3e",lo:"#2a2720",seam:"#141210",inner:"#383428",riv:"#6a6450",mesh:"#2a2620",oil:true};
 FL._=FL["Main corridor"];
 const AMBC={"Docking bay":[.44,.47,.5],"Medbay":[.42,.52,.58],"Crew quarters":[.5,.42,.33],"Security office":[.4,.42,.48],"Captain's cabin":[.5,.32,.25],
-  "Main corridor":[.34,.43,.43],"Lower corridor":[.32,.4,.42],"Service shaft":[.38,.38,.34],"Fuel storage":[.5,.4,.26],"Armory":[.38,.42,.48],"Shrine":[.42,.22,.2],"Mess hall":[.62,.5,.38],"Workshop":[.5,.46,.36],"Bridge":[.5,.58,.66],"Break room":[.66,.54,.42],"Bathroom":[.62,.68,.72],"Brig":[.54,.34,.32],"Comms":[.56,.5,.4],"Main hall":[.5,.56,.56],"Ship hold":[.52,.5,.44],"Quarters":[.6,.5,.4],"Airlock":[.5,.5,.54],"Engineering":[.52,.42,.29],"Cargo hold":[.42,.42,.38],"Xenolab":[.3,.5,.38],"Vault":[.48,.4,.24],_:[.34,.4,.4]};
+  "Main corridor":[.34,.43,.43],"Lower corridor":[.32,.4,.42],"Service shaft":[.38,.38,.34],"Fuel storage":[.5,.4,.26],"Armory":[.38,.42,.48],"Shrine":[.42,.22,.2],"Mess hall":[.62,.5,.38],"Workshop":[.5,.46,.36],"Bridge":[.5,.58,.66],"Break room":[.66,.54,.42],"Bathroom":[.62,.68,.72],"Brig":[.54,.34,.32],"Comms":[.56,.5,.4],"Main hall":[.5,.56,.56],"Ship hold":[.52,.5,.44],"Quarters":[.6,.5,.4],"Airlock":[.5,.5,.54],"Engineering":[.52,.42,.29],"Engine room":[.46,.44,.4],"Infirmary":[.58,.66,.7],"Cargo hold":[.42,.42,.38],"Xenolab":[.3,.5,.38],"Vault":[.48,.4,.24],_:[.34,.4,.4]};
 FL.corrPlate={type:"plate",base:"#323b3b",hi:"#465250",lo:"#212929",seam:"#101515",inner:"#2c3535",riv:"#5a6a68",mesh:"#26302f"};
 function styleAt(x,y){ const n=Sim.roomName(x,y); if((n==="Main corridor"||n==="Lower corridor"||n==="Main hall")&&(x%6)>1) return FL.corrPlate; return FL[n]||FL._; }
 function bevel(g,x,y,w,h,base,hi,lo,seam){ R(g,x,y,w,h,seam); R(g,x+1,y+1,w-2,h-2,base); R(g,x+1,y+1,w-2,1,hi); R(g,x+1,y+1,1,h-2,hi); R(g,x+1,y+h-2,w-2,1,lo); R(g,x+w-2,y+1,1,h-2,lo); }
@@ -523,6 +561,7 @@ function floorDetail(g,x,y,st){ const ox=x*TS, oy=y*TS, h=hh(x,y,77), k=h%23;
   for(let i=0;i<10;i++){ const v=hh(x,y,i+120); hp(g,ox+1+(v%44)/2,oy+1+((v>>6)%44)/2,(v>>3)%3?"rgba(0,0,0,.45)":"rgba(255,240,215,.12)"); }
   if(k===0){ const yy=oy+4+(h>>5)%14; R(g,ox,yy,24,1.5,"#0b0b0a"); R(g,ox,yy,24,.5,"#33302a"); for(let i=2;i<24;i+=7) R(g,ox+i,yy-.5,1,2.5,"#1a1916"); }                       // cable
   else if(k===1){ R(g,ox+7,oy+7,10,10,"#0a0b0b"); for(let i=0;i<5;i++) R(g,ox+7.5,oy+8+i*2,9,.5,"#2c3232"); R(g,ox+7,oy+7,10,.5,"#4a5050"); }                                         // drain
+  else if(S.mode==="ship"&&k>=1&&k<=5){ }
   else if(k===2||k===3){ for(let i=0;i<3;i++){ const v=hh(x,y,i+140); R(g,ox+4+v%15,oy+6+(v>>5)%12,1,.5,"#c9a24a"); hp(g,ox+4+v%15,oy+6+(v>>5)%12,"#f0d890"); } }                // spent casings
   else if(k===4){ const px=ox+5+(h>>4)%10, py=oy+6+(h>>8)%10; R(g,px,py,6,4,"#b8ae96"); R(g,px,py,6,.5,"#d8d0bc"); R(g,px+1,py+1.5,4,.5,"#5a5246"); R(g,px+1,py+2.5,3,.5,"#5a5246"); }   // dropped paper
   else if(k===5){ const px=ox+8+(h>>6)%8, py=oy+9+(h>>9)%7; g.save(); g.globalAlpha=.55; g.fillStyle="#060504"; g.beginPath(); g.ellipse(px,py,4.5,2.2,0,0,6.283); g.ellipse(px+3,py+1.5,2.5,1.4,0,0,6.283); g.fill(); g.restore(); R(g,px-2.5,py-1,2.5,.5,"rgba(150,170,190,.3)"); hp(g,px+1.5,py-.5,"rgba(200,120,220,.25)"); } // oil slick
@@ -556,7 +595,7 @@ function drawWall(g,x,y){
   R(g,ox,fy+8,24,1,"#1f1e1b"); R(g,ox,oy+22,24,2,"#121110");
   const d=h%15;
   if(d===0){ R(g,ox+8,fy+2,8,2,"#5a4526"); R(g,ox+9,fy+4,6,1,"#3a2c18"); R(g,ox+10,fy+5,4,3,"#2a2015"); SOURCES.push({kind:"lamp",x,y:y+1,bx:ox+12,by:fy+6,emerg:h%3===0,ph:(h%628)/100,flick:h%4===0,r:7,i:1.45}); }
-  else if(d===1||d===2){ R(g,ox,fy+3,24,3,"#3c3329"); R(g,ox,fy+3,24,1,"#56483a"); R(g,ox+(h>>4)%18,fy+2,3,5,"#1a1611"); if(d===2){ R(g,ox,fy+10,24,2,"#2e2419"); R(g,ox,fy+10,24,1,"#3f3224"); } }
+  else if(d===1||d===2){ if(h%3===0) EMIT.push({type:"steam",x,y:y+1,bx:ox+((h>>4)%18)+1,by:fy+5,rate:.9}); R(g,ox,fy+3,24,3,"#3c3329"); R(g,ox,fy+3,24,1,"#56483a"); R(g,ox+(h>>4)%18,fy+2,3,5,"#1a1611"); if(d===2){ R(g,ox,fy+10,24,2,"#2e2419"); R(g,ox,fy+10,24,1,"#3f3224"); } }
   else if(d===3){ R(g,ox+7,fy+2,10,9,"#2b241b"); R(g,ox+7,fy+2,10,1,"#4a3d2a"); R(g,ox+7,fy+10,10,1,"#120f0b"); skull(g,ox+9+1,fy+4,"#b3a68c","#0b0908"); R(g,ox+9,fy+11,1,3,"#5a1812"); R(g,ox+15,fy+11,1,4,"#5a1812"); }
   else if(d===4){ R(g,ox+5,fy+3,14,9,"#0b0a08"); for(let k=0;k<4;k++) R(g,ox+5,fy+4+k*2,14,1,"#34302a"); }
   else if(d===5){ R(g,ox+3,fy,1,fh-2,"#2b1a12"); R(g,ox+5,fy,1,fh-4,"#3a2a14"); R(g,ox+18,fy+2,1,fh-4,"#14202a"); R(g,ox+19,fy+fh-3,3,1,"#14202a"); }
@@ -566,8 +605,8 @@ function drawWall(g,x,y){
   else if(d===9){ R(g,ox+6,fy+1,12,13,"#100e0c"); R(g,ox+7,fy+2,10,1,"#2a2620"); R(g,ox+8,fy+1,8,1,"#2a2620"); R(g,ox+9,fy+0,6,1,"#2a2620"); R(g,ox+6,fy+13,12,1,"#3a342a");   // shrine niche + candles
     for(const cx of [9,12,15]){ R(g,ox+cx,fy+9,1.5,4,"#d8cdb4"); R(g,ox+cx,fy+9,.5,4,"#f0e8d4"); hp(g,ox+cx+.5,fy+8,"#ffd060"); hp(g,ox+cx+.5,fy+7.5,"#fff0b0"); }
     R(g,ox+10,fy+3,4,3,"#8a7e66"); hp(g,ox+11,fy+4,"#100e0c"); hp(g,ox+12.5,fy+4,"#100e0c"); SOURCES.push({kind:"fire",x,y:y+1,bx:ox+12,by:fy+8,r:3.2,i:.55,col:[1,.62,.3],ph:h%100}); }
-  else if(d===10){ for(let k=0;k<4;k++){ const cx=ox+5+k*4, L=6+((h>>k)%6); R(g,cx,fy,1.5,L,["#14140f","#2a1410","#14202a","#1a1a14"][k]); R(g,cx,fy,.5,L,"rgba(255,255,255,.1)"); R(g,cx-.5,fy+L,2.5,1,"#3a3a34"); } } // hanging cables
-  else if(d===11){ disc(g,ox+12,fy+7,6,"#0e0d0c"); disc(g,ox+12,fy+7,5,"#1e1c1a"); for(let a=0;a<6;a++){ const an=a*1.047; R(g,ox+12+Math.cos(an)*2.5-.5,fy+7+Math.sin(an)*2.5-.5,1.5,1,"#3a3832"); } disc(g,ox+12,fy+7,1,"#5a564e"); } // vent fan
+  else if(d===10){ EMIT.push({type:"sparks",x,y:y+1,bx:ox+7+(h%3)*4,by:fy+10,rate:.25}); for(let k=0;k<4;k++){ const cx=ox+5+k*4, L=6+((h>>k)%6); R(g,cx,fy,1.5,L,["#14140f","#2a1410","#14202a","#1a1a14"][k]); R(g,cx,fy,.5,L,"rgba(255,255,255,.1)"); R(g,cx-.5,fy+L,2.5,1,"#3a3a34"); } } // hanging cables
+  else if(d===11){ EMIT.push({type:"steam",x,y:y+1,bx:ox+12,by:fy+9,rate:.7,down:1}); disc(g,ox+12,fy+7,6,"#0e0d0c"); disc(g,ox+12,fy+7,5,"#1e1c1a"); for(let a=0;a<6;a++){ const an=a*1.047; R(g,ox+12+Math.cos(an)*2.5-.5,fy+7+Math.sin(an)*2.5-.5,1.5,1,"#3a3832"); } disc(g,ox+12,fy+7,1,"#5a564e"); } // vent fan
   wallDetail(g,x,y,fy,fh,false);
 }
 function drawWindow(g,x,y,t){
@@ -628,7 +667,7 @@ function makeConduit(){ const c=cvs(96,96), g=c.getContext("2d"); R(g,0,0,96,96,
   return c; }
 
 function buildStatic(){
-  staticLayer.width=S.W*TS*Q; staticLayer.height=S.H*TS*Q; staticLayer._q=1; staticLayer.lw=S.W*TS; staticLayer.lh=S.H*TS; const g=staticLayer.getContext("2d"); g.setTransform(Q,0,0,Q,0,0); SOURCES=[];
+  staticLayer.width=S.W*TS*Q; staticLayer.height=S.H*TS*Q; staticLayer._q=1; staticLayer.lw=S.W*TS; staticLayer.lh=S.H*TS; const g=staticLayer.getContext("2d"); g.setTransform(Q,0,0,Q,0,0); SOURCES=[]; EMIT=[];
   AMB=new Float32Array(S.W*S.H*3);
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){
     const t=S.tiles[Sim.idx(S,x,y)];
@@ -637,8 +676,8 @@ function buildStatic(){
       case "wall": drawWall(g,x,y); break;
       case "window": drawWindow(g,x,y,t); break;
       case "breach": drawBreach(g,x,y); break;
-      case "door": drawDoor(g,x,y,t); break;
-      case "console": drawConsole(g,x,y); break;
+      case "door": drawDoor(g,x,y,t); if(t.broken) EMIT.push({type:"sparks",x,y,bx:x*TS+(doorVert(x,y)?12:3),by:y*TS+(doorVert(x,y)?3:8),rate:.4}); break;
+      case "console": drawConsole(g,x,y); EMIT.push({type:"sparks",x,y,bx:x*TS+12,by:y*TS+10,rate:.35,dead:1}); break;
       case "extract": drawExtract(g,x,y); break;
       default: drawFloor(g,x,y); if(t.debris) drawDebris(g,x,y,t.debris);
     }
@@ -649,9 +688,23 @@ function buildStatic(){
       if(t.kind==="arcade") SOURCES.push({kind:"term",x,y,bx:x*TS+12,by:y*TS-2,r:2.8,i:.7,col:[.9,.35,1]});
       if(t.kind==="coffee") SOURCES.push({kind:"term",x,y,bx:x*TS+16,by:y*TS+4,r:1.6,i:.4,col:[1,.4,.2]});
       if(t.kind==="generator") SOURCES.push({kind:"gen",x,y,bx:x*TS+5,by:y*TS+8,r:2.4,i:.5,col:[1,.55,.2],ph:0,powered:true});
+      if(t.kind==="pipes") EMIT.push({type:"steam",x,y,bx:x*TS+6+(hh(x,y)%10),by:y*TS-4,rate:1.2});
+      if(t.kind==="pump") EMIT.push({type:"steam",x,y,bx:x*TS+16,by:y*TS-2,rate:.8});
+      if(t.kind==="drive") EMIT.push({type:"steam",x,y,bx:x*TS+12,by:y*TS-14,rate:.6,cold:1});
+      if(t.kind==="reactor") EMIT.push({type:"motes",x,y,bx:x*TS+12,by:y*TS-4,rate:4});
+      if(t.kind==="cogitator") EMIT.push({type:"sparks",x,y,bx:x*TS+12,by:y*TS-4,rate:.05,dead:1});
+      if(t.kind==="cogitator") SOURCES.push({kind:"screen",x,y,bx:x*TS+12,by:y*TS-2,r:2.6,i:.5,col:[.3,.9,.45]});
+      if(t.kind==="reactor") SOURCES.push({kind:"tank",x,y,bx:x*TS+12,by:y*TS-4,r:6,i:1.1,col:[.2,.9,1],ph:hh(x,y)%100});
+      if(t.kind==="drive") SOURCES.push({kind:"tank",x,y,bx:x*TS+12,by:y*TS-2,r:3.6,i:.7,col:[.25,.55,1],ph:hh(x,y)%100});
+      if(t.kind==="stasis") SOURCES.push({kind:"tank",x,y,bx:x*TS+12,by:y*TS-2,r:3,i:.6,col:[.3,1,1],ph:hh(x,y)%100});
+      if(t.kind==="altar") SOURCES.push({kind:"fire",x,y,bx:x*TS+12,by:y*TS+2,r:3.6,i:.7,col:[1,.6,.28],ph:hh(x,y)%100});
     }
   }
   for(const d of S.decals||[]) if(d.type==="ritual") drawRitual(g,d.x,d.y);
+  if(S.mode==="ship") for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const t=S.tiles[Sim.idx(S,x,y)]; if(!(t.t==="prop"&&t.kind==="drive")) continue;
+    let wx=x-1; while(wx>0&&T(wx,y).t!=="wall") wx--; const nx=wx-1; if(T(nx,y).t!=="space") continue; const ox=nx*TS, oy=y*TS;
+    R(g,ox+10,oy+4,14,16,"#2a2e32"); R(g,ox+10,oy+4,14,1.5,"#5a6268"); R(g,ox+4,oy+2,8,20,"#3a3e42"); R(g,ox+4,oy+2,8,1,"#6a7278"); R(g,ox+2,oy+1,3,22,"#22262a"); R(g,ox+2,oy+1,1,22,"#4a5056");
+    for(let k=0;k<4;k++) R(g,ox+12+k*3,oy+4.5,.5,15,"#1a1d20"); R(g,ox+1,oy+5,1.5,14,"#0a1a2a"); EMIT.push({type:"exhaust",x,y,bx:ox+1,by:oy+12}); }
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const t=S.tiles[Sim.idx(S,x,y)]; if(t.t!=="terminal") continue;
     const L={navtable:[.3,.85,1,3.8],helm:[.3,.9,.9,3.2],board:[1,.7,.35,2.6],records:[1,.7,.3,2.2],airlock:[1,.2,.1,2.4],stash:[.3,1,.4,1.8],rack:[1,.75,.4,2],workbench:[1,.6,.25,2.2],wardrobe:[.9,.75,.5,1.6]}[t.kind];
     if(L) SOURCES.push({kind:"term",x,y,bx:x*TS+12,by:y*TS+4,r:L[3],i:.7,col:[L[0],L[1],L[2]],tk:t.kind}); }
@@ -700,7 +753,8 @@ function buildLightmap(cx,cy,now){
   for(const l of lightsT){ const a=1-l.t/l.dur; if(a<=0) continue;
     for(let y=Math.max(0,Math.floor(l.y-l.r));y<=Math.min(S.H-1,Math.ceil(l.y+l.r));y++)for(let x=Math.max(0,Math.floor(l.x-l.r));x<=Math.min(W-1,Math.ceil(l.x+l.r));x++){
       const d=Math.hypot(x-l.x,y-l.y); if(d>l.r) continue; const v=(1-d/l.r)*l.i*a, i=Sim.idx(S,x,y); Lr[i]+=v*l.c[0]; Lg[i]+=v*l.c[1]; Lb[i]+=v*l.c[2]; } }
-  const d=imgCache.d.data, am=pw?1:.33;
+  const d=imgCache.d.data, am=pw?1:.33; if(!LUMV||LUMV.length!==N) LUMV=new Float32Array(N);
+  for(let k=0;k<N;k++) LUMV[k]=VIS[k]?(AMB[k*3]*am+Lr[k]+AMB[k*3+1]*am+Lg[k]+AMB[k*3+2]*am+Lb[k])/3+(FLASH[k]||0)*.3:0;
   for(let j=0;j<lh;j++)for(let i=0;i<lw;i++){
     const x=ox+i, y=oy+j, o=(j*lw+i)*4; let r=0,g=0,b=0;
     if(x>=0&&y>=0&&x<W&&y<S.H){ const k=y*W+x, t=S.tiles[k];
@@ -771,7 +825,7 @@ function processFx(){
   S.fx=[];
 }
 function updateFx(dt,now){
-  for(const q of parts){ q.x+=q.vx*dt; q.y+=q.vy*dt; const k=Math.exp(-q.drag*dt); q.vx*=k; q.vy*=k; q.life-=dt; }
+  for(const q of parts){ if(q.g) q.vy+=q.g*dt; q.x+=q.vx*dt; q.y+=q.vy*dt; const k=Math.exp(-q.drag*dt); q.vx*=k; q.vy*=k; q.life-=dt; if(q.grow) q.size=Math.min(q.grow,q.size+dt*3); }
   parts=parts.filter(q=>q.life>0); if(parts.length>700) parts.splice(0,parts.length-700);
   for(const a of [tracers,slashes,lightsT,rings,arcs]) for(const q of a) q.t+=dt;
   rings=rings.filter(q=>q.t<q.dur); arcs=arcs.filter(q=>q.t<q.dur); tracers=tracers.filter(q=>q.t<q.dur); slashes=slashes.filter(q=>q.t<q.dur); lightsT=lightsT.filter(q=>q.t<q.dur);
@@ -788,8 +842,30 @@ function updateFx(dt,now){
     if(t.t==="prop"&&t.kind==="brazier"&&Math.random()<dt*14) parts.push({x:x*TS+8+Math.random()*8,y:y*TS+10,vx:(Math.random()-.5)*8,vy:-18-Math.random()*14,life:.6,max:.6,col:Math.random()<.5?"#ffb040":"#ff6a20",size:1,emit:true,drag:.5});
     if(t.t==="prop"&&t.kind==="tank"&&Math.random()<dt*3) parts.push({x:x*TS+8+Math.random()*7,y:y*TS+4,vx:0,vy:-10,life:.9,max:.9,col:"#9ae8c0",size:1,emit:true,drag:0,clipY:y*TS-14});
   }
+  runEmitters(dt);
 }
 
+function runEmitters(dt){
+  for(const E of EMIT){ if(!VIS[Sim.idx(S,E.x,E.y)]) continue;
+    if(E.type==="steam"){ if(E.cold&&!S.power&&S.mode!=="ship") continue; if(Math.random()<dt*E.rate*6) parts.push({x:E.bx+(Math.random()-.5)*3,y:E.by,vx:(Math.random()-.5)*6,vy:E.down?6+Math.random()*4:-8-Math.random()*8,life:1.8,max:1.8,col:E.cold?"rgba(150,190,230,.16)":"rgba(200,200,190,.16)",size:1,grow:4,emit:false,drag:.6}); }
+    else if(E.type==="motes"){ if(Math.random()<dt*E.rate) parts.push({x:E.bx+(Math.random()-.5)*8,y:E.by+Math.random()*16,vx:(Math.random()-.5)*4,vy:-6-Math.random()*6,life:1.4,max:1.4,col:"#8affff",size:.5,emit:true,drag:.3}); }
+    else if(E.type==="sparks"){ if(E.dead&&S.power) continue; if(Math.random()<dt*E.rate){ const n=5+(Math.random()*8|0);
+        for(let k=0;k<n;k++){ const a=-Math.PI/2+(Math.random()-.5)*2.6, sp=30+Math.random()*60; parts.push({x:E.bx,y:E.by,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.4,max:.7,col:Math.random()<.5?"#fff4c0":"#ffb040",size:.5,emit:true,drag:1.2,g:180}); }
+        lightsT.push({x:E.bx/TS-.5,y:E.by/TS-.5,r:2.2,i:.8,c:[1,.8,.45],t:0,dur:.12}); } } }
+}
+// light shafts: lamp cones with dust, beams through open doors and windows
+function drawShafts(g,cx,cy,now){
+  const beam=(x0,y0,dx,dy,len,w0,w1,col,a)=>{ const px=-dy, py=dx, gr=g.createLinearGradient(x0,y0,x0+dx*len,y0+dy*len); gr.addColorStop(0,col+a+")"); gr.addColorStop(1,col+"0)"); g.fillStyle=gr;
+    g.beginPath(); g.moveTo(x0+px*w0,y0+py*w0); g.lineTo(x0-px*w0,y0-py*w0); g.lineTo(x0+dx*len-px*w1,y0+dy*len-py*w1); g.lineTo(x0+dx*len+px*w1,y0+dy*len+py*w1); g.fill(); };
+  for(const L of SOURCES){ if(L.kind!=="lamp"||!L.lit) continue; if(!VIS[Sim.idx(S,L.x,L.y)]) continue; const bx=L.bx-cx, by=L.by-cy+2, warm=S.power;
+    beam(bx,by,0,1,34,2.5,15,warm?"rgba(255,190,110,":"rgba(255,50,30,",(.12*L.lit).toFixed(3));
+    for(let k=0;k<6;k++){ const ph=(now/2600+k*.37+(L.ph||0))%1, mx=bx+Math.sin(now/1300+k*2.1)*(3+ph*9), my=by+4+ph*28; g.fillStyle=`rgba(255,220,170,${(.5*(1-ph)*L.lit).toFixed(3)})`; g.fillRect(mx,my,.5,.5); } }
+  if(!LUMV) return;
+  for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const i=Sim.idx(S,x,y); if(!VIS[i]) continue; const t=S.tiles[i];
+    if(t.t==="door"&&t.open){ const v=doorVert(x,y), A=v?[x-1,y]:[x,y-1], B=v?[x+1,y]:[x,y+1]; const la=LUMV[Sim.idx(S,A[0],A[1])]||0, lb=LUMV[Sim.idx(S,B[0],B[1])]||0, diff=la-lb;
+      if(Math.abs(diff)>.22){ const dir=diff>0?1:-1, dx=v?dir:0, dy=v?0:dir; beam(x*TS-cx+12-dx*10,y*TS-cy+12-dy*10,dx,dy,58,9,20,"rgba(255,210,150,",Math.min(.16,Math.abs(diff)*.22).toFixed(3)); } }
+    if(t.t==="window"&&S.mode!=="ship"){ for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1]]){ const a=T(x-dx,y-dy).t, b=T(x+dx,y+dy).t; if(a==="space"&&(b==="floor"||b==="prop")){ beam(x*TS-cx+12-dx*8,y*TS-cy+12-dy*8,dx,dy,44,7,16,"rgba(120,160,230,",".08"); break; } } } }
+}
 // ---------- dynamic drawing ----------
 function drawBlood(g,x,y,n,ox,oy){ for(let k=0;k<n;k++){ const v=hh(x,y,k+300), r=2+(v>>7)%3+(n>3?1:0), cx=ox+5+v%14, cy=oy+5+(v>>5)%14;
   disc(g,cx,cy,r,"#4a0a07"); disc(g,cx-1,cy-1,Math.max(1,r-2),"#6a140e"); R(g,cx-r+1,cy-1,1,1,"#8e2216"); } }
@@ -888,7 +964,7 @@ function render(now){
     if(t.t==="terminal") draws.push({y:y*TS,f:()=>{ const sp=TERM[t.kind], ox=x*TS-cx, oy=y*TS-cy; g.drawImage(sp,ox,oy+24-sp.lh); if(t.kind==="helm"&&((now/400)|0)%2) R(g,ox+16,oy+5,1,1,"#e8ffff"); if(t.kind==="airlock"&&((now/700)|0)%2) R(g,ox+9,oy+7,6,1,"#ff8060"); }}); }
   for(const e of S.ents){ if(!e.alive) continue; const i=Sim.idx(S,e.x,e.y); if(!(VIS[i]||e.id===PID)) continue; const r=rp[e.id]; draws.push({y:r.y+.5,f:()=>drawEnt(g,e,Math.round(r.x)-cx,Math.round(r.y)-cy,now)}); }
   draws.sort((a,b)=>a.y-b.y).forEach(d=>d.f());
-  for(const q of parts) if(!q.emit){ g.fillStyle=q.col; g.fillRect(Math.round(q.x-cx),Math.round(q.y-cy),q.size,q.size); }
+  for(const q of parts) if(!q.emit){ g.fillStyle=q.col; g.globalAlpha=q.grow?Math.max(0,q.life/q.max):1; g.fillRect(Math.round((q.x-cx)*2)/2-q.size/2*(q.grow?1:0),Math.round((q.y-cy)*2)/2,q.size,q.size); } g.globalAlpha=1;
   for(const s of slashes){ const ox=s.x*TS-cx, oy=s.y*TS-cy-6, a=1-s.t/s.dur; g.fillStyle=`rgba(230,40,30,${a})`; for(let k=0;k<3;k++) for(let j=0;j<10;j++) g.fillRect((ox+5+k*5+j*.6)|0,oy+4+j,1,1); }
   // lighting
   const L=buildLightmap(cx,cy,now);
@@ -907,8 +983,11 @@ function render(now){
     for(let c=0;c<6+lv*2;c++){ const fx2=ox+3+((c*7+hh(x,y,c))%18), ph=(now/80+c*1.7+x)|0, hgt=4+lv*3+((ph*13+c*5)%(5+lv*2)), base=oy+20-((c*3)%5);
       R(g,fx2,base-hgt,2,hgt,"#c22a0c"); R(g,fx2,base-hgt+2,2,Math.max(1,hgt-4),"#ff6a18"); R(g,fx2,base-Math.floor(hgt*.55),1,Math.max(1,Math.floor(hgt*.4)),"#ffc040"); R(g,fx2,base-hgt,1,1,"#fff0a0"); } }
   // glow
-  g.save(); g.globalCompositeOperation="lighter";
+  g.save(); g.globalCompositeOperation="lighter"; drawShafts(g,cx,cy,now);
   const glow=(x,y,r,c)=>{ const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,c); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); };
+  for(const E of EMIT){ if(E.type!=="exhaust") continue; const fl=.75+.25*Math.sin(now*.03+E.y)+.1*Math.sin(now*.11+E.y*3), x=E.bx-cx, y=E.by-cy, burn=warp?2.2:1;
+    const gr=g.createLinearGradient(x,y,x-60*burn,y); gr.addColorStop(0,`rgba(140,200,255,${.55*fl})`); gr.addColorStop(.3,`rgba(60,120,255,${.3*fl})`); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr;
+    g.beginPath(); g.moveTo(x,y-6); g.lineTo(x-60*burn,y-11*burn); g.lineTo(x-60*burn,y+11*burn); g.lineTo(x,y+6); g.fill(); glow(x,y,10,`rgba(170,220,255,${.5*fl})`); R(g,x-1,y-5,1.5,10,`rgba(230,245,255,${.8*fl})`); }
   for(const Lp of SOURCES){ if(!Lp.lit) continue; const i=Sim.idx(S,Lp.x,Lp.y); if(!VIS[i]) continue; const bx=Lp.bx-cx, by=Lp.by-cy;
     if(Lp.kind==="lamp"){ if(S.power){ glow(bx,by,16,`rgba(255,180,90,${.35*Lp.lit})`); R(g,bx-2,by-1,4,2,`rgba(255,225,160,${Lp.lit})`); } else { glow(bx,by,14,`rgba(255,40,20,${.45*Lp.lit})`); R(g,bx-2,by-1,4,2,`rgba(255,60,40,${Lp.lit})`); } }
     else if(Lp.kind==="fire") glow(bx,by,22,`rgba(255,140,50,${.3*Lp.lit})`);
@@ -933,7 +1012,7 @@ function render(now){
   for(const it of S.items){ if(!VIS[Sim.idx(S,it.x,it.y)]) continue; const rr=Items.rarOf(it), X=it.x*TS-cx+12, Y=it.y*TS-cy+16;
     if(it.d==="blackbox"&&(now%900)<450) glow(X+4,Y-4,7,"rgba(255,100,40,.5)");
     if(rr>=2){ const c=Items.RAR[rr].col, h=rr>=3?70:30, a=.25+.12*Math.sin(now*.004+it.id); const gr=g.createLinearGradient(0,Y-h,0,Y); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(1,c); g.globalAlpha=a; g.fillStyle=gr; g.fillRect(X-2,Y-h,4,h); g.globalAlpha=1; glow(X,Y-2,rr>=3?12:7,c+"66"); } }
-  for(const q of parts) if(q.emit){ if(q.clipY!=null&&q.y<q.clipY) continue; g.fillStyle=q.col; g.globalAlpha=Math.max(0,q.life/q.max); g.fillRect(Math.round(q.x-cx),Math.round(q.y-cy),q.size,q.size); }
+  for(const q of parts) if(q.emit){ if(q.clipY!=null&&q.y<q.clipY) continue; g.fillStyle=q.col; g.globalAlpha=Math.max(0,q.life/q.max); g.fillRect(Math.round((q.x-cx)*2)/2,Math.round((q.y-cy)*2)/2,q.size,q.size); }
   g.globalAlpha=1;
   for(const t of tracers){ const a=1-t.t/t.dur, L2=Math.hypot(t.x1-t.x0,t.y1-t.y0); g.fillStyle=`rgba(255,226,140,${a})`; for(let s=0;s<L2;s++) g.fillRect(Math.round(t.x0+(t.x1-t.x0)*s/L2-cx),Math.round(t.y0+(t.y1-t.y0)*s/L2-cy),1,1); }
   g.restore();

@@ -61,14 +61,16 @@ test("ship interior: terminals and free movement", () => {
   const s = Sim.newGame(1, null, { map: "ship", mode: "ship" });
   assert.deepEqual([...new Set(s.tiles.filter((t) => t.t === "terminal").map((t) => t.kind))].sort(), ["airlock", "board", "helm", "navtable", "rack", "records", "stash", "wardrobe", "workbench"]);
   assert.equal(s.tiles.filter((t) => t.t === "seat").length, 4, "cockpit seats one squad of four");
-  const p = playerOf(s); for (let i = 0; i < 3; i++) Sim.act(s, "p1", { type: "move", dx: 0, dy: -1 });
-  assert.equal(p.y, 6); assert.equal(s.turn, 1, "no turns pass aboard the ship");
+  const p = playerOf(s), W = s.W, at = (k) => { const i = s.tiles.findIndex((t) => t.kind === k); return [i % W, Math.floor(i / W)]; };
+  const x0 = p.x; for (let i = 0; i < 3; i++) Sim.act(s, "p1", { type: "move", dx: 1, dy: 0 });
+  assert.equal(p.x, x0 + 3); assert.equal(s.turn, 1, "no turns pass aboard the ship");
+  const [nx, ny] = at("navtable"); p.x = nx; p.y = ny + 1; s.fx = [];
   Sim.act(s, "p1", { type: "move", dx: 0, dy: -1 }); // walk into the star-map table
-  assert.equal(p.y, 6); assert.deepEqual(s.fx.map((f) => [f.type, f.kind]), [["terminal", "navtable"]]);
-  p.x = 19; p.y = 4; assert.ok(Sim.act(s, "p1", { type: "move", dx: 0, dy: -1 })); // sit in the pilot's seat
+  assert.equal(p.y, ny + 1); assert.deepEqual(s.fx.map((f) => [f.type, f.kind]), [["terminal", "navtable"]]);
+  const [sx, sy] = at("pilot"); p.x = sx; p.y = sy + 1; s.fx = []; assert.ok(Sim.act(s, "p1", { type: "move", dx: 0, dy: -1 })); // sit in the pilot's seat
   assert.deepEqual(s.fx.map((f) => [f.type, f.kind]), [["sit", "pilot"]]);
   Sim.act(s, "p1", { type: "interact" }); assert.deepEqual(s.fx.map((f) => [f.type, f.kind]), [["terminal", "navtable"]]);
-  for (const k of ["brig", "bathroom", "break room", "crew quarters", "armory", "bridge"])
+  for (const k of ["brig", "bathroom", "break room", "crew quarters", "armory", "bridge", "engine room", "infirmary", "ship hold", "airlock"])
     assert.ok(Sim.MAPS.ship.rooms.some((r) => r[0].toLowerCase() === k), `ship is missing its ${k}`);
 });
 

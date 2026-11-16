@@ -108,6 +108,23 @@ const FLAVOR={
   locker:[["A dented locker. Someone's spare boots and a prayer card.","The locker door sticks, then bangs open. Empty."],null],
   tank:[["Something floats in the tank. It is probably not watching you.","The tank burbles. You step back."],null],
   barrel:[["Fuel drum. Do not shoot.","It sloshes."],null],
+  cogitator:[["The cogitator bank chatters out a litany of fault codes.","You bless the machine and hit it twice. The screens settle."],"consults the cogitator"],
+  medcab:[["Gauze, sealant, a bottle with the label scratched off.","The cabinet's half empty. Somebody's been self-medicating."],"checks the medical cabinet"],
+  surgery:[["The surgical table is still sticky. You don't ask.","Restraint straps. Lots of them."],null],
+  pipes:[["The manifold hisses. You tighten a valve and it hisses somewhere else.","Too hot to touch. You touch it anyway."],"bleeds a valve"],
+  pallet:[["Strapped-down cargo. Most of it is ration bars.","The manifest says 'machine parts'. It rattles like bones."],null],
+  stasis:[["Something sleeps in the pod. Its readouts are mostly green.","Frost on the glass. A hand print on the inside."],null],
+  altar:[["Wax, bone and a prayer half scratched out.","The candles never seem to burn down."],"lights a candle at the altar"],
+  pew:[["You sit a moment. It's very quiet.","Someone carved a name into the pew. Then crossed it out."],"sits in a pew"],
+  o2rack:[["Spare oxygen. You check the gauges. Most are full.","One cylinder is stencilled DO NOT USE. You don't."],null],
+  pump:[["The coolant pump thuds like a heartbeat.","You kick the pump. It thuds faster."],null],
+  ammocrate:[["Brass, neatly packed. Military issue, long expired.","You count the rounds. You lose count."],null],
+  shelf:[["Data slates and paper scrolls, all in a script you half know.","A ledger of crew who never came home. It's long."],null],
+  cot:[["A fold-out cot. Better than the floor.","Someone's still sleeping in it. No, it's a coat."],null],
+  drive:[["The drive housing hums through your boots. Warm.","Blue light leaks from the vents. The engineers swear it's normal."],"checks the drive housings"],
+  reactor:[["The reactor core pulses. Your teeth ache a little.","Readouts nominal. Mostly. You decide not to read the rest."],"checks the reactor"],
+  loader:[["A power loader, parked and chained. Its seat is worn smooth.","You pull a lever. A claw twitches. You put the lever back."],null],
+  brazier:[["You warm your hands at the brazier.","The coals spit sparks."],null],
 };
 let flavorCD=0;
 function onFlavor(kind){

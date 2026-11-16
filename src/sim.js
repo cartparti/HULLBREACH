@@ -61,29 +61,31 @@ const Sim = (() => {
   const MAPS={
     ks9:{rows:KS9,rooms:KS9_ROOMS},
     ship:{rows:[
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-      "~~~~~~~~~~~~##============##~~~~~~~~~~~~",
-      "~############.t.t..N.t.t.t.###==###==##~",
-      "~#.K.jj.j.O.#...3..1.2.4...#.C...qV..G#~",
-      "~#..........#u.............#..........#~",
-      "~#..........+u.....MM......+..nTTn....#~",
-      "~#..........#.t..........t.#...nn...u.#~",
-      "~#cc.......c#p............p#p.......u.#~",
-      "~#####+############++###########+######~",
-      "~=.................@..................=~",
-      "~=....................................=~",
-      "~#####+########+######+#######+####+###~",
-      "~#By.....yB.#....s#......t.#Q...c#....#~",
-      "~#..........#w....#........#....c#...A#~",
-      "~#By.....&B.#....s#........#.....#....#~",
-      "~=..........#w....#IIIIIIII#.....#EE..=~",
-      "~#..........#.....#.z..#...#...g.#EE..#~",
-      "~#By......J.#.....#....#...#.....#....#~",
-      "~#..........#.....#....#...#.....#....#~",
-      "~#By.......p#xx..p#....#..B#cc..c#....#~",
-      "~######################################~",
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"],
-      rooms:[["Bridge",13,2,26,7],["Armory",2,3,11,7],["Break room",28,3,37,7],["Main hall",2,9,37,10],["Crew quarters",2,12,11,19],["Bathroom",13,12,17,19],["Brig",19,12,26,19],["Ship hold",28,12,32,19],["Airlock",34,12,37,19]]},
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~############=########=##=#####=##=######=~~~~~~",
+      "~#..D.D.D9#Kjj..Ol#B..B..B.&#qV.C...G#ep..=#~~~~",
+      "~#*.......#.......#y..y..y..#.......p#.....e~~~~",
+      "~#........#......l#.........#..nn....#......=~~~",
+      "~#.......e#.......#........J#..TT....#e.....#~~~",
+      "~#*.......#.......#.........#..nn....#e.t....#~~",
+      "~#........#00....c#ll......p#.....uu.#..3....#~~",
+      "~#........####+########+########+#####.......=~~",
+      "~#...(D...+...........@..............+.dMM.1N#~~",
+      "~#..D.....#..........................+.....2e#~~",
+      "~#........####+#####+###+####+####+###.......=~~",
+      "~#........#Q.%.%%.#A.8#w.w#t....#!.!.#...4...#~~",
+      "~#*.......#......c#...#...#n....#....#e..t...#~~",
+      "~#.......8#.......#...#...#.....#...5#e.....#~~~",
+      "~#........#.......#...#...#IIIII#.i..#......=~~~",
+      "~#*.......#.......#...#...#.....#....#.....e~~~~",
+      "~#.rrg.g.9#rr...cc#..l#s.x#..z.;#...S#e...=#~~~~",
+      "~############=######=#######=######=#####=~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~#######~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"],
+      rooms:[["Engine room", 2, 4, 9, 19], ["Armory", 11, 4, 17, 9], ["Crew quarters", 19, 4, 27, 9], ["Break room", 29, 4, 36, 9], ["Ship hold", 11, 14, 17, 19], ["Airlock", 19, 14, 21, 19], ["Bathroom", 23, 14, 25, 19], ["Brig", 27, 14, 31, 19], ["Infirmary", 33, 14, 36, 19], ["Main hall", 11, 11, 36, 12], ["Bridge", 38, 4, 44, 19]]},
   };
   let ROOMS=KS9_ROOMS;
   function bind(s){ ROOMS=s.rooms||(MAPS[s.map]||MAPS.ks9).rooms; }
@@ -120,7 +122,7 @@ const Sim = (() => {
 
   // ---------- tile predicates ----------
   const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank",
-    u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench"};
+    u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench",e:"cogitator","!":"medcab",i:"surgery",D:"pipes","%":"pallet","5":"stasis","6":"altar","7":"pew","8":"o2rack","9":"pump","0":"ammocrate","$":"shelf",";":"cot","*":"drive","(":"reactor","^":"loader"};
   const TERMS={N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock",O:"workbench","&":"wardrobe"};
   const SEATS={"1":"pilot","2":"copilot","3":"nav","4":"eng"};
   const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||t.t==="seat"||(t.t==="door"&&t.open);
@@ -155,7 +157,8 @@ const Sim = (() => {
         case "P": t={t:"console"};break;
         case "E": t={t:"extract"};break;
         case "c": case "B": case "t": case "l": case "r": case "f": case "g": case "S":
-        case "u": case "T": case "n": case "q": case "V": case "G": case "w": case "s": case "x": case "I": case "z": case "j": case "p": case "d": case "y": case "U": t={t:"prop",kind:PROPS[c]};break;
+        case "u": case "T": case "n": case "q": case "V": case "G": case "w": case "s": case "x": case "I": case "z": case "j": case "p": case "d": case "y": case "U":
+        case "e": case "!": case "i": case "D": case "%": case "5": case "6": case "7": case "8": case "9": case "0": case "$": case ";": case "*": case "(": case "^": t={t:"prop",kind:PROPS[c]};break;
         case "N": case "M": case "K": case "Q": case "J": case "C": case "A": case "O": case "&": t={t:"terminal",kind:TERMS[c]};break;
         case "1": case "2": case "3": case "4": t={t:"seat",kind:SEATS[c]};break;
         default: t={t:"floor"};
