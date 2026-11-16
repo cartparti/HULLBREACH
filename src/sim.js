@@ -290,7 +290,8 @@ const Sim = (() => {
     }
     // free actions: no turn spent
     if(a.type==="swap"){ const other=p.act===1?2:1; if(!(other===1?p.w1:p.w2)){ say(s,"You only have one gun.","info"); return false; } p.act=other; say(s,`You switch to the ${nm(gun(p))}.`,"info"); return true; }
-    if(a.type==="equip") return doEquip(s,p,a.index);
+    if(a.type==="equip") return doEquip(s,p,a.index,a.slot);
+    if(a.type==="unequip") return doUnequip(s,p,a.slot);
     if(a.type==="light"){ if(!p.light){ say(s,"You don't have a light equipped.","info"); return false; } p.lightOff=!p.lightOff; say(s,p.lightOff?"You switch your light off. The dark closes in.":"You click your light on.","info"); return true; }
     if(a.type==="drop") return doDrop(s,p,a.index);
     switch(a.type){
@@ -455,10 +456,18 @@ const Sim = (() => {
       fx(s,{type:"flare",x,y}); say(s,"Fire splashes across the deck.","warn"); return true; }
     return true;
   }
-  function doEquip(s,p,i){
+  const EQ_SLOTS=["w1","w2","melee","head","armor","legs","acc","light","pack"];
+  function doUnequip(s,p,slot){
+    if(!EQ_SLOTS.includes(slot)||!p[slot]) return false; const it=p[slot]; p[slot]=null; const cap=capOf(p);
+    if(p.inv.length+1>cap){ p[slot]=it; say(s,"No room in your pack for that.","warn"); return false; }
+    if(slot==="w1"&&p.act===1&&p.w2) p.act=2; if(slot==="w2"&&p.act===2) p.act=1;
+    p.inv.push({...it,id:s.nextId++}); p.cap=cap; const G=gearOf(p); p.o2max=G.o2; p.o2=Math.min(p.o2,G.o2);
+    say(s,`You stow the ${nm(it)}.`,"info"); return true; }
+  function doEquip(s,p,i,pref){
     const it=p.inv[i], slot=it&&Items.slotOf(it); if(!slot){ return false; }
     let old=null; const prev={w1:p.w1,w2:p.w2,act:p.act,melee:p.melee,head:p.head,armor:p.armor,legs:p.legs,acc:p.acc,light:p.light,pack:p.pack};
-    if(slot==="gun"){ if(!p.w1){ p.w1=it; p.act=1; } else if(!p.w2){ p.w2=it; p.act=2; } else if(p.act===2){ old=p.w2; p.w2=it; } else { old=p.w1; p.w1=it; } }
+    if(slot==="gun"&&(pref==="w1"||pref==="w2")){ old=p[pref]; p[pref]=it; p.act=pref==="w1"?1:2; }
+    else if(slot==="gun"){ if(!p.w1){ p.w1=it; p.act=1; } else if(!p.w2){ p.w2=it; p.act=2; } else if(p.act===2){ old=p.w2; p.w2=it; } else { old=p.w1; p.w1=it; } }
     else { old=p[slot]; p[slot]=it; }
     const cap=capOf(p), after=p.inv.length-1+(old?1:0);
     if(after>cap){ Object.assign(p,prev); say(s,"Too much in your pack to change into that.","warn"); return false; }

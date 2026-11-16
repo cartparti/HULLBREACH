@@ -223,4 +223,12 @@ test("husk AI: the shriek calls the pack, they surround you, a heavy hit tears l
   assert.ok(h2.sev && Object.keys(h2.sev).length >= 1, "a sniper round takes a limb with it");
 });
 
+test("inventory: stow gear back into the pack, equip a gun into a chosen slot", () => {
+  const { s, p } = arena(kit({ d: "pistol", r: 0 }, { pistol: 3 }, [{ d: "carbine", r: 0 }], { pack: { d: "field", r: 0 } }));
+  assert.ok(Sim.act(s, "p1", { type: "equip", index: 0, slot: "w2" })); assert.equal(p.w2.d, "carbine"); assert.equal(p.w1.d, "pistol");
+  assert.ok(Sim.act(s, "p1", { type: "unequip", slot: "armor" })); assert.equal(p.armor, null); assert.ok(p.inv.some((i) => i.d === "suit"));
+  assert.ok(Sim.act(s, "p1", { type: "unequip", slot: "w2" })); assert.equal(p.w2, null); assert.equal(Sim.gun(p).d, "pistol");
+  assert.equal(s.turn, 1, "rearranging gear is free");
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

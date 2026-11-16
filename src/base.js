@@ -173,7 +173,7 @@ function openPanel(kind,sub){ if(kind==="inventory"&&panelKind==="inventory"){ c
 function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S.mode==="ship") renderShipHud(); }
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
-  $("p-body").innerHTML=P.view(); renderSync();
+  $("panel").dataset.kind=panelKind; $("p-body").innerHTML=P.view(); renderSync();
   const MINE=[["inventory","Kit"],["rack","Loadout"],["stash","Stash"],["workbench","Fabricator"],["wardrobe","Wardrobe"],["bar","Galley"]];
   $("p-tabs").innerHTML=S&&S.mode==="ship"&&MINE.some(([k])=>k===panelKind)?MINE.map(([k,n])=>`<button data-tab="${k}" aria-current="${panelKind===k}">${n}</button>`).join(""):"";
   const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,c.width,c.height); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0,c.width,c.height); }
@@ -305,36 +305,78 @@ function viewWardrobe(){
 function hungerRows(f,w){ const m=(l,v,c)=>`<span class="lbl">${l}</span><div class="meter"><i style="width:${Math.max(0,Math.min(100,v))}%;background:${v<20?"var(--blood2)":c}"></i></div><span class="num">${Math.round(v)}${v<=0?' <span style="color:var(--blood2)">!</span>':""}</span>`; return m("Food",f,"#b08a4a")+m("Water",w,"#5a9ad0"); }
 function limbRows(p){ return Sim.LIMBS.map(l=>{ const f=Math.max(0,p.hp[l]/p.max[l]);
   return `<span class="lbl">${Sim.LNAME[l]}</span><div class="meter"><i style="width:${f*100}%;background:${f<=0?"#262320":f>.66?"#4f7a46":f>.33?"#c79a4a":"#e0482f"}"></i></div><span class="num">${p.hp[l]}/${p.max[l]}${p.bleed[l]?' <span style="color:var(--blood2)">bleeding</span>':""}</span>`; }).join(""); }
+// ---------- inventory: body + equipment on the left, pack grid on the right, pouches along the bottom ----------
+const PACKABLE=["throw","med","key","food"];
+const EQ_LAYOUT=[["head","Helmet"],["acc","Trinket"],["w1","Primary"],["armor","Chest"],["w2","Secondary"],["light","Light"],["legs","Legs"],["melee","Melee"],["pack","Pack"]];
+function roleOf(eq){ const d=k=>eq[k]&&eq[k].d; if(["halohelm","aegis","aegislegs"].includes(d("head"))||d("armor")==="aegis") return "Saint";
+  if(d("armor")==="shroud"||d("head")==="cowl") return "Shade"; if(["ossuary","flak"].includes(d("armor"))||d("head")==="sallet") return "Paladin";
+  if(d("armor")==="hazard") return "Firewalker"; if(d("armor")==="exo") return "Hauler"; if(!d("armor")&&!d("head")) return "Scavenger"; return "Contractor"; }
+function ivCell(it,src,o={}){ const sel=invSel===src, gun=it&&o.wide&&Items.slotOf(it)==="gun";
+  return `<div class="iv-cell${o.wide?" wide":""}${sel?" sel":""}${o.locked?" locked":""}${!it?" empty":""}" ${it&&!o.fixed?`data-drag="${src}"`:""} ${o.drop?`data-drop="${o.drop}"`:""} ${it?`data-pick="${src}"`:""} title="${it?esc(Items.name(it)):o.label||""}" ${o.area?`style="grid-area:${o.area}"`:""}>
+    ${it?`<img alt="" src="${gun?gunURL(it.d):iconFor(it)}">`:o.label?`<span class="iv-lbl">${o.label}</span>`:""}${o.badge!=null&&o.badge!==""?`<span class="iv-n">${o.badge}</span>`:""}${it?`<i class="iv-bar" style="background:${rc(it)}"></i>`:""}${it&&it.iss?`<span class="iv-iss">issued</span>`:""}</div>`; }
+function ivData(){ const raid=S&&S.mode==="raid";
+  if(raid){ const p=me(); return {raid,p,eq:Object.fromEntries(KIT_SLOTS.map(k=>[k,p[k]])),pack:p.inv,cap:p.cap,ammo:p.ammo||{},mats:p.mats||{},starter:false}; }
+  const r=kitResolved(); return {raid,r,eq:Object.fromEntries(KIT_SLOTS.map(k=>[k,r[k]])),pack:r.inv,cap:r.cap,ammo:r.ammo,mats:profile.mats,starter:r.free}; }
+function ivItem(D,src){ const [k,key]=src.split(":"); if(k==="eq") return D.eq[key]; if(k==="inv") return D.raid?D.pack[+key]:byUid(key); if(k==="st") return byUid(key); return null; }
 function viewInventory(){
-  const raid=S&&S.mode==="raid", p=raid?me():null, r=raid?null:kitResolved();
-  const G=raid?Sim.gun(p):null, at=G&&Items.stats(G).ammo;
-  const eq=KIT_SLOTS.map(s=>{ const it=raid?p[s]:r[s], act=raid&&((s==="w1"&&p.act===1&&p.w1)||(s==="w2"&&p.act===2&&p.w2));
-      const btn=raid?(s==="light"&&p.light?`<button class="plain" data-act="ilight">${p.lightOff?"Turn on":"Turn off"}</button>`:""):`<button class="plain" data-act="equipslot:${s}">Change</button>`;
-      return `<div class="panel" style="padding:6px;${act?"border-color:var(--bile)":""}">${gearRow(SLOT_NAME[s]+(act?" ●":""),it,EMPTY_TXT[s],btn)}</div>`; }).join("");
-  const inv=raid?p.inv:r.inv, cap=raid?p.cap:r.cap, ammo=raid?p.ammo:r.ammo;
-  const cells=[]; for(let i=0;i<cap;i++){ const it=inv[i];
-    cells.push(it?`<button class="inv-cell" ${raid?`data-act="isel:${i}"`:""} aria-pressed="${raid&&invSel===i}" style="border-color:${rc(it)}"><img alt="" src="${iconFor(it)}"><span>${nmHTML(it)}<small>${esc(Items.statLine(it)||Items.RAR[Items.rarOf(it)].name)}</small></span></button>`
-      :`<div class="inv-cell" style="opacity:.4"><div class="slot" style="width:40px;height:40px"></div><small>Empty</small></div>`); }
-  let actions="";
-  if(raid&&invSel!=null&&inv[invSel]&&p.alive){ const it=inv[invSel], k=Items.kind(it), slot=Items.slotOf(it), btns=[];
-    if(k==="throw") btns.push(`<button class="plain" data-act="ithrow:${invSel}">Throw…</button>`);
-    else if(slot) btns.push(`<button class="plain" data-act="iequip:${invSel}">Equip</button>`);
-    else if(k==="med") btns.push(`<button class="plain" data-act="iuse:${invSel}">Use</button>`);
-    else if(k==="food") btns.push(`<button class="plain" data-act="iuse:${invSel}">${(Items.def(it.d).water||0)>(Items.def(it.d).food||0)?"Drink":"Eat"}</button>`);
-    btns.push(`<button class="plain" data-act="idrop:${invSel}">Drop</button>`);
-    for(const q of S.ents) if(q.kind==="player"&&q.id!==PID&&q.alive&&Math.abs(q.x-p.x)+Math.abs(q.y-p.y)<=1) btns.push(`<button class="plain" data-act="igive:${invSel}:${q.id}">Give to ${esc(typeof nameOf==="function"?nameOf(q.id):"crew")}</button>`);
-    actions=`<div class="panel h-card" style="margin-top:8px"><div class="bar-row">${slotHTML(it)}<div class="grow">${nmHTML(it)}<div class="risk">${esc(Items.statLine(it))}</div>${Items.statLine(it)!==(Items.def(it.d).desc||"")?`<div class="risk">${esc(Items.def(it.d).desc||"")}</div>`:""}</div></div><div class="bar-row">${btns.join("")}</div><p class="risk">Equipping, swapping and dropping are free. Using a med takes your turn.</p></div>`; }
-  const health=raid?`<div class="panel h-card span5"><div class="h-eyebrow">Condition</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center;align-content:start">
-      <span class="lbl">Blood</span><div class="meter"><i style="width:${Math.max(0,p.blood)}%;background:${p.blood>60?"var(--bile)":p.blood>35?"var(--brass)":"var(--blood2)"}"></i></div><span class="num">${Math.max(0,p.blood)}</span>
-      <span class="lbl">Suit O₂</span><div class="meter"><i style="width:${p.o2/(p.o2max||100)*100}%;background:var(--cold)"></i></div><span class="num">${p.o2}/${p.o2max||100}</span>${hungerRows(p.food,p.water)}${limbRows(p)}</div>
-      ${p.stimT>0?`<p class="risk good">Stimmed · ${p.stimT} turns</p>`:""}</div>`
-    :`<div class="panel h-card span5"><div class="h-eyebrow">Condition</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center;align-content:start">${hungerRows(profile.food,profile.water)}</div><p class="risk">Food and water drop during raids and while the ship travels. Eat at the galley bar, or carry rations. Starving or parched, you lose blood.</p></div>`;
-  return `<section class="h-grid"><div class="panel h-card span7"><div class="lo inv-lo"><div class="preview"><canvas id="h-prev" width="48" height="64" aria-label="Your contractor"></canvas></div>
-      <div class="eq">${eq}${raid&&p.w2?`<button class="plain" data-act="iswap">Swap guns${mode==="pc"?" (R)":""}</button>`:""}</div></div></div>${health}
-    <div class="panel h-card span12"><div class="bar-row"><div class="h-eyebrow grow">Backpack · ${inv.length}/${cap}</div>${raid?"":`<button class="plain" data-act="open:rack">Loadout rack</button>`}</div><div class="inv-grid">${cells.join("")}</div>${actions}
-      <div class="h-eyebrow" style="margin-top:8px">Ammo pouch${at?` · using ${Items.AMMO[at].name.toLowerCase()}`:""}</div>${ammoChips(ammo,at)}
-      ${raid?`<div class="h-eyebrow" style="margin-top:8px">Materials picked up</div>${matChips(p.mats||{})}`:`<p class="risk">This is the kit you'll board with. Change it at the loadout rack in the armory.</p>`}</div></section>`;
+  const D=ivData(), eq=D.eq, callsign=(typeof HB!=="undefined"&&HB.callsign&&HB.callsign())||"Contractor", tag=(hh(callsign.length,callsign.charCodeAt(0)||7,3)%0xffff).toString(16)+"-"+(1000+hh(3,callsign.length,9)%9000);
+  const ammoOf=g=>{ const st=g&&Items.stats(g); return st&&st.ammo?((D.raid?D.ammo[st.ammo]:(D.ammo[st.ammo]||0))|0):""; };
+  const eqHTML=EQ_LAYOUT.map(([k,lbl])=>{ const it=eq[k], wide=k==="w1"||k==="w2"||k==="melee";
+    return ivCell(it,"eq:"+k,{wide,label:lbl,drop:"eq:"+k,area:k,fixed:D.starter,badge:wide&&k!=="melee"&&it?ammoOf(it):(k==="light"&&it&&D.raid&&D.p.lightOff?"off":"")}); }).join("");
+  const used=D.pack.length, rows=Math.max(4,Math.ceil(D.cap/6)), cells=[];
+  for(let i=0;i<rows*6;i++){ const it=D.pack[i], src=D.raid?"inv:"+i:it?"inv:"+it.uid:"";
+    cells.push(i<D.cap?ivCell(it,src,{drop:"inv",badge:it&&it.n>1?it.n:""}):`<div class="iv-cell locked" data-drop="inv"></div>`); }
+  const pouch=AMMO_T.map(t=>{ const n=D.raid?(D.ammo[t]|0):(D.ammo[t]|0); return `<div class="iv-pouch" title="${Items.AMMO[t].name}${D.raid?"":` · ${profile.ammo[t]|0} in the hold`}"><img alt="" src="${iconFor({d:"ammo_"+t})}"><span>${n}</span></div>`; }).join("")
+    +MAT_T.filter(t=>(D.mats[t]|0)>0).map(t=>`<div class="iv-pouch mat" title="${Items.MATS[t]}"><img alt="" src="${iconFor({d:t})}"><span>${D.mats[t]|0}</span></div>`).join("");
+  const sil=`<svg class="iv-sil" viewBox="0 0 100 160" aria-hidden="true"><g fill="none" stroke="#7a1a12" stroke-width=".8" opacity=".7"><ellipse cx="50" cy="16" rx="10" ry="12"/><path d="M40 28 L60 28 L74 36 L80 74 L74 76 L68 46 L66 82 L64 120 L62 154 L52 154 L50 96 L48 154 L38 154 L36 120 L34 82 L32 46 L26 76 L20 74 L26 36 Z"/><path d="M42 40 L58 40 M40 56 L60 56 M42 72 L58 72" opacity=".5"/></g></svg>`;
+  // details of the selected thing
+  let det=""; const it=invSel?ivItem(D,invSel):null;
+  if(it){ const [k,key]=invSel.split(":"), kind=Items.kind(it), btns=[];
+    if(D.raid){ const p=D.p;
+      if(k==="inv"){ if(kind==="throw") btns.push(`<button class="plain" data-act="ithrow:${key}">Throw</button>`); else if(Items.slotOf(it)) btns.push(`<button class="plain" data-act="iequip:${key}">Equip</button>`); else if(kind==="med"||kind==="food") btns.push(`<button class="plain" data-act="iuse:${key}">${kind==="food"?((Items.def(it.d).water||0)>(Items.def(it.d).food||0)?"Drink":"Eat"):"Use"}</button>`);
+        btns.push(`<button class="plain" data-act="idrop:${key}">Drop</button>`);
+        for(const q of S.ents) if(q.kind==="player"&&q.id!==PID&&q.alive&&Math.abs(q.x-p.x)+Math.abs(q.y-p.y)<=1) btns.push(`<button class="plain" data-act="igive:${key}:${q.id}">Give to ${esc(typeof nameOf==="function"?nameOf(q.id):"crew")}</button>`); }
+      if(k==="eq"){ btns.push(`<button class="plain" data-act="iunequip:${key}">Stow in pack</button>`); if(key==="light") btns.push(`<button class="plain" data-act="ilight">${p.lightOff?"Turn on":"Turn off"}</button>`); if((key==="w1"||key==="w2")&&p.w1&&p.w2) btns.push(`<button class="plain" data-act="iswap">Make active</button>`); } }
+    else { if(k==="st"){ if(Items.slotOf(it)) btns.push(`<button class="plain" data-act="equipitem:${key}">Equip</button>`); if(PACKABLE.includes(kind)) btns.push(`<button class="plain" data-act="invadd:${key}">Pack it</button>`); if(kind==="food") btns.push(`<button class="plain" data-act="consume:${key}">Eat now</button>`); }
+      if(k==="inv") btns.push(`<button class="plain" data-act="invrm:${key}">Unpack</button>`);
+      if(k==="eq"&&!D.starter) btns.push(`<button class="plain" data-act="unslot:${key}">Unequip</button>`); }
+    det=`<div class="iv-det"><div class="iv-det-icon">${slotHTML(it)}</div><div class="grow"><b style="color:${rc(it)}">${esc(Items.name(it))}</b> <span class="rar" style="color:${rc(it)}">${Items.RAR[Items.rarOf(it)].name}</span><div class="risk">${esc(Items.statLine(it))}</div><div class="risk">${esc(Items.def(it.d).desc||"")}</div></div><div class="iv-det-btns">${btns.join("")}</div></div>`; }
+  else det=`<div class="iv-det hint">${mode==="pc"?"Drag items between your pack and your body to equip or stow them. Click an item for options.":"Drag items onto your body to equip them, or tap one for options."}${D.starter?" You're on the free scav kit: drag anything from your stash to start a custom kit.":""}</div>`;
+  const stash=D.raid?"":(()=>{ const inKit=new Set([...KIT_SLOTS.map(k=>eq[k]&&eq[k].uid),...D.pack.map(i=>i.uid)].filter(Boolean)), list=profile.stash.filter(q=>!inKit.has(q.uid)).sort((a,b)=>Items.rarOf(b)-Items.rarOf(a));
+    return `<div class="iv-sec"><span>Stash · ${list.length} items</span><span class="risk">drag into your kit</span></div><div class="iv-grid stash" data-drop="st">${list.map(q=>ivCell(q,"st:"+q.uid,{drop:"st"})).join("")||`<span class="risk">Your stash is empty.</span>`}</div>`; })();
+  const cond=D.raid?`<div class="iv-cond">${figHTML(D.p).replace(/^/,'<div class="fig">')+"</div>"}<div class="iv-cond-m">${hungerRows(D.p.food,D.p.water)}<span class="lbl">Blood</span><div class="meter"><i style="width:${Math.max(0,D.p.blood)}%;background:var(--blood2)"></i></div><span class="num">${Math.max(0,D.p.blood)}</span><span class="lbl">O₂</span><div class="meter"><i style="width:${D.p.o2/(D.p.o2max||100)*100}%;background:var(--cold)"></i></div><span class="num">${D.p.o2}</span></div></div>`
+    :`<div class="iv-cond"><div class="iv-cond-m">${hungerRows(profile.food,profile.water)}</div></div>`;
+  return `<section class="iv">
+    <div class="iv-head"><span>Inventory</span><span class="risk">${D.raid?"in the field":D.starter?"scav kit · free":`kit at risk: ${kitRisk(D.r)} cr`}</span></div>
+    <div class="iv-main">
+      <div class="iv-body">${sil}<div class="iv-id"><span>${esc(tag)}</span><b>${esc(callsign)}</b><em>${roleOf(eq)}</em></div><div class="iv-eq">${eqHTML}</div><div class="iv-load">Load ${used}/${D.cap}</div></div>
+      <div class="iv-right"><div class="iv-grid" data-drop="inv">${cells.join("")}</div><div class="iv-pouches">${pouch}</div>${cond}</div>
+    </div>${det}${stash}</section>`;
 }
+// drag and drop (mouse and touch). Small movement = a tap that selects.
+function ivMove(src,dst){ const D=ivData(), it=ivItem(D,src); if(!it||!dst||src===dst) return; const [sk,skey]=src.split(":"), [dk,dkey]=dst.split(":");
+  if(D.raid){
+    if(sk==="inv"&&dk==="eq"){ if(!slotFits(dkey,it)){ toast("That doesn't go there."); return; } send({type:"equip",index:+skey,slot:dkey}); }
+    else if(sk==="eq"&&(dk==="inv")) send({type:"unequip",slot:skey});
+    else if(sk==="eq"&&dk==="eq"&&skey!==dkey&&slotFits(dkey,it)){ send({type:"unequip",slot:skey}); const i=me().inv.length-1; if(me().inv[i]) send({type:"equip",index:i,slot:dkey}); }
+    invSel=null; return; }
+  const k=profile.kit; if(k.type!=="custom"){ k.type="custom"; toast("Started a custom kit from your stash."); }
+  const uid=it.uid; if(!uid) return;
+  const clear=()=>{ for(const s2 of KIT_SLOTS) if(k[s2]===uid) k[s2]=null; k.inv=k.inv.filter(u=>u!==uid); };
+  if(dk==="eq"){ if(!slotFits(dkey,it)){ toast("That doesn't go there."); return; } clear(); k[dkey]=uid; }
+  else if(dk==="inv"){ if(!PACKABLE.includes(Items.kind(it))){ toast("Only supplies go in the pack: meds, food, throwables."); return; } const r=kitResolved(); if(r.inv.length>=r.cap&&!k.inv.includes(uid)){ toast("Your pack is full."); return; } clear(); k.inv.push(uid); }
+  else if(dk==="st") clear();
+  invSel=null; save(); refreshLook(); renderPanel(); }
+(()=>{ const body=$("p-body"); let drag=null;
+  body.addEventListener("pointerdown",e=>{ const c=e.target.closest("[data-pick]"); if(!c||panelKind!=="inventory") return; drag={src:c.dataset.drag||null,pick:c.dataset.pick,x:e.clientX,y:e.clientY,ghost:null,el:c}; });
+  window.addEventListener("pointermove",e=>{ if(!drag||!drag.src) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(!drag.ghost&&Math.hypot(dx,dy)>7){ const img=drag.el.querySelector("img"); drag.ghost=document.createElement("div"); drag.ghost.className="iv-ghost"; if(img) drag.ghost.appendChild(img.cloneNode()); document.body.appendChild(drag.ghost); drag.el.classList.add("dragging"); }
+    if(drag.ghost){ e.preventDefault(); drag.ghost.style.left=e.clientX+"px"; drag.ghost.style.top=e.clientY+"px";
+      document.querySelectorAll(".iv .over").forEach(n=>n.classList.remove("over")); drag.ghost.style.display="none"; const t=document.elementFromPoint(e.clientX,e.clientY); drag.ghost.style.display=""; const d=t&&t.closest("[data-drop]"); if(d) d.classList.add("over"); } },{passive:false});
+  window.addEventListener("pointerup",e=>{ if(!drag) return; const d0=drag; drag=null;
+    if(d0.ghost){ d0.ghost.remove(); d0.el.classList.remove("dragging"); const t=document.elementFromPoint(e.clientX,e.clientY), d=t&&t.closest("[data-drop]"); if(d) ivMove(d0.src,d.dataset.drop); else renderPanel(); return; }
+    invSel=invSel===d0.pick?null:d0.pick; renderPanel(); });
+})();
 function viewRecords(){ const s=profile.stats, rate=s.raids?Math.round(s.extracts/s.raids*100):0;
   return `<div class="stats">${[["Raids",s.raids],["Extracted",s.extracts],["Lost",s.deaths],["Survival",rate+"%"],["Contracts done",s.contracts],["Salvage value",s.earned+" cr"],["Best haul",s.best+" cr"],["Ship day",ship().day]].map(([a,b])=>`<div class="panel stat"><b>${b}</b><span>${a}</span></div>`).join("")}</div>`; }
 function contractRow(id,btn){ const C=World.CONTRACTS[id], site=World.loc(C.site), giver=World.NPCS[C.giver];
@@ -453,7 +495,7 @@ $("p-body").addEventListener("click",e=>{
     case "kit": k.type=x; panelSub=null; save(); refreshLook(); break;
     case "pick": panelSub=panelSub===x?null:x; break;
     case "set": k[x]=y||null; for(const s of KIT_SLOTS) if(s!==x&&y&&k[s]===y) k[s]=null; k.inv=k.inv.filter(u=>u!==y); panelSub=null; save(); refreshLook(); break;
-    case "invadd": if(!k.inv.includes(x)) k.inv.push(x); k.inv=kitResolved().inv.map(i=>i.uid); panelSub=null; save(); refreshLook(); break;
+    case "invadd": if(k.type!=="custom") k.type="custom"; if(!k.inv.includes(x)) k.inv.push(x); k.inv=kitResolved().inv.map(i=>i.uid); panelSub=null; save(); refreshLook(); break;
     case "invrm": k.inv=k.inv.filter(u=>u!==x); save(); refreshLook(); break;
     case "ammo": { const st=Math.max(1,Math.round(Items.AMMO[x].stack/2)), cur=kitResolved().ammo[x]|0; k.ammo[x]=Math.max(0,Math.min(profile.ammo[x]|0,cur+(+y)*st)); save(); refreshLook(); break; }
     // stash + workbench
@@ -466,6 +508,8 @@ $("p-body").addEventListener("click",e=>{
       const slot=sl==="gun"?(!k.w1||k.w1===x?"w1":!k.w2?"w2":"w1"):sl; for(const s2 of KIT_SLOTS) if(k[s2]===x) k[s2]=null; k[slot]=x; k.inv=k.inv.filter(u=>u!==x);
       toast(`${Items.name(it)} is in your ${SLOT_NAME[slot].toLowerCase()} slot. Your kit is now custom.`); save(); refreshLook(); break; }
     case "ilight": send({type:"light"}); break;
+    case "iunequip": invSel=null; send({type:"unequip",slot:x}); break;
+    case "unslot": { const k=profile.kit; if(k.type==="custom"){ k[x]=null; save(); refreshLook(); } invSel=null; break; }
     case "fabup": { const lv=fabLvl(), up=Items.FAB_UP[lv]; if(!up||!canPay(up)||(inSquad()&&!Net.host)) break; pay(up); profile.ship.fab=lv+1; toast(`Fabricator upgraded to Mk ${lv+1}: ${Items.FAB_NAME[lv+1]}.`); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "bareat": { const b=Items.BAR.find(q=>q.id===x); if(!b||profile.credits<b.price) break; profile.credits-=b.price; eatDrink(b.food,b.water); toast(b.water>(b.food||0)?`You drink the ${b.name.toLowerCase()}.`:`You eat the ${b.name.toLowerCase()}.`); if(inSquad()) emit({t:"chat",m:`grabs a ${b.name.toLowerCase()} at the galley`}); save(); break; }
     case "bartogo": { const row=Items.BAR_TOGO[+x]; if(!row||profile.credits<row[1]) break; profile.credits-=row[1]; World.grant(profile,{d:row[0],r:0}); toast(`Bought ${Items.name({d:row[0],r:0})}.`); save(); break; }
