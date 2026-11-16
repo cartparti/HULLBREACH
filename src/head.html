@@ -56,6 +56,27 @@ button.plain{padding:0 12px}
 .bar-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .grow{flex:1;min-width:0}
 .loadout .slot.wide{width:150px}
+.gun-info{padding:4px 9px;display:flex;flex-direction:column;font-size:13px;max-width:212px}
+.gun-info b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gun-info span{font-size:12px;color:var(--ash);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rar{font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.inv-cell{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;align-items:center;padding:6px;border:1px solid var(--line-dim);background:var(--glass);text-align:left;height:auto;text-transform:none;letter-spacing:.01em;font-weight:500;cursor:pointer}
+.inv-cell img{width:40px;height:40px;image-rendering:pixelated}
+.inv-cell b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inv-cell small{display:block;font-size:12px;color:var(--ash);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inv-cell[aria-pressed="true"]{background:#14231f}
+.eqp{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px}
+.inv-lo{grid-template-columns:120px minmax(0,1fr)}.inv-lo .preview{min-height:160px}
+@media (max-width:640px){.inv-lo{grid-template-columns:1fr}.inv-lo .preview{min-height:110px}.inv-lo .preview canvas{width:72px;height:96px}}
+.ammo-row{display:flex;flex-wrap:wrap;gap:6px}
+.ammo-row span{border:1px solid var(--line-dim);padding:3px 8px;font-family:var(--f-num);font-size:13px}
+.swatches{display:flex;flex-wrap:wrap;gap:6px}
+.swatch{width:44px;height:44px;padding:0;justify-content:center;position:relative}
+.swatch i{display:block;width:30px;height:30px;border:1px solid #000}
+.swatch[aria-pressed="true"]{outline:2px solid var(--bile);outline-offset:1px}
+.swatch:disabled{opacity:.35}
+.swatch .lock{position:absolute;right:2px;bottom:0;font-size:10px}
 .loadout .slot.wide img{width:144px;height:48px}
 .ammo{width:56px;height:56px;border:1px solid var(--line);background:#14231f;display:flex;align-items:center;justify-content:center;font-family:var(--f-num);font-size:22px}
 .ammo.low{border-color:var(--blood2);color:var(--blood2)}
@@ -355,11 +376,12 @@ body[data-mode="touch"] .r-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
 
   <!-- PC HUD -->
   <div class="hud h-tl pc-only loadout raid-only">
-    <div class="tab"><b>L</b><span>Loadout</span></div>
+    <div class="tab"><b>I</b><span>Loadout</span></div>
     <div class="row">
       <div><div class="slot wide"><img id="ic-gun" alt="Service pistol"></div><div class="ammobar"><i id="ammobar"></i></div></div>
-      <div><div class="ammo" id="ammo">12</div><span class="kb">rounds</span></div>
+      <div><div class="ammo" id="ammo">12</div><span class="kb" id="ammo-type">PST</span></div>
     </div>
+    <div class="panel gun-info"><b id="gun-name">Service pistol</b><span id="gun-swap">one gun</span></div>
     <div class="panel crew-cards" id="crew-cards" hidden></div>
   </div>
   <div class="hud h-tr pc-only raid-only">
@@ -378,11 +400,13 @@ body[data-mode="touch"] .r-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
   <div class="hud h-bc pc-only raid-only" id="hotbar"></div>
   <div class="hud h-br pc-only raid-only">
     <div class="acts">
+      <button id="b-inv"><span class="key">I</span>Inventory</button>
+      <button id="b-swap"><span class="key">R</span>Swap</button>
       <button id="b-int"><span class="key">F</span>Use</button>
       <button id="b-get"><span class="key">G</span>Grab</button>
       <button id="b-wait"><span class="key">␣</span>Wait</button>
       <button id="b-fire"><span class="key">X</span>Fire</button>
-      <button id="b-ext" class="danger" disabled style="grid-column:2/4"><span class="key">Q</span>Extract</button>
+      <button id="b-ext" class="danger" disabled><span class="key">Q</span>Extract</button>
     </div>
     <div class="tab" style="min-width:0"><b>?</b><span>WASD move · click to walk or shoot</span></div>
     <div class="tab sq-only" style="min-width:0"><b>Z</b><span>Ping · Enter chat · right-click item to give</span></div>
@@ -395,7 +419,7 @@ body[data-mode="touch"] .r-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
   </div>
   <div class="hud s-tr ship-only">
     <div class="panel s-res" id="s-res"></div>
-    <div class="btns"><button id="s-chat" class="plain sq-only">Chat</button><button id="s-crew" class="plain">Crew</button><button id="s-mode" class="plain">Touch mode</button></div>
+    <div class="btns"><button id="s-chat" class="plain sq-only">Chat</button><button id="s-inv" class="plain">Inventory</button><button id="s-crew" class="plain">Crew</button><button id="s-mode" class="plain">Touch mode</button></div>
   </div>
   <div class="hud s-prompt ship-only" id="s-prompt"></div>
   <div class="hud s-bl ship-only pc-only"><div class="panel s-help">
@@ -408,7 +432,7 @@ body[data-mode="touch"] .r-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
     <div class="t-row">
       <div class="panel t-vit" id="tvit"></div>
       <div class="panel t-mon"><div class="fig" id="tfig"></div></div>
-      <div class="t-menu"><button id="t-bag">Kit</button><button id="t-air">Air</button><button id="t-chat" class="sq-only">Chat</button></div>
+      <div class="t-menu"><button id="t-bag">Inv</button><button id="t-swap">Swap</button><button id="t-air">Air</button><button id="t-chat" class="sq-only">Chat</button></div>
     </div>
     <div class="t-ticker" id="tick" role="button" aria-label="Open comms log"></div>
     <div class="t-crew" id="tcrew" hidden></div>

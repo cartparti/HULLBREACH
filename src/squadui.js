@@ -94,7 +94,7 @@ function renderCrew(){
     const st=q=>!q.alive?(q.extracted?["OUT","good"]:["KIA","bad"]):q.downed?[`DOWN ${q.downT}`,"bad"]:q.acted?["✓ ready","good"]:["acting…",""];
     cards.innerHTML=crew.map(q=>{ const [t,c]=st(q), hp=Sim.LIMBS.reduce((a,l)=>a+q.hp[l],0)/Sim.LIMBS.reduce((a,l)=>a+q.max[l],0);
       return `<div class="cc" style="--c:${colorOf(q.id)}"><span class="dot"></span><b>${esc(nameOf(q.id))}</b><span class="st ${c}">${t}</span>
-        <div class="bars"><div class="meter" title="Blood"><i style="width:${Math.max(0,q.blood)}%;background:${q.blood>60?"var(--bile)":q.blood>35?"var(--brass)":"var(--blood2)"}"></i></div><div class="meter" title="Body"><i style="width:${Math.round(hp*100)}%;background:var(--c)"></i></div><span class="num" style="font-size:11px;color:var(--ash)">${q.ammo} rds</span></div></div>`; }).join("");
+        <div class="bars"><div class="meter" title="Blood"><i style="width:${Math.max(0,q.blood)}%;background:${q.blood>60?"var(--bile)":q.blood>35?"var(--brass)":"var(--blood2)"}"></i></div><div class="meter" title="Body"><i style="width:${Math.round(hp*100)}%;background:var(--c)"></i></div><span class="num" style="font-size:11px;color:var(--ash)">${(()=>{ const G=Sim.gun(q), at=G&&Items.stats(G).ammo; return at?(q.ammo[at]|0)+" "+Items.AMMO[at].short:"melee"; })()}</span></div></div>`; }).join("");
     chips.innerHTML=crew.map(q=>{ const [t]=st(q); return `<span style="--c:${colorOf(q.id)}">${esc(nameOf(q.id)).slice(0,10)} <i><u style="width:${Math.max(0,q.blood)}%"></u></i> ${t}</span>`; }).join("");
   }
   let msg="";
@@ -106,7 +106,7 @@ function renderCrew(){
   prompt.innerHTML=msg;
   // touch: give buttons in the kit drawer
   if(mode==="touch"&&S&&S.mode==="raid"){ const a=adjacentCrew(), inv=$("dinv"); if(a&&me().inv.length&&inv&&!inv.querySelector(".give")){
-    inv.insertAdjacentHTML("beforeend",`<div class="give h-eyebrow" style="margin-top:6px">Hand to ${esc(nameOf(a.id))}</div>`+me().inv.map((it,i)=>`<button class="give" data-give="${i}"><span><img alt="" src="${iconURL(it.kind,it.gear)}">Give ${esc(it.name)}</span><span>→</span></button>`).join("")); } }
+    inv.insertAdjacentHTML("beforeend",`<div class="give h-eyebrow" style="margin-top:6px">Hand to ${esc(nameOf(a.id))}</div>`+me().inv.map((it,i)=>`<button class="give" data-give="${i}"><span><img alt="" src="${iconFor(it)}">Give ${esc(Items.name(it))}</span><span>→</span></button>`).join("")); } }
 }
 $("dinv").addEventListener("click",e=>{ const b=e.target.closest("[data-give]"); if(!b) return; e.stopPropagation(); const a=adjacentCrew(); if(a) send({type:"give",index:+b.dataset.give,to:a.id}); },true);
 $("hotbar").addEventListener("contextmenu",e=>{ const b=e.target.closest("[data-use]"); if(!b) return; e.preventDefault(); const a=adjacentCrew(); if(a) send({type:"give",index:+b.dataset.use,to:a.id}); else toast("Stand next to a crewmate to hand items over."); });

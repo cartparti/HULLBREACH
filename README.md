@@ -16,9 +16,14 @@ Turn-based, simulation-driven, and built for squads of up to four.
 
 - **Simulation first.** Zone atmosphere with decompression and wind, spreading fire that needs oxygen, chain-reacting fuel drums, station power, doors that husks batter down.
 - **Per-limb wounds.** Bleeding, crippled legs, ruined aim, suit oxygen, trauma kits.
-- **Your ship.** Walk the bridge, armory, hold and airlock. Six terminals: helm (star map), loadout rack, stash locker, contract board, records, airlock.
+- **Your ship.** Walk the bridge, armory, quarters, break room, brig, bathroom, hold and airlock. Every fixture does something. Terminals: star map, loadout rack, workbench, wardrobe, stash locker, contract board, records, airlock.
+- **Procedural stations.** Every raid builds a new station from a seed: docking bay, corridors, medbays, labs, shrines, armories, a vault with the black box. Squads share the seed, so everyone boards the same station.
+- **Loot with rarity.** Common, uncommon, rare, extremely rare and legendary. Pistols, rifles, shotguns, snipers, launchers, melee and throwables, plus suits and packs. Extremely rare and legendary gear is unique and named (the Widow, the Last Word, the Hymn of Ash...).
+- **Ammo and crafting.** Five ammo types that run out. Find more, buy it, or craft it at the workbench from scrap, propellant and circuitry. Break down gear for materials and upgrade packs up to +3 slots.
+- **Inventory.** I / Tab (or the bag button) shows equipped gear, every limb's health, blood, O₂, the ammo pouch and the backpack, with use, equip, throw, drop and give.
+- **Your look.** Armour sets your silhouette; cloak, visor and crest dyes unlock when you bring them home.
 - **A small galaxy.** Three sectors, nine locations: stations with traders, outposts with contract givers, and four derelicts with their own hazards (KS-9's cargo fire, Tithe Hulk 7's dead power, the Mercy of Iron's extra husks, Pyre Station's inferno).
-- **Extraction economy.** Starter kit (free, nothing at risk) or a custom kit from your stash (lost if you die). Gear with real stats: three weapons, three suits, two packs.
+- **Extraction economy.** Starter kit (free, nothing at risk) or a custom kit from your stash: two guns, melee, suit, pack, supplies and ammo, all lost if you die.
 - **Squad tactics.** Shared vision, name tags, crew cards, pings, chat, downed-and-revive, handing items over, friendly fire.
 
 ## Controls
@@ -30,6 +35,9 @@ Turn-based, simulation-driven, and built for squads of up to four.
 | Use / interact | F | **USE** |
 | Pick up | G | **GRAB** |
 | Items | 1–9, or click the hotbar | Hotbar or **Kit** drawer |
+| Inventory | I or Tab | **Inv** |
+| Swap guns | R | **Swap** |
+| Throw | Pick the throwable, then click a spot (Esc cancels) | Tap it, then tap a spot |
 | Ping (squads) | Z, middle-click or Alt+click | Long-press |
 | Chat (squads) | Enter | **Chat** |
 | Give item (squads) | Right-click it on the hotbar | Kit → *Hand to…* |
@@ -39,6 +47,8 @@ Turn-based, simulation-driven, and built for squads of up to four.
 ```
 src/
   head.html   markup + styles (HUD, panels, touch controls)
+  items.js    item catalogue: rarities, weapons, armour, packs, ammo, recipes, dyes
+  gen.js      procedural station generator (seeded, deterministic)
   sim.js      the rules: pure, deterministic, serialisable state (Sim.act / Sim.newGame)
   world.js    galaxy, traders, contracts, the crew ship (World.act)
   client.js   pixel-art renderer, lighting, effects, input

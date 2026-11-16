@@ -17,34 +17,34 @@ const World = (() => {
     {id:"ossuary",sector:"reach",name:"Ossuary Belt",type:"outpost",x:32,y:37,scene:{kind:"planet",a:"#6a5a4a",b:"#2a2018",ring:true},
       desc:"A mining outpost dug into a dead moon. The foreman pays for dangerous work.",npcs:["dask"],fuel:45},
     {id:"ks9",sector:"reach",name:"Relay KS-9",type:"derelict",x:15,y:50,scene:{kind:"hulk",glow:"#ff7a30"},
-      desc:"A comms relay gone silent six weeks ago. A fire still burns in its cargo hold.",site:{mods:{}}},
+      desc:"A comms relay gone silent six weeks ago. A fire still burns in its cargo hold.",site:{tier:1,fireStart:true,mods:{}}},
     {id:"tithe",sector:"reach",name:"Tithe Hulk 7",type:"derelict",x:36,y:18,scene:{kind:"hulk",glow:"#3a6a5a"},
-      desc:"An ore tithe barge, powerless and cold. Rich holds, more husks.",site:{mods:{power:false,huskAdd:3,loot:1.3,fires:0}}},
+      desc:"An ore tithe barge, powerless and cold. Rich holds, more husks.",site:{tier:2,mods:{power:false,huskAdd:2,loot:1.3}}},
     {id:"spire",sector:"vigil",name:"Saint Orrin's Spire",type:"station",x:66,y:14,scene:{kind:"spire",hue:"#c79a4a"},
       desc:"A shrine station of bells and candle-smoke. The reliquary sells armour blessed or otherwise.",npcs:["caul","ysolde"],fuel:50},
     {id:"mercy",sector:"vigil",name:"The Mercy of Iron",type:"derelict",x:80,y:32,scene:{kind:"hulk",glow:"#c22a1a"},
-      desc:"A pilgrim hospital ship. Lights out, doors sealed, something singing in the vents.",site:{mods:{power:false,huskAdd:5,loot:1.5}}},
+      desc:"A pilgrim hospital ship. Lights out, doors sealed, something singing in the vents.",site:{tier:3,mods:{power:false,huskAdd:3,loot:1.5}}},
     {id:"lazarus",sector:"cinder",name:"Lazarus Yards",type:"outpost",x:44,y:66,scene:{kind:"planet",a:"#7a3a1e",b:"#2a0e08",ring:false},
       desc:"Breaker yards on a smouldering world. Mott takes the jobs nobody else will.",npcs:["mott"],fuel:40},
     {id:"fennick",sector:"cinder",name:"Fennick's Hulk",type:"station",x:62,y:82,scene:{kind:"ring",hue:"#e0482f"},
       desc:"A black market bolted onto a gutted freighter. Rare weapons, no questions.",npcs:["fennick"],fuel:55},
     {id:"pyre",sector:"cinder",name:"Pyre Station",type:"derelict",x:38,y:84,scene:{kind:"hulk",glow:"#ffb040"},
-      desc:"A refinery that has been burning for a month. Fewer husks. Much more fire.",site:{mods:{fires:7,huskDrop:.35,loot:1.4}}},
+      desc:"A refinery that has been burning for a month. Fewer husks. Much more fire.",site:{tier:3,mods:{fires:7,huskDrop:.35,loot:1.4}}},
   ];
   const NPCS={
-    hesk:{name:"Quartermaster Hesk",role:"Trader",look:{skin:"#a68a6a",hood:"#3a4a44",eye:"#cfd8c8"},shop:{buy:1,sell:1,stock:[["bandage",40],["medkit",140],["o2",60],["rounds",50],["pistol",240]]},
+    hesk:{name:"Quartermaster Hesk",role:"Trader",look:{skin:"#a68a6a",hood:"#3a4a44",eye:"#cfd8c8"},shop:{buy:1,sell:1,stock:[[{d:"bandage"},40],[{d:"medkit",r:1},140],[{d:"o2"},60],[{d:"ammo_pistol",n:12},50],[{d:"ammo_rifle",n:10},60],[{d:"ammo_shell",n:6},60],[{d:"pistol",r:0},240],[{d:"knife",r:0},120],[{d:"frag"},160],[{d:"field"},450]]},
       line:"Ninefold keeps its contractors stocked. Fair prices. Don't make me regret it."},
     vance:{name:"Broker Vance",role:"Contracts",look:{skin:"#8a6a50",hood:"#2a2420",eye:"#e8b450"},
       line:"KS-9 went dark with something my client wants back. Recover it and I'll make it worth the trip.",contracts:["c_ks9","c_tithe"]},
     dask:{name:"Foreman Dask",role:"Contracts",look:{skin:"#6a5040",hood:"#5a4a2a",eye:"#d0b080"},
       line:"Tithe Hulk 7 drifted off its lane with a full hold. I want its recorder before the guild does.",contracts:["c_tithe2"]},
-    caul:{name:"Brother Caul",role:"Reliquary",look:{skin:"#b8a088",hood:"#5a1a12",eye:"#f0d090"},shop:{buy:1.1,sell:.9,stock:[["bandage",45],["medkit",130],["flak",1350],["hazard",1250]]},
+    caul:{name:"Brother Caul",role:"Reliquary",look:{skin:"#b8a088",hood:"#5a1a12",eye:"#f0d090"},shop:{buy:1.1,sell:.9,stock:[[{d:"flak",r:0},900],[{d:"flak",r:1},1500],[{d:"hazard",r:0},800],[{d:"hazard",r:1},1350],[{d:"medkit",r:1},130],[{d:"stim",r:2},260],[{d:"incendiary"},180],[{d:"axe",r:1},420]]},
       line:"Every plate is blessed. Most of them even stop bullets."},
     ysolde:{name:"Prioress Ysolde",role:"Contracts",look:{skin:"#c8b098",hood:"#e8e0d0",eye:"#7ab0d0"},
       line:"The Mercy of Iron carried our sick. Bring back its log so we know how they died.",contracts:["c_mercy"]},
     mott:{name:"Fixer Mott",role:"Contracts",look:{skin:"#7a5a44",hood:"#2a2a2a",eye:"#ff6a30"},
       line:"Pyre Station's still burning. The recorder's fireproof. Are you?",contracts:["c_pyre"]},
-    fennick:{name:"Fennick",role:"Black market",look:{skin:"#9a8a70",hood:"#3a2a40",eye:"#9ae8c0"},shop:{buy:1.15,sell:1.25,stock:[["scatter",1000],["rifle",1200],["hauler",950],["o2",70],["rounds",55]]},
+    fennick:{name:"Fennick",role:"Black market",look:{skin:"#9a8a70",hood:"#3a2a40",eye:"#9ae8c0"},shop:{buy:1.15,sell:1.25,stock:[[{d:"scatter",r:1},1100],[{d:"carbine",r:0},900],[{d:"rivet",r:1},1200],[{d:"longbore",r:0},1300],[{d:"launcher",r:0},1800],[{d:"ammo_sniper",n:4},90],[{d:"ammo_rocket",n:2},160],[{d:"hauler"},950],[{d:"stun"},150],[{d:"scrap",n:3},40],[{d:"prop",n:2},50],[{d:"circ",n:2},70]]},
       line:"I pay more for salvage than anyone in three sectors. I also charge more. Funny how that works."},
   };
   const CONTRACTS={
@@ -78,13 +78,12 @@ const World = (() => {
         ship.contracts.push(a.id); return {ok:true,msg:`Contract accepted: ${C.title}.`}; }
       case "drop": { ship.contracts=ship.contracts.filter(c=>c!==a.id); return {ok:true,msg:"Contract dropped."}; }
       case "buy": { const N=NPCS[a.npc]; if(!N||!N.shop||!L.npcs.includes(a.npc)) return {ok:false,msg:"No trader here."};
-        const row=N.shop.stock.find(r=>r[0]===a.item); if(!row) return {ok:false,msg:"Not stocked."}; const price=row[1];
-        if(P.credits<price) return {ok:false,msg:"Not enough credits."}; P.credits-=price;
-        if(a.item==="rounds") P.rounds+=8; else P.stash.push(mkItem(Sim.GEAR[a.item]?{kind:"gear",gear:a.item}:{kind:a.item}));
-        return {ok:true,msg:`Bought ${a.item==="rounds"?"8 rounds":itemInfo({kind:Sim.GEAR[a.item]?"gear":a.item,gear:a.item}).name} for ${price} cr.`}; }
+        const row=N.shop.stock[a.i|0]; if(!row) return {ok:false,msg:"Not stocked."}; const [spec,price]=row;
+        if(P.credits<price) return {ok:false,msg:"Not enough credits."}; P.credits-=price; grant(P,spec);
+        return {ok:true,msg:`Bought ${Items.name(spec)} for ${price} cr.`}; }
       case "sell": { const N=NPCS[a.npc]; if(!N||!N.shop||!L.npcs.includes(a.npc)) return {ok:false,msg:"No trader here."};
         const i=P.stash.findIndex(q=>q.uid===a.uid); if(i<0) return {ok:false,msg:"Item not found."};
-        const it=P.stash[i], v=Math.round(itemInfo(it).sell*N.shop.sell); P.stash.splice(i,1); P.credits+=v; return {ok:true,msg:`Sold ${itemInfo(it).name} for ${v} cr.`}; }
+        const it=P.stash[i], v=Math.round(Items.value(it)*.5*N.shop.sell); P.stash.splice(i,1); P.credits+=v; return {ok:true,msg:`Sold ${Items.name(it)} for ${v} cr.`}; }
     }
     return {ok:false,msg:"Unknown action."};
   }
@@ -95,13 +94,14 @@ const World = (() => {
       for(const P of profiles) P.credits+=C.reward; out.contract={title:C.title,reward:C.reward}; }
     ship.day+=1; return out;
   }
-  function itemInfo(it){
-    if(it.kind==="gear"){ const g=Sim.GEAR[it.gear]; return {name:g.name,desc:g.desc,sell:Math.round(g.value*.5),cat:"gear"}; }
-    if(CONS[it.kind]) return {name:CONS[it.kind].name,desc:CONS[it.kind].desc,sell:CONS[it.kind].sell,cat:it.kind==="keycard"?"salvage":"supplies"};
-    if(it.kind==="blackbox") return {name:"Black box recorder",desc:"A flight recorder. Worth far more to whoever hired you to fetch it.",sell:150,cat:"salvage"};
-    return {name:it.name||"Salvage",desc:"Salvage. Any trader will buy it.",sell:it.value||0,cat:"salvage"};
-  }
+  const itemInfo=it=>Items.info(it);
+  // put an item into a player's base: ammo and materials stack, everything else goes to the stash
+  function grant(P,spec){ const D=Items.def(spec.d); if(!D) return;
+    if(D.k==="ammo"){ P.ammo=P.ammo||{}; P.ammo[D.ammo]=(P.ammo[D.ammo]|0)+(spec.n|0); return; }
+    if(D.k==="mat"){ P.mats=P.mats||{}; P.mats[spec.d]=(P.mats[spec.d]|0)+(spec.n||1); return; }
+    if(D.k==="dye"){ P.unlocks=P.unlocks||{cloak:[],visor:[],crest:[]}; const u=P.unlocks[D.slot]=P.unlocks[D.slot]||[]; if(!u.includes(D.dye)) u.push(D.dye); return; }
+    P.stash.push(mkItem(spec)); }
   let uidN=0; const uid=()=>"i"+Date.now().toString(36)+(uidN++).toString(36)+Math.random().toString(36).slice(2,5);
-  function mkItem(it){ const o={uid:uid(),kind:it.kind}; if(it.gear) o.gear=it.gear; if(it.kind==="valuable"){ o.name=it.name; o.value=it.value; } return o; }
-  return {SECTORS,LOCS,NPCS,CONTRACTS,CONS,loc,newShip,travelCost,siteContract,act,settleRaid,itemInfo,mkItem};
+  function mkItem(it){ const o={uid:uid(),d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; return o; }
+  return {SECTORS,LOCS,NPCS,CONTRACTS,CONS,loc,newShip,travelCost,siteContract,act,settleRaid,itemInfo,mkItem,grant};
 })();

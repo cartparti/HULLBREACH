@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const src = ["sim", "world"].map((m) => readFileSync(join(root, `src/${m}.js`), "utf8")).join("\n");
-const { Sim, World } = new Function(`${src}\nreturn {Sim, World};`)();
+const src = ["items", "gen", "sim", "world"].map((m) => readFileSync(join(root, `src/${m}.js`), "utf8")).join("\n");
+const { Sim, World, Items, Gen } = new Function(`${src}\nreturn {Sim, World, Items, Gen};`)();
 
 let passed = 0;
 const test = (name, fn) => { try { fn(); passed++; console.log("ok   " + name); } catch (e) { console.error("FAIL " + name + "\n     " + e.message); process.exitCode = 1; } };
@@ -59,7 +59,7 @@ test("shooting a fuel drum chain-detonates its neighbours", () => {
 
 test("ship interior: terminals and free movement", () => {
   const s = Sim.newGame(1, null, { map: "ship", mode: "ship" });
-  assert.deepEqual([...new Set(s.tiles.filter((t) => t.t === "terminal").map((t) => t.kind))].sort(), ["airlock", "board", "helm", "navtable", "rack", "records", "stash"]);
+  assert.deepEqual([...new Set(s.tiles.filter((t) => t.t === "terminal").map((t) => t.kind))].sort(), ["airlock", "board", "helm", "navtable", "rack", "records", "stash", "wardrobe", "workbench"]);
   assert.equal(s.tiles.filter((t) => t.t === "seat").length, 4, "cockpit seats one squad of four");
   const p = playerOf(s); for (let i = 0; i < 3; i++) Sim.act(s, "p1", { type: "move", dx: 0, dy: -1 });
   assert.equal(p.y, 6); assert.equal(s.turn, 1, "no turns pass aboard the ship");
@@ -93,7 +93,7 @@ test("squads: downed crew can be revived, items can be handed over", () => {
   const crew = [{ id: "a", name: "", loadout: Sim.STARTER }, { id: "b", name: "", loadout: Sim.STARTER }];
   const s = Sim.newGame(3, null, { crew }), A = playerOf(s, "a"), B = playerOf(s, "b");
   assert.equal(Math.abs(A.x - B.x) + Math.abs(A.y - B.y), 1);
-  assert.ok(Sim.act(s, "a", { type: "give", index: 0, to: "b" })); assert.equal(B.inv.length, 3);
+  const nB = B.inv.length; assert.ok(Sim.act(s, "a", { type: "give", index: 0, to: "b" })); assert.equal(B.inv.length, nB + 1);
   Sim.act(s, "b", { type: "wait" });
   B.downed = true; B.downT = 8; B.hp.torso = 0;
   assert.equal(Sim.act(s, "b", { type: "wait" }), false, "downed players cannot act");
@@ -101,12 +101,73 @@ test("squads: downed crew can be revived, items can be handed over", () => {
 });
 
 test("world: travel costs fuel, contracts pay the whole crew", () => {
-  const ship = World.newShip(), P = { credits: 0, rounds: 0, stash: [] }, Q = { credits: 0, rounds: 0, stash: [] };
+  const ship = World.newShip(), P = { credits: 0, ammo: {}, mats: {}, stash: [] }, Q = { credits: 0, ammo: {}, mats: {}, stash: [] };
   assert.ok(World.act(ship, { id: "a", profile: P }, { type: "accept", id: "c_ks9" }).ok);
   assert.ok(World.act(ship, { id: "a", profile: P }, { type: "travel", to: "ks9" }).ok); assert.equal(ship.fuel, 5);
   assert.equal(World.act(ship, { id: "a", profile: P }, { type: "travel", to: "pyre" }).ok, true); assert.equal(ship.fuel, 2);
   ship.loc = "ks9"; const out = World.settleRaid(ship, [P, Q], { status: "extracted", blackbox: true }, "ks9");
   assert.equal(out.contract.reward, 600); assert.equal(P.credits, 600); assert.equal(Q.credits, 600); assert.deepEqual(ship.done, ["c_ks9"]);
+});
+
+
+test("procedural stations: 150 seeds are sealed, reachable and complete", () => {
+  for (let k = 0; k < 150; k++) {
+    const s = Sim.newGame(k * 104729 + 7, null, { gen: { tier: 1 + (k % 3), fireStart: k % 2 === 0 }, site: "Test" }), p = playerOf(s), W = s.W;
+    const seen = new Set([p.y * W + p.x]), q = [p.y * W + p.x];
+    while (q.length) { const c = q.pop(), x = c % W, y = (c / W) | 0;
+      for (const [dx, dy] of N4) { const j = (y + dy) * W + x + dx, t = s.tiles[j]; if (!t || seen.has(j)) continue; assert.notEqual(t.t, "space", `seed ${k}: hull leak`); if (["floor", "extract", "door"].includes(t.t)) { seen.add(j); q.push(j); } } }
+    assert.ok(s.items.some((i) => i.d === "blackbox"), `seed ${k}: no black box`);
+    assert.ok(s.items.some((i) => i.d === "keycard"), `seed ${k}: no keycard`);
+    assert.ok(s.tiles.some((t) => t.t === "console"), `seed ${k}: no power relay`);
+    assert.ok(s.tiles.some((t) => t.t === "door" && t.locked), `seed ${k}: no vault`);
+    for (const it of s.items) assert.ok(seen.has(it.y * W + it.x), `seed ${k}: ${Items.name(it)} unreachable`);
+  }
+});
+
+test("procedural stations differ per seed and match across pages", () => {
+  const a = Sim.newGame(11, null, { gen: { tier: 2 } }), b = Sim.newGame(11, null, { gen: { tier: 2 } }), c = Sim.newGame(12, null, { gen: { tier: 2 } });
+  assert.equal(Sim.hash(a), Sim.hash(b)); assert.notEqual(JSON.stringify(a.tiles), JSON.stringify(c.tiles));
+  for (let k = 0; k < 40; k++) { const s = Sim.newGame(k + 900, null, { gen: { tier: 3 } }); let n = 0;
+    while (s.status === "playing" && n++ < 250) { const d = N4[n % 4]; if (!Sim.act(s, "p1", { type: "move", dx: d[0], dy: d[1] })) Sim.act(s, "p1", { type: "wait" }); } JSON.stringify(s); }
+});
+
+const arena = (lo, husks = []) => { const s = Sim.newGame(5, lo, { map: "ks9" }); s.ents = s.ents.filter((e) => e.kind === "player"); const p = playerOf(s); p.x = 20; p.y = 13; for (const t of s.tiles) if (t.t === "door") t.open = true;
+  for (const [x, y] of husks) s.ents.push({ id: "h" + x + y, kind: "husk", name: "husk", x, y, hp: { head: 99, torso: 99, larm: 99, rarm: 99, lleg: 99, rleg: 99 }, max: { head: 99, torso: 99, larm: 99, rarm: 99, lleg: 99, rleg: 99 }, bleed: {}, blood: 99, alive: true, aware: false, last: null, face: [0, 1] });
+  Sim.fov(s, p); return { s, p }; };
+const kit = (w1, ammo, inv = [], extra = {}) => ({ w1, w2: null, melee: { d: "knife", r: 0 }, armor: { d: "suit", r: 0 }, pack: { d: "sling", r: 0 }, ammo, inv, ...extra });
+
+test("weapons: bursts spend ammo, shotguns fire pellets, guns run dry", () => {
+  let { s, p } = arena(kit({ d: "hymn" }, { rifle: 5 }), [[25, 13]]);
+  assert.ok(Sim.act(s, "p1", { type: "shoot", x: 25, y: 13 })); assert.equal(p.ammo.rifle, 2, "Hymn of Iron fires 3-round bursts");
+  Sim.act(s, "p1", { type: "wait" }); const h = s.ents[1]; s.ents[1].stun = 5; Sim.fov(s, p);
+  assert.ok(Sim.act(s, "p1", { type: "shoot", x: h.x, y: h.y })); assert.equal(p.ammo.rifle, 0, "burst clamps to the ammo left");
+  Sim.act(s, "p1", { type: "wait" }); assert.equal(Sim.act(s, "p1", { type: "shoot", x: h.x, y: h.y }), false, "empty gun refuses to fire");
+  ({ s, p } = arena(kit({ d: "scatter", r: 0 }, { shell: 1 }), [[21, 13]]));
+  Sim.act(s, "p1", { type: "shoot", x: 21, y: 13 }); assert.ok(/pellets|misses/.test(s.log.map((l) => l.msg).join(" ")));
+});
+
+test("weapons: launchers and frags explode, stun charges stun, noisemakers lure", () => {
+  let { s, p } = arena(kit({ d: "launcher", r: 0 }, { rocket: 1 }), [[24, 13]]);
+  const hp0 = s.ents[1].hp.torso + s.ents[1].hp.head + s.ents[1].hp.larm + s.ents[1].hp.rarm + s.ents[1].hp.lleg + s.ents[1].hp.rleg;
+  assert.ok(Sim.act(s, "p1", { type: "shoot", x: 24, y: 13 })); assert.equal(p.ammo.rocket, 0);
+  assert.ok(Object.values(s.ents[1].hp).reduce((a, b) => a + b, 0) < hp0, "rocket damaged the husk");
+  ({ s, p } = arena(kit(null, {}, [{ d: "stun", r: 0 }, { d: "decoy", r: 0 }, { d: "frag", r: 0 }]), [[23, 13], [30, 13]]));
+  assert.ok(Sim.act(s, "p1", { type: "throw", index: 0, x: 23, y: 13 })); assert.ok(s.ents[1].stun >= 2, "stunned");
+  Sim.act(s, "p1", { type: "throw", index: 0, x: 26, y: 13 }); assert.deepEqual(s.ents[2].last, { x: 26, y: 13 }, "lured by the noisemaker");
+  assert.equal(Sim.act(s, "p1", { type: "throw", index: 0, x: 40, y: 13 }), false, "too far to throw");
+});
+
+test("gear: equip, swap guns, drop, typed ammo pickup, rarity scaling", () => {
+  const { s, p } = arena(kit({ d: "pistol", r: 0 }, { pistol: 3 }, [{ d: "longbore", r: 2 }, { d: "flak", r: 1 }, { d: "hauler", r: 0 }]));
+  assert.ok(Sim.act(s, "p1", { type: "equip", index: 0 })); assert.equal(p.w2.d, "longbore"); assert.equal(Sim.gun(p).d, "longbore");
+  assert.ok(Sim.act(s, "p1", { type: "swap" })); assert.equal(Sim.gun(p).d, "pistol");
+  Sim.act(s, "p1", { type: "equip", index: 0 }); assert.equal(p.armor.d, "flak"); assert.equal(p.o2max, Items.stats({ d: "flak", r: 1 }).o2);
+  Sim.act(s, "p1", { type: "equip", index: 1 }); assert.equal(p.cap, 10);
+  assert.equal(s.turn, 1, "swapping and equipping cost no turn");
+  s.items.push({ id: 999, d: "ammo_sniper", r: 0, n: 4, x: p.x, y: p.y }); Sim.act(s, "p1", { type: "pickup" }); assert.equal(p.ammo.sniper, 4);
+  const n = p.inv.length; Sim.act(s, "p1", { type: "drop", index: 0 }); assert.equal(p.inv.length, n - 1); assert.ok(s.items.some((i) => i.x === p.x && i.y === p.y));
+  const c = Items.stats({ d: "rivet", r: 0 }), r = Items.stats({ d: "rivet", r: 2 }); assert.ok(r.dmg[1] > c.dmg[1] && r.acc > c.acc, "rarer is better");
+  assert.equal(Items.name({ d: "rivet", r: 2 }), "Rivet rifle Mk III"); assert.equal(Items.name({ d: "voideye", r: 0 }), "Eye of the Void"); assert.equal(Items.rarOf({ d: "voideye", r: 0 }), 4);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);
