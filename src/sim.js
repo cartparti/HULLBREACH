@@ -113,7 +113,7 @@ const Sim = (() => {
       const dr=st.dr||0; if(st.part==="head") g.head+=dr; else if(st.part==="legs") g.legs+=dr; else g.torso+=dr;
       g.torso+=st.tdr||0; g.fire+=st.fire||0; g.stealth+=st.stealth||0; g.o2+=st.o2||0; g.slots+=st.slots||0; g.acc+=st.acc||0; if(st.dark||st.k==="light") g.dark=1; if(st.k==="light") g.lit=1; if(st.nolimp) g.nolimp=1; }
     g.fire=Math.min(.8,g.fire); g.head=Math.min(.6,g.head); g.torso=Math.min(.6,g.torso); g.legs=Math.min(.6,g.legs); return g; }
-  const capOf = e => (e.pack?ST(e.pack).slots:Items.POCKETS)+gearOf(e).slots;
+  const capOf = e => Items.POCKETS+(e.pack?ST(e.pack).slots:0)+gearOf(e).slots;
 
   // ---------- RNG (mulberry32, state lives in game state) ----------
   function rand(s){ s.rng=(s.rng+0x6D2B79F5)|0; let t=s.rng; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }

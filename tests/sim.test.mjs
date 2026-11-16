@@ -164,7 +164,7 @@ test("gear: equip, swap guns, drop, typed ammo pickup, rarity scaling", () => {
   assert.ok(Sim.act(s, "p1", { type: "equip", index: 0 })); assert.equal(p.w2.d, "longbore"); assert.equal(Sim.gun(p).d, "longbore");
   assert.ok(Sim.act(s, "p1", { type: "swap" })); assert.equal(Sim.gun(p).d, "pistol");
   Sim.act(s, "p1", { type: "equip", index: 0 }); assert.equal(p.armor.d, "flak"); assert.equal(p.o2max, Items.CLOTHES_O2 + Items.stats({ d: "flak", r: 1 }).o2);
-  Sim.act(s, "p1", { type: "equip", index: 1 }); assert.equal(p.cap, 10);
+  Sim.act(s, "p1", { type: "equip", index: 1 }); assert.equal(p.cap, Items.POCKETS + 8);
   assert.equal(s.turn, 1, "swapping and equipping cost no turn");
   s.items.push({ id: 999, d: "ammo_sniper", r: 0, n: 4, x: p.x, y: p.y }); Sim.act(s, "p1", { type: "pickup" }); assert.equal(p.ammo.sniper, 4);
   const n = p.inv.length; Sim.act(s, "p1", { type: "drop", index: 0 }); assert.equal(p.inv.length, n - 1); assert.ok(s.items.some((i) => i.x === p.x && i.y === p.y));

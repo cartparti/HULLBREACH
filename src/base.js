@@ -4,7 +4,7 @@
 // data/users/<id>/save.
 const SAVE_V=2, KIT_SLOTS=["w1","w2","melee","head","armor","legs","acc","light","pack"], SLOT_NAME={w1:"Primary",w2:"Secondary",melee:"Melee",head:"Helmet",armor:"Chest",legs:"Legs",acc:"Accessory",light:"Light",pack:"Pack"};
 const ISSUED={}; // nothing is issued: you start in your clothes and find or craft the rest
-const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",head:`Bare head · ${Items.CLOTHES_O2} O₂ rebreather`,armor:"Just your shirt",legs:"Just your trousers",acc:"Nothing. Find scarves, capes, charms, lamps and stranger things",light:"No light. Derelicts are very dark",pack:`Pockets · ${Items.POCKETS} slots`};
+const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",head:`Bare head · ${Items.CLOTHES_O2} O₂ rebreather`,armor:"Just your shirt",legs:"Just your trousers",acc:"Nothing. Find scarves, capes, charms, lamps and stranger things",light:"No light. Derelicts are very dark",pack:`No pack · ${Items.POCKETS} slots from pockets and belt`};
 let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all", stashSel=null, armed={}, invSel=null;
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:300,
@@ -54,7 +54,7 @@ const byUid=u=>u?profile.stash.find(q=>q.uid===u)||null:null;
 const strip=it=>{ if(!it) return null; const o={d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; if(it.n) o.n=it.n; if(it.iss) o.iss=1; return o; };
 const rc=it=>Items.RAR[Items.rarOf(it)].col;
 const nmHTML=it=>`<b style="color:${rc(it)}">${esc(Items.name(it))}</b>`;
-const capOf=(pack,r)=>(pack?Items.stats(pack).slots:Items.POCKETS)+(r?["head","armor","legs","acc"].reduce((a,k)=>a+((r[k]&&Items.stats(r[k]).slots)||0),0):0);
+const capOf=(pack,r)=>Items.POCKETS+(pack?Items.stats(pack).slots:0)+(r?["head","armor","legs","acc"].reduce((a,k)=>a+((r[k]&&Items.stats(r[k]).slots)||0),0):0);
 function slotFits(slot,it){ const s=Items.slotOf(it); return slot==="w1"||slot==="w2"?s==="gun":s===slot; }
 function kitResolved(){ const k=profile.kit;
   if(k.type==="starter"){ const st=Sim.STARTER, iss=x=>x&&{...x,iss:1};
@@ -273,7 +273,7 @@ function viewWorkbench(){
       <p class="risk">Ship parts and tech cores turn up in engineering rooms, workshops, cargo holds and vaults.</p></div>
     <div class="panel h-card span12"><div class="chips">${tabs.map(([k,n])=>`<button data-act="fabtab:${k}" aria-pressed="${fabTab===k}">${n}</button>`).join("")}</div><div class="shop" style="margin-top:8px">${recipes}</div></div>
     <div class="panel h-card span12"><div class="h-eyebrow">Pack upgrades · +1 slot each, up to +3</div><div class="shop">${profile.stash.filter(q=>Items.kind(q)==="pack").map(q=>{ const l=q.l|0, c=Items.UPGRADE_COST(l);
-      return `<div class="panel shop-row">${slotHTML(q)}<div class="nm">${nmHTML(q)}<span>${capOf(q)} slots${l<3?` → ${capOf(q)+1} · ${costHTML(c)}`:" · fully upgraded"}</span></div><span></span><button class="plain" data-act="upg:${q.uid}" ${l<3&&canPay(c)?"":"disabled"}>${l<3?"Upgrade":"Maxed"}</button></div>`; }).join("")||`<p class="risk">No packs in your stash.</p>`}</div></div></section>`;
+      return `<div class="panel shop-row">${slotHTML(q)}<div class="nm">${nmHTML(q)}<span>+${Items.stats(q).slots} slots${l<3?` → +${Items.stats(q).slots+1} · ${costHTML(c)}`:" · fully upgraded"}</span></div><span></span><button class="plain" data-act="upg:${q.uid}" ${l<3&&canPay(c)?"":"disabled"}>${l<3?"Upgrade":"Maxed"}</button></div>`; }).join("")||`<p class="risk">No packs in your stash.</p>`}</div></div></section>`;
 }
 function viewBar(){
   const menu=Items.BAR.map(b=>`<div class="panel shop-row"><div class="slot" style="display:flex;align-items:center;justify-content:center;font-size:22px">${b.water>(b.food||0)?"🥤":"🍲"}</div><div class="nm"><b>${b.name}</b><span>${[b.food?`+${b.food} food`:"",b.water?`+${b.water} water`:""].filter(Boolean).join(" · ")}</span></div><span class="price">${b.price?b.price+" cr":"free"}</span><button class="plain" data-act="bareat:${b.id}" ${profile.credits<b.price?"disabled":""}>${b.water>(b.food||0)?"Drink":"Eat"}</button></div>`).join("");

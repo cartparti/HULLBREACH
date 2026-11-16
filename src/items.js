@@ -113,11 +113,11 @@ const Items = (() => {
     censer:   { k: "armor", part: "acc", name: "Censer of Orrin", fire: .2, acc: .03, rar: 3, value: 1200, desc: "Smoking at your belt. +20% fire resistance, +3% to hit." },
     drone:    { k: "armor", part: "acc", name: "Seraph Drone", acc: .08, dark: 1, rar: 4, value: 2600, desc: "A skull-faced drone that spots for you. +8% to hit, sees in the dark." },
     // ---- backpacks ----
-    sling:    { k: "pack", name: "Sling pack", slots: 6, value: 30, desc: "Small and light." },
-    field:    { k: "pack", name: "Field pack", slots: 8, value: 220, desc: "A proper rucksack." },
-    hauler:   { k: "pack", name: "Hauler pack", slots: 10, value: 480, desc: "Big frame pack." },
-    mule:     { k: "pack", name: "Mule Frame", slots: 12, rar: 3, value: 1200, desc: "Exo-assisted cargo frame." },
-    bottomless: { k: "pack", name: "Bottomless Satchel", slots: 14, rar: 4, value: 2600, desc: "It shouldn't hold this much. It does." },
+    sling:    { k: "pack", name: "Sling pack", slots: 4, value: 30, desc: "Small and light. Four more slots." },
+    field:    { k: "pack", name: "Field pack", slots: 6, value: 220, desc: "A proper rucksack. Six more slots." },
+    hauler:   { k: "pack", name: "Hauler pack", slots: 8, value: 480, desc: "Big frame pack. Eight more slots." },
+    mule:     { k: "pack", name: "Mule Frame", slots: 10, rar: 3, value: 1200, desc: "Exo-assisted cargo frame." },
+    bottomless: { k: "pack", name: "Bottomless Satchel", slots: 12, rar: 4, value: 2600, desc: "It shouldn't hold this much. It does." },
     // ---- consumables & misc ----
     bandage:  { k: "med", name: "Bandage roll", value: 15, desc: "Stops bleeding on one limb." },
     medkit:   { k: "med", name: "Trauma kit", value: 55, rar: 1, desc: "Stops all bleeding and patches every limb." },
@@ -207,7 +207,7 @@ const Items = (() => {
     const s = stats(it); if (!s) return "";
     if (s.k === "weapon") { const parts = [`${s.dmg[0]}–${s.dmg[1]} dmg`]; if (s.pellets) parts[0] = `${s.pellets}×${s.dmg[0]}–${s.dmg[1]}`; if (s.burst) parts.push(`burst ${s.burst}`); if (s.ammo) parts.push(AMMO[s.ammo].name.toLowerCase()); else parts.push("melee"); if (s.blast) parts.push(`blast ${s.blast}`); if (s.stun) parts.push(`stun ${s.stun}`); if (s.bleed >= .7) parts.push("bleeds"); if (s.bolt) parts.push("bolt-action"); if (s.pierce) parts.push("pierces"); if (s.knock) parts.push("knockback"); if (s.cleave) parts.push("cleaves"); return parts.join(" · "); }
     if (s.k === "armor") { const where = { head: "head", body: "torso", legs: "leg", acc: "" }[s.part || "body"]; return [s.dr ? `${Math.round(s.dr * 100)}% ${where} armour` : "", s.tdr ? `+${Math.round(s.tdr * 100)}% torso armour` : "", s.fire ? `${Math.round(s.fire * 100)}% fire` : "", s.o2 ? `${s.o2} O₂` : "", s.slots ? `+${s.slots} slot${s.slots > 1 ? "s" : ""}` : "", s.acc ? `+${Math.round(s.acc * 100)}% to hit` : "", s.dark ? "sees in the dark" : "", s.stealth ? "stealth" : "", s.nolimp ? "no limp" : ""].filter(Boolean).join(" · ") || "Cosmetic"; }
-    if (s.k === "pack") return `${s.slots} slots`;
+    if (s.k === "pack") return `+${s.slots} slots`;
     if (s.k === "light") return `${Math.round(s.range)} tile beam · ${s.cone < .6 ? "wide" : s.cone > .78 ? "narrow" : "medium"}${s.acc ? ` · +${Math.round(s.acc * 100)}% to hit` : ""}`;
     if (s.k === "food") return [s.food ? `${s.food > 0 ? "+" : ""}${s.food} food` : "", s.water ? `${s.water > 0 ? "+" : ""}${s.water} water` : "", s.heal ? `+${s.heal} blood` : ""].filter(Boolean).join(" · ");
     if (s.k === "throw") return [s.dmg ? `${s.dmg[0]}–${s.dmg[1]} dmg` : "", s.blast ? `blast ${s.blast}` : "", s.fire ? "fire" : "", s.stun ? `stun ${s.stun}` : "", s.noise ? "lure" : ""].filter(Boolean).join(" · ");
@@ -259,7 +259,7 @@ const Items = (() => {
     bottom: ["pants", "shorts"],
     cloth: ["#3a4448", "#56603c", "#5e1a12", "#1c2a44", "#2a2826", "#8a7a5a", "#cfc2a6", "#7a5a1a", "#3e1e52", "#46504a"],
   };
-  const CLOTHES_O2 = 20, POCKETS = 3;
+  const CLOTHES_O2 = 20, POCKETS = 10;
   const UPGRADE_COST = (lvl) => ({ scrap: 4 + lvl * 2, circ: 2 + lvl });
   return { RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, craftRarity, FAB_UP, FAB_NAME, BAR, BAR_TOGO, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
 })();
