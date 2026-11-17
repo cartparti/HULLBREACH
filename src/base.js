@@ -319,6 +319,9 @@ function ivData(){ const raid=S&&S.mode==="raid";
   if(raid){ const p=me(); return {raid,p,eq:Object.fromEntries(KIT_SLOTS.map(k=>[k,p[k]])),pack:p.inv,cap:p.cap,ammo:p.ammo||{},mats:p.mats||{},starter:false}; }
   const r=kitResolved(); return {raid,r,eq:Object.fromEntries(KIT_SLOTS.map(k=>[k,r[k]])),pack:r.inv,cap:r.cap,ammo:r.ammo,mats:profile.mats,starter:r.free}; }
 function ivItem(D,src){ const [k,key]=src.split(":"); if(k==="eq") return D.eq[key]; if(k==="inv") return D.raid?D.pack[+key]:byUid(key); if(k==="st") return byUid(key); return null; }
+function ammoNote(D){ const held=AMMO_T.filter(t=>(profile.ammo[t]|0)>0).map(t=>`${Items.AMMO[t].name} ${profile.ammo[t]|0}`);
+  if(!held.length) return `<div class="risk iv-ammo-note">No ammo in the hold. Craft it at the workbench or buy it from a trader.</div>`;
+  return `<div class="risk iv-ammo-note">In the hold: ${held.join(" · ")}.${D.starter?" The free scav kit only carries its own 12 pistol rounds. Drag gear from your stash into your kit to pack hold ammo.":" Use + and − to pack it for the next raid."}</div>`; }
 function viewInventory(){
   const D=ivData(), eq=D.eq, callsign=(typeof HB!=="undefined"&&HB.callsign&&HB.callsign())||"Contractor", tag=(hh(callsign.length,callsign.charCodeAt(0)||7,3)%0xffff).toString(16)+"-"+(1000+hh(3,callsign.length,9)%9000);
   const ammoOf=g=>{ const st=g&&Items.stats(g); return st&&st.ammo?((D.raid?D.ammo[st.ammo]:(D.ammo[st.ammo]||0))|0):""; };
@@ -327,7 +330,10 @@ function viewInventory(){
   const used=D.pack.length, rows=Math.max(4,Math.ceil(D.cap/6)), cells=[];
   for(let i=0;i<rows*6;i++){ const it=D.pack[i], src=D.raid?"inv:"+i:it?"inv:"+it.uid:"";
     cells.push(i<D.cap?ivCell(it,src,{drop:"inv",badge:it&&it.n>1?it.n:""}):`<div class="iv-cell locked" data-drop="inv"></div>`); }
-  const pouch=AMMO_T.map(t=>{ const n=D.raid?(D.ammo[t]|0):(D.ammo[t]|0); return `<div class="iv-pouch" title="${Items.AMMO[t].name}${D.raid?"":` · ${profile.ammo[t]|0} in the hold`}"><img alt="" src="${iconFor({d:"ammo_"+t})}"><span>${n}</span></div>`; }).join("")
+  const pouch=AMMO_T.map(t=>{ const n=D.ammo[t]|0, A=Items.AMMO[t];
+      if(D.raid) return `<div class="iv-pouch" title="${A.name}"><img alt="" src="${iconFor({d:"ammo_"+t})}"><span>${n}</span></div>`;
+      const hold=profile.ammo[t]|0; if(!hold&&!n) return `<div class="iv-pouch dim" title="${A.name}: none"><img alt="" src="${iconFor({d:"ammo_"+t})}"><span>0</span></div>`;
+      return `<div class="iv-pouch ammo" title="${A.name}: ${n} packed, ${hold} in the hold"><img alt="" src="${iconFor({d:"ammo_"+t})}"><span>${n}<small>/${D.starter?n:hold}</small></span>${D.starter?"":`<button data-act="ammo:${t}:-1" aria-label="Pack less ${A.name}" ${n<=0?"disabled":""}>−</button><button data-act="ammo:${t}:1" aria-label="Pack more ${A.name}" ${n>=hold?"disabled":""}>+</button>`}</div>`; }).join("")
     +MAT_T.filter(t=>(D.mats[t]|0)>0).map(t=>`<div class="iv-pouch mat" title="${Items.MATS[t]}"><img alt="" src="${iconFor({d:t})}"><span>${D.mats[t]|0}</span></div>`).join("");
   const sil=`<svg class="iv-sil" viewBox="0 0 100 160" aria-hidden="true"><g fill="none" stroke="#7a1a12" stroke-width=".8" opacity=".7"><ellipse cx="50" cy="16" rx="10" ry="12"/><path d="M40 28 L60 28 L74 36 L80 74 L74 76 L68 46 L66 82 L64 120 L62 154 L52 154 L50 96 L48 154 L38 154 L36 120 L34 82 L32 46 L26 76 L20 74 L26 36 Z"/><path d="M42 40 L58 40 M40 56 L60 56 M42 72 L58 72" opacity=".5"/></g></svg>`;
   // details of the selected thing
@@ -351,7 +357,7 @@ function viewInventory(){
     <div class="iv-head"><span>Inventory</span><span class="risk">${D.raid?"in the field":D.starter?"scav kit · free":`kit at risk: ${kitRisk(D.r)} cr`}</span></div>
     <div class="iv-main">
       <div class="iv-body">${sil}<div class="iv-id"><span>${esc(tag)}</span><b>${esc(callsign)}</b><em>${roleOf(eq)}</em></div><div class="iv-eq">${eqHTML}</div><div class="iv-load">Load ${used}/${D.cap}</div></div>
-      <div class="iv-right"><div class="iv-grid" data-drop="inv">${cells.join("")}</div><div class="iv-pouches">${pouch}</div>${cond}</div>
+      <div class="iv-right"><div class="iv-grid" data-drop="inv">${cells.join("")}</div><div class="iv-pouches">${pouch}</div>${D.raid?"":ammoNote(D)}${cond}</div>
     </div>${det}${stash}</section>`;
 }
 // drag and drop (mouse and touch). Small movement = a tap that selects.
@@ -502,7 +508,10 @@ $("p-body").addEventListener("click",e=>{
     // stash + workbench
     case "scrap": { const it=byUid(x); if(!it) break; if(!arm("scrap:"+x)) break; const yv=scrapYield(it); profile.stash=profile.stash.filter(q=>q.uid!==x); stashSel=null;
       for(const m in yv) profile.mats[m]=(profile.mats[m]|0)+yv[m]; toast(`Broke down ${Items.name(it)}: ${MAT_T.filter(m=>yv[m]).map(m=>yv[m]+" "+Items.MATS[m].toLowerCase()).join(", ")}.`); save(); refreshLook(); break; }
-    case "craft": { const R2=Items.RECIPES.find(q=>q.id===x); if(!R2||R2.lvl>fabLvl()||!canPay(R2.cost)) break; pay(R2.cost); const out={...R2.out,r:Items.craftRarity(R2,fabLvl())}; World.grant(profile,out); toast(`Crafted ${Items.name(out)}.`); save(); break; }
+    case "craft": { const R2=Items.RECIPES.find(q=>q.id===x); if(!R2||R2.lvl>fabLvl()||!canPay(R2.cost)) break; pay(R2.cost); const out={...R2.out,r:Items.craftRarity(R2,fabLvl())}; World.grant(profile,out); const OD=Items.def(out.d);
+      if(OD&&OD.k==="ammo"){ const t=OD.ammo, k=profile.kit; if(k.type!=="starter"){ k.ammo=k.ammo||{}; k.ammo[t]=Math.min(profile.ammo[t]|0,(k.ammo[t]|0)+(out.n|0)); }
+        toast(`Crafted ${Items.AMMO[t].name} ×${out.n|0}. ${profile.ammo[t]|0} in the hold${k.type!=="starter"?", packed in your kit":" (switch to a custom kit to bring it)"}.`); }
+      else toast(`Crafted ${Items.name(out)}. It's in your stash.`); save(); break; }
     case "fabtab": fabTab=x; break;
     case "equipslot": if(profile.kit.type!=="custom"){ profile.kit.type="custom"; toast("Switched to a custom kit. Pick your gear."); } save(); openPanel("rack",x); return;
     case "equipitem": { const it=byUid(x), sl=it&&Items.slotOf(it); if(!sl) break; const k=profile.kit; if(k.type!=="custom"){ k.type="custom"; }
