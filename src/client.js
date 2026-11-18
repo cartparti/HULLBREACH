@@ -1520,7 +1520,7 @@ function drawOpened(g,k,x,top,h){
   R(g,x+3,top+5,18,4,"#050505"); R(g,x+4,top+6,4,2,"#2a2620"); hp(g,x+12,top+7,"#4a4436");
   R(g,x+3,top,18,4,lid); R(g,x+3,top,18,1,"rgba(255,255,255,.2)"); R(g,x+3,top+4,18,1,"rgba(0,0,0,.6)"); }
 function drawUI(g,cx,cy,now){
-  const p=me();
+  const p=me(); drawObjectiveMarkers(g,cx,cy,now);
   MARKS=MARKS.filter(m=>now-m.t0<220); for(const m of MARKS){ const a=1-(now-m.t0)/220, X=m.x-cx, Y=m.y-cy, s=3+ (1-a)*2; g.strokeStyle=`rgba(255,255,255,${a})`; g.lineWidth=1; g.beginPath(); for(const [dx,dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ g.moveTo(X+dx*s,Y+dy*s); g.lineTo(X+dx*(s+2.5),Y+dy*(s+2.5)); } g.stroke(); }
   FLOATS=FLOATS.filter(f=>now-f.t0<900); g.textAlign="center"; for(const f of FLOATS){ const t=(now-f.t0)/900, X=f.x-cx, Y=f.y-cy-t*12; g.font=`bold ${f.big?7:5.5}px monospace`; g.globalAlpha=Math.min(1,(1-t)*2); g.fillStyle="#000"; g.fillText(f.txt,X+.5,Y+.5); g.fillStyle=f.col; g.fillText(f.txt,X,Y); } g.globalAlpha=1; g.textAlign="left";
   { const m=S.boss&&S.ents.find(e=>e.id===S.boss&&e.alive); if(m&&m.aware&&VIS[Sim.idx(S,m.x,m.y)]){ const f=Sim.LIMBS.reduce((a,l)=>a+Math.max(0,m.hp[l]),0)/Sim.LIMBS.reduce((a,l)=>a+m.max[l],0), w=Math.min(110,view.fw-40), bx=(view.fw-w)/2, by=view.fh*.2;
@@ -1718,7 +1718,7 @@ function vitHTML(p){ const pr=S.P[Sim.idx(S,p.x,p.y)], bl=Sim.LIMBS.filter(l=>p.
 function drawEkg(root,p){ root.querySelectorAll("canvas.ekg").forEach(c=>{ const g=c.getContext("2d"), w=c.width, h=c.height; g.clearRect(0,0,w,h); g.fillStyle=p.blood>60?"#7fa86a":p.blood>35?"#c79a4a":"#e0482f";
   const amp=Math.max(.2,p.blood/100), rate=p.blood<50?14:20; for(let x=0;x<w;x+=2){ const ph=(x+S.turn*7)%rate; let y=h/2; if(ph===4) y=h/2-9*amp; else if(ph===6) y=h/2+7*amp; else if(ph===2) y=h/2+2; g.fillRect(x,Math.round(y),2,2); if(ph===4||ph===6){ const y0=Math.min(y,h/2), y1=Math.max(y,h/2); g.fillRect(x,y0,1,y1-y0); } } }); }
 function contractRows(p){ const vis=S.ents.filter(e=>e.kind==="husk"&&e.alive&&VIS[Sim.idx(S,e.x,e.y)]).length, bb=p.inv.some(i=>i.d==="blackbox");
-  return [...(S.jobs||[]).map(J=>[J.title.length>24?J.title.slice(0,23)+"…":J.title,J.done?"DONE":J.type==="purge"?`${J.prog}/${J.n}`:"open",J.done?"good":""]),["Black box",bb?"SECURED":"in the vault",bb?"good":""],["Haul",Sim.lootValue(p)+" cr",""],["Station power",S.power?"ON":"OFF",S.power?"good":"bad"],["Location",Sim.roomName(p.x,p.y),""],["Husks in sight",vis,vis?"bad":""],...(()=>{ const rs=S.ents.filter(e=>e.kind==="raider"&&e.alive&&VIS[Sim.idx(S,e.x,e.y)]); if(!rs.length) return []; const h=rs.filter(e=>attOf(e)==="hostile"&&!e.surr).length; return [["Raiders in sight",h?`${rs.length} (${h} hostile)`:rs.length,h?"bad":""]]; })(),["Fires",Object.keys(S.fire||{}).length,Object.keys(S.fire||{}).length?"bad":""],...crewRows(),["Turn",S.turn,""]]
+  return [["Black box",bb?"SECURED":"in the vault",bb?"good":""],["Haul",Sim.lootValue(p)+" cr",""],["Station power",S.power?"ON":"OFF",S.power?"good":"bad"],["Location",Sim.roomName(p.x,p.y),""],["Husks in sight",vis,vis?"bad":""],...(()=>{ const rs=S.ents.filter(e=>e.kind==="raider"&&e.alive&&VIS[Sim.idx(S,e.x,e.y)]); if(!rs.length) return []; const h=rs.filter(e=>attOf(e)==="hostile"&&!e.surr).length; return [["Raiders in sight",h?`${rs.length} (${h} hostile)`:rs.length,h?"bad":""]]; })(),["Fires",Object.keys(S.fire||{}).length,Object.keys(S.fire||{}).length?"bad":""],...crewRows(),["Turn",S.turn,""]]
     .map(([a,b,c])=>`<span>${a}</span><span class="${c}">${b}</span>`).join(""); }
 function crewRows(){ const crew=S.ents.filter(e=>e.kind==="player"); if(crew.length<2) return [];
   const aboard=crew.filter(e=>e.alive).length, waiting=crew.filter(e=>e.alive&&!e.acted&&e.id!==PID).map(e=>typeof nameOf==="function"?nameOf(e.id):e.id);
@@ -1741,7 +1741,51 @@ function adjacentFoe(){ if(!S||S.mode!=="raid") return null; const p=me(); if(!p
   for(const e of S.ents){ if(!e.alive||e===p||Math.max(Math.abs(e.x-p.x),Math.abs(e.y-p.y))!==1) continue;
     if(e.kind==="husk"||(e.kind==="bot"&&Sim.botHostile(S,e,p))||(e.kind==="raider"&&!e.surr&&attOf(e)==="hostile")){ if(!best||(target&&target.x===e.x&&target.y===e.y)) best=e; } } return best; }
 function strike(){ const f=adjacentFoe(); if(!f){ note("Nothing hostile in reach. Strike hits an enemy right beside you."); return; } send({type:"melee",x:f.x,y:f.y}); }
+// ---------- objectives: what you're here for, what to find, where to look ----------
+const objKey=()=>"hb-obj-"+(typeof mode!=="undefined"?mode:"pc");
+let objOpen=null; const objIsOpen=()=>{ if(objOpen==null){ try{ const v=localStorage.getItem(objKey()); objOpen=v==null?mode!=="touch":v==="1"; }catch(e){ objOpen=mode!=="touch"; } } return objOpen; };
+let objC={t:0,S:null,v:[]};
+function objectives(){ const now=performance.now(); if(objC.S===S&&now-objC.t<300) return objC.v; objC={t:now,S,v:objectives0()}; return objC.v; }
+function objectives0(){ if(!S||S.mode!=="raid") return []; const p=me(), out=[], sh=typeof ship==="function"?ship():null, Lid=sh&&sh.loc;
+  const crew=S.ents.filter(e=>e.kind==="player"), carried=d=>crew.some(q=>q.inv&&q.inv.some(i=>i.d===d)), find=pred=>{ const it=S.items.find(pred); if(it) return {x:it.x,y:it.y}; for(let i=0;i<S.tiles.length;i++){ const t=S.tiles[i]; if(t.loot&&t.loot.some(pred)) return {x:i%S.W,y:(i/S.W)|0,box:t.kind}; } return null; };
+  const RN=n=>!n?"":n==="Engineering"?"engineering":"the "+n.toLowerCase(), roomOf=pos=>pos?RN(Sim.roomName(pos.x,pos.y)):"";
+  // the contract's black box
+  const cid=sh&&World.siteContract(sh,Lid), C=cid&&World.CONTRACTS[cid];
+  if(C){ const has=carried("blackbox"), at=has?null:find(i=>i.d==="blackbox"), vault=(S.rooms||[]).find(r=>r[0]==="Vault"), key=carried("keycard");
+    out.push({k:"contract",title:C.title,done:has,item:"Black box",hint:has?"You have it. Get it to the shuttle pad.":`Locked in ${roomOf(at)||"the vault"}. ${S.power?(key?"Your keycard opens the vault while the power is on.":"Find the captain's keycard, or cut the power and force the vault door."):"The power is off: the vault door can be forced."}`,to:at||(vault?{x:(vault[1]+vault[3])>>1,y:(vault[2]+vault[4])>>1}:null)});
+    if(!has&&!key&&S.power){ const kp=find(i=>i.d==="keycard"); if(kp) out.push({k:"key",title:"Optional: captain's keycard",item:"Keycard",hint:`Somewhere in ${roomOf(kp)}. Opens the vault while power is on.`,to:kp,opt:true}); } }
+  // faction jobs on this station
+  for(const J of S.jobs||[]){ const j=(sh&&sh.jobs||[]).find(q=>q.id===J.id)||{}, F=Sim.FACTIONS[J.fac]||{name:""}, o={k:J.type,title:J.title,done:J.done,fac:F.name,col:F.col};
+    if(J.type==="kill"){ const t=S.ents.find(e=>e.jobTarget===J.id&&e.alive); o.hint=J.done?"Target down. Get out alive to collect.":t?`${t.name} is tagged by the bounty beacon: last seen in ${RN(Sim.roomName(t.x,t.y))}, with bodyguards.`:"Target down."; o.to=t&&!J.done?{x:t.x,y:t.y}:null; }
+    if(J.type==="recover"){ const mine=crew.some(q=>q.inv&&q.inv.some(i=>i.job===J.id)), at=mine?null:find(i=>i.job===J.id); o.item=j.item||"Contract cargo"; o.done=mine||J.done;
+      o.hint=mine?"You have it. Carry it out through the shuttle pad.":at?`Locked ${at.box?`in a ${at.box==="strongbox"?"strongbox":at.box} `:""}in ${roomOf(at)}.`:"Somewhere aboard."; o.to=at; }
+    if(J.type==="purge"){ o.prog=[J.prog,J.n]; o.hint=J.done?"Purge done. Get out alive to collect.":`Kill the dead aboard: ${J.prog} of ${J.n}.`; }
+    if(J.type==="rescue"){ const r=S.ents.find(e=>e.rescue===J.id); o.hint=J.done?"Rescued.":!r||!r.alive?"They didn't make it.":r.stranded?`Stranded in ${RN(Sim.roomName(r.x,r.y))}. Find them and press F beside them.`:`${r.name} is following you. Get them to the shuttle pad alive.`; o.to=r&&r.alive&&!J.done?{x:r.x,y:r.y}:null; o.item=r?r.name:null; }
+    if(J.type==="sabotage"){ let c=null; for(let i=0;i<S.tiles.length;i++) if(S.tiles[i].t==="console"){ c={x:i%S.W,y:(i/S.W)|0}; break; } o.hint=J.done?"Worm uploaded. Get out.":`Upload the worm at the main power relay in ${roomOf(c)||"engineering"}. Press F beside it.`; o.to=J.done?null:c; }
+    out.push(o); }
+  // getting out
+  const pads=[]; for(let i=0;i<S.tiles.length;i++) if(S.tiles[i].t==="extract") pads.push({x:i%S.W,y:(i/S.W)|0});
+  const left=out.filter(o=>!o.done&&!o.opt).length, pad=pads.sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+  out.push({k:"extract",title:left?"Extract when you're done":"Extract",hint:`Shuttle pad in the docking bay${pad?`, ${Math.round(Math.hypot(pad.x-p.x,pad.y-p.y))} tiles away`:""}. Stand on or beside it and press Q.`,to:pad,dim:!!left});
+  return out; }
+function renderObjectives(){ objC.t=0; const el=$("obj"); if(!el) return; if(!S||S.mode!=="raid"||S.status!=="playing"||!$("menu").hidden){ el.hidden=true; return; }
+  const O=objectives(), main=O.filter(o=>o.k!=="extract"&&!o.opt), done=main.filter(o=>o.done).length, open=objIsOpen(); el.hidden=false; el.classList.toggle("closed",!open); $("obj-tg").textContent=open?"▾":"▸";
+  const next=O.find(o=>!o.done&&!o.opt); $("obj-n").textContent=(main.length?`${done}/${main.length}`:"salvage")+(!open&&next?` · ${next.title.length>26?next.title.slice(0,25)+"…":next.title}`:"");
+  if(mode==="pc") requestAnimationFrame(()=>{ const box=document.querySelector(".hud.h-tl"); if(box){ const r=box.getBoundingClientRect(); if(r.height) el.style.top=Math.round(r.bottom+8)+"px"; } }); else el.style.top="";
+  const html=(main.length?"":`<div class="ob"><i>◇</i><b>Salvage run</b><small>No contract here. Search lockers and crates, take what's worth carrying.</small></div>`)+O.map(o=>`<div class="ob ${o.done?"done":""}"><i>${o.done?"✓":o.k==="extract"?"⇪":o.opt?"·":"◆"}</i><b${o.col?` style="color:${o.col}"`:""}>${esc(o.title)}</b>${o.item&&!o.done?`<small>Find: <span class="item">${esc(o.item)}</span></small>`:""}${o.prog?`<div class="bar"><span style="width:${Math.min(100,o.prog[0]/o.prog[1]*100)}%"></span></div>`:""}<small>${esc(o.hint||"")}${o.fac?` · ${esc(o.fac)}`:""}</small></div>`).join("");
+  const b=$("obj-body"); if(b._h!==html){ b.innerHTML=html; b._h=html; } }
+function toggleObjectives(){ objOpen=!objIsOpen(); try{ localStorage.setItem(objKey(),objOpen?"1":"0"); }catch(e){} renderObjectives(); }
+// markers: a diamond over objectives in view, an arrow at the screen edge for ones that aren't
+function drawObjectiveMarkers(g,cx,cy,now){ if(!S||S.mode!=="raid"||S.status!=="playing") return; const O=objectives().filter(o=>o.to&&!o.done&&!(o.k==="extract"&&o.dim)).slice(0,4);
+  const W=view.fw, H=view.fh, pulse=.6+.4*Math.sin(now/220), used=[];
+  for(const o of O){ const X=o.to.x*TS+12-cx, Y=o.to.y*TS+4-cy, col=o.k==="extract"?"#7cc46a":o.opt?"#c9a24a":"#e8c060";
+    if(X>8&&Y>8&&X<W-8&&Y<H-8){ g.save(); g.globalAlpha=pulse; g.translate(X,Y-10+Math.sin(now/300)*1.5); g.rotate(Math.PI/4); g.fillStyle="#000"; g.fillRect(-3,-3,6,6); g.fillStyle=col; g.fillRect(-2.2,-2.2,4.4,4.4); g.restore(); g.globalAlpha=1; continue; }
+    const dx=X-W/2, dy=Y-H/2, k=Math.min((W/2-14)/Math.abs(dx||1e-6),(H/2-14)/Math.abs(dy||1e-6)); let ax=W/2+dx*k, ay=H/2+dy*k; const a=Math.atan2(dy,dx);
+    for(let n=0;n<4&&used.some(u=>Math.hypot(u[0]-ax,u[1]-ay)<11);n++){ if(Math.abs(Math.cos(a))>Math.abs(Math.sin(a))) ay+=11; else ax+=14; } used.push([ax,ay]);
+    g.save(); g.translate(ax,ay); g.rotate(a); g.globalAlpha=.55+.45*pulse; g.fillStyle="#000"; g.beginPath(); g.moveTo(7,0); g.lineTo(-4,-5); g.lineTo(-4,5); g.fill(); g.fillStyle=col; g.beginPath(); g.moveTo(5.5,0); g.lineTo(-3,-3.6); g.lineTo(-3,3.6); g.fill(); g.restore();
+    g.globalAlpha=1; g.font="5px monospace"; g.textAlign="center"; const d=Math.round(Math.hypot(o.to.x-me().x,o.to.y-me().y)); g.fillStyle="#000"; g.fillText(d+"m",ax+.5-Math.cos(a)*10,ay+2.5-Math.sin(a)*10); g.fillStyle=col; g.fillText(d+"m",ax-Math.cos(a)*10,ay+2-Math.sin(a)*10); g.textAlign="left"; } }
 function renderPanels(){
+  renderObjectives();
   if(typeof tutTick==="function") tutTick();
   if(typeof renderCrew==="function") renderCrew();
   if(S.mode==="raid"&&typeof panelKind!=="undefined"&&(panelKind==="inventory"||panelKind==="body")) renderPanel();
@@ -1879,6 +1923,7 @@ document.addEventListener("keydown",e=>{
   if(k==="escape"){ stopTravel(); return; }
   if(k==="r"&&S.mode==="raid"){ send({type:"swap"}); return; }
   if(k==="l"){ toggleLight(); return; }
+  if(k==="j"){ toggleObjectives(); return; }
   if(k==="v"&&S.mode==="raid"){ strike(); return; }
   if(k==="m"&&typeof Snd!=="undefined"){ const on=Snd.toggle(); note(on?"Sound on.":"Sound muted. Press M to turn it back on."); return; }
   if(k==="i"||k==="tab"){ e.preventDefault(); if(typeof openPanel==="function") openPanel("inventory"); return; }
@@ -1944,3 +1989,5 @@ $("b-help").onclick=()=>{ $("help").hidden=!$("help").hidden; };
 $("b-new").onclick=()=>armAbandon($("b-new"),"Abandon");
 
 function setMode(m){ mode=m; document.body.dataset.mode=m; try{ localStorage.setItem("hb-mode",m); }catch(e){} target=null; hover=null; stopTravel(); camInit=false; resize(); if(S) renderPanels(); }
+
+$("obj-h").onclick=toggleObjectives; if($("t-obj")) $("t-obj").onclick=toggleObjectives;

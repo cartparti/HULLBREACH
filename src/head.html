@@ -267,6 +267,15 @@ body[data-mode="touch"] .tut{top:auto;bottom:calc(env(safe-area-inset-bottom,0px
 .gmap text{paint-order:stroke;stroke:rgba(4,8,10,.85);stroke-width:.5px}
 .galaxy .regions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 #t-swap.strike{background:linear-gradient(#6a1208,#3a0804);border-color:#e0482f;color:#fff}
+.obj{position:fixed;z-index:29;left:max(16px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 272px);width:min(290px,calc(100% - 32px));background:rgba(8,3,3,.86);border:1px solid #6a1a12;font:13px var(--f-hud);color:var(--bone)}
+.obj-h{display:flex;align-items:center;gap:8px;width:100%;height:28px;padding:0 10px;background:linear-gradient(#2a0806,#140403);border:0;border-bottom:1px solid #4a120c;color:var(--brass);cursor:pointer;text-align:left}
+.obj-h b{flex:1;font:700 13px var(--f-title,serif);letter-spacing:.05em} .obj-h span{font:600 11px var(--f-num);color:var(--ash)} .obj-h i{font-style:normal;color:var(--ash)}
+#obj-body{padding:6px 10px;display:flex;flex-direction:column;gap:6px;max-height:44vh;overflow-y:auto} .obj.closed #obj-body{display:none}
+.ob{display:grid;grid-template-columns:16px 1fr;gap:2px 6px} .ob i{font-style:normal;color:var(--brass);line-height:16px} .ob b{font-weight:600} .ob small{grid-column:2;color:var(--ash);font-size:11.5px;line-height:1.3}
+.ob.done b{color:var(--bile);text-decoration:line-through} .ob.done i{color:var(--bile)} .ob .item{color:#e8c060} .ob .bar{grid-column:2;height:4px;background:#1a0806} .ob .bar span{display:block;height:100%;background:var(--brass)}
+body[data-mode="touch"] .obj{top:calc(env(safe-area-inset-top,0px) + 176px);width:min(260px,calc(100% - 32px));font-size:12px}
+body[data-mode="touch"] .obj.closed{width:auto}
+body[data-scene="ship"] .obj{display:none!important}
 .chip{display:inline-block;padding:2px 8px;border:1px solid var(--line-dim);font:600 12px var(--f-num)}
 .chips button{height:32px;padding:0 12px}
 .chips button[aria-pressed="true"]{border-color:var(--line);color:#fff;background:#14231f}
@@ -619,6 +628,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
   </div>
 </div>
 <div class="hub-toast" id="h-toast" role="status" hidden></div>
+<div class="obj" id="obj" hidden><button class="obj-h" id="obj-h" aria-expanded="true"><b>Objectives</b><span id="obj-n"></span><i id="obj-tg">▾</i></button><div id="obj-body"></div></div>
 <div class="tut" id="tut" hidden><div class="tut-h"><b id="tut-title">Field training</b><button id="tut-skip" class="plain">Skip</button></div><div id="tut-body"></div></div>
 <div class="viewport" id="vp">
   <canvas id="screen" aria-label="Station view"></canvas>
@@ -683,7 +693,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
     <div class="t-row">
       <div class="t-mon"><div class="fig" id="tfig"></div></div>
       <div class="t-vit" id="tvit"></div>
-      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-chat" class="sq-only talk" aria-label="Talk">Talk</button></div>
+      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-obj" aria-label="Objectives">Goals</button><button id="t-chat" class="sq-only talk" aria-label="Talk">Talk</button></div>
     </div>
     <div class="t-ticker" id="tick" role="button" aria-label="Open comms log"></div>
     <div class="t-crew" id="tcrew" hidden></div>
