@@ -1087,7 +1087,7 @@ function buildStatic(){
   }
   for(const d of S.decals||[]){ if(d.type==="ritual") drawRitual(g,d.x,d.y); else drawKindDecal(g,d); }
   // a colour grade that says whose station this is
-  { const K={hospital:"rgba(150,190,200,.07)",mining:"rgba(200,140,60,.08)",fortress:"rgba(160,40,20,.09)",hive:"rgba(60,200,90,.07)",outpost:"rgba(70,110,200,.07)"}[S.kind]; if(K){ g.fillStyle=K; g.fillRect(0,0,S.W*TS,S.H*TS); } }
+  { const K={hospital:"rgba(150,190,200,.07)",mining:"rgba(200,140,60,.08)",fortress:"rgba(160,40,20,.09)",hive:"rgba(60,200,90,.07)",outpost:"rgba(70,110,200,.07)",research:"rgba(90,200,220,.06)",freighter:"rgba(190,160,90,.06)",colony:"rgba(210,170,120,.06)"}[S.kind]; if(K){ g.fillStyle=K; g.fillRect(0,0,S.W*TS,S.H*TS); } }
   if(S.mode==="ship") for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const t=S.tiles[Sim.idx(S,x,y)]; if(!(t.t==="prop"&&t.kind==="drive")) continue;
     let wx=x-1; while(wx>0&&T(wx,y).t!=="wall") wx--; const nx=wx-1; if(T(nx,y).t!=="space") continue; const ox=nx*TS, oy=y*TS;
     R(g,ox+10,oy+4,14,16,"#2a2e32"); R(g,ox+10,oy+4,14,1.5,"#5a6268"); R(g,ox+4,oy+2,8,20,"#3a3e42"); R(g,ox+4,oy+2,8,1,"#6a7278"); R(g,ox+2,oy+1,3,22,"#22262a"); R(g,ox+2,oy+1,1,22,"#4a5056");

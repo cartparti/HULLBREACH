@@ -249,7 +249,7 @@ const Sim = (() => {
   function addBot(s,x,y,type,owner){ const B=BTYPES[type]; const b={id:"b"+(s.nextId++),kind:"bot",type,name:B.name,owner:owner||null,x,y,hp:{...B.hp},max:{...B.hp},bleed:{},blood:100,alive:true,busy:0,face:[0,1],syn:true,seen:{},home:{x,y}}; s.ents.push(b); return b; }
   // pick what each husk spawn becomes: tougher variants on harder stations, stalkers in packs
   function huskType(s,tier,kind){ const w=tier>=3?[["husk",42],["stalker",24],["spitter",16],["brute",18]]:tier===2?[["husk",58],["stalker",20],["spitter",12],["brute",10]]:[["husk",80],["stalker",14],["spitter",6]];
-    if(kind==="hospital") w.forEach(x=>{ if(x[0]==="spitter") x[1]*=2.2; }); if(kind==="mining") w.forEach(x=>{ if(x[0]==="brute") x[1]*=1.8; if(x[0]==="stalker") x[1]*=1.2; });
+    if(kind==="hospital"||kind==="research") w.forEach(x=>{ if(x[0]==="spitter") x[1]*=2.2; }); if(kind==="colony") w.forEach(x=>{ if(x[0]==="husk") x[1]*=1.5; }); if(kind==="mining") w.forEach(x=>{ if(x[0]==="brute") x[1]*=1.8; if(x[0]==="stalker") x[1]*=1.2; });
     let t=w.reduce((a,x)=>a+x[1],0)*rand(s); for(const [k,v] of w){ if((t-=v)<0) return k; } return "husk"; }
   function populate(s,G,tier,kind){
     for(const [x,y] of G.husks){ if(entAt(s,x,y)) continue; const t=huskType(s,tier,kind); addHusk(s,x,y,t);
@@ -1010,7 +1010,7 @@ const Sim = (() => {
       if(D.k==="ammo") r.ammo[D.ammo]=(r.ammo[D.ammo]|0)+(q.n|0); else if(D.k==="mat") r.mats[q.d]=(r.mats[q.d]|0)+(q.n||1); else if(r.inv.length<r.cap) r.inv.push({...q,id:s.nextId++}); }
     return r;
   }
-  function spawnRaiders(s,tier,mods,FX){ FX=FX||{}; const REP=FX.rep||{}; const KIND=s.kind, FORCE={fortress:["reaver","reaver","reaver"],hive:["choir","choir"],outpost:["marshal","marshal"],hospital:["saint"],mining:["guild"]}[KIND]||[];
+  function spawnRaiders(s,tier,mods,FX){ FX=FX||{}; const REP=FX.rep||{}; const KIND=s.kind, FORCE={fortress:["reaver","reaver","reaver"],hive:["choir","choir"],outpost:["marshal","marshal"],hospital:["saint"],mining:["guild"],freighter:["blacksun","vanta"],research:["vanta"],colony:[]}[KIND]||[];
     const p0=players(s)[0]; if(!p0) return;
     let n=mods.raiders!=null?mods.raiders|0:(chance(s,.7)?1:0)+(tier>=2&&chance(s,.4)?1:0)+(tier>=3&&chance(s,.3)?1:0);
     if(mods.raiders==null&&FORCE.length) n=Math.max(n,KIND==="fortress"?3:KIND==="hive"||KIND==="outpost"?2:1); if(!n) return;

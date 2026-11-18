@@ -12,6 +12,8 @@ const MODULES = ["items","gen","sim", "world", "audio", "client", "base", "trans
 
 const body = read("src/head.html");
 const js = MODULES.map((m) => `// ---- src/${m}.js ----\n${read(`src/${m}.js`)}`).join("\n");
+// refuse to ship a page that won't even parse (catches duplicate declarations and typos before a browser does)
+try { new Function(js); } catch (e) { console.error("Build failed: the game script has a syntax error:", e.message); process.exit(1); }
 const pkg = JSON.parse(read("package.json"));
 // Default squad server for the app: HB_SERVER env var (CI) or package.json "config.server".
 const SERVER = process.env.HB_SERVER || (pkg.config && pkg.config.server) || "";

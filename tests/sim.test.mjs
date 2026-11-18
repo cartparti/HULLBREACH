@@ -319,4 +319,15 @@ test("sector war and faction jobs: the Choir advances, jobs are the same for eve
   for (const h of s.ents.filter((e) => e.kind === "husk").slice(0, 2)) { h.hp.head = 0; h.alive = false; }
 });
 
+test("galaxy: three regions, signals that come and go, every location boards cleanly", () => {
+  assert.equal(World.REGIONS.length, 3); assert.equal(World.SECTORS.length, 9);
+  for (const S of World.SECTORS) assert.ok(World.LOCS.some((l) => l.sector === S.id), S.id + " has places");
+  const sh = World.newShip(); sh.day = 9; const sg = World.signals(sh); assert.ok(sg.length >= 9, "signals in every region");
+  for (const g of sg) assert.deepEqual(World.loc(g.id), g, "signals decode the same everywhere");
+  sh.day = 40; const later = World.signals(sh).map((g) => g.id); assert.ok(!sg.some((g) => later.includes(g.id)), "old signals fade");
+  sh.cleared = [later[0]]; assert.ok(!World.signals(sh).some((g) => g.id === later[0]), "stripped signals vanish");
+  sh.loc = "ninefold"; assert.equal(World.travelCost(sh, "spire"), 3); assert.equal(World.travelCost(sh, "haven"), 6);
+  for (const L of [...World.LOCS.filter((l) => l.type === "derelict"), ...sg.slice(0, 6)]) { const s = Sim.newGame(91, null, { gen: { tier: L.site.tier, kind: L.site.kind, size: L.site.size }, mods: L.site.mods }); assert.ok(s.ents.some((e) => e.kind === "player")); for (let i = 0; i < 20; i++) Sim.act(s, "p1", { type: "wait" }); }
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

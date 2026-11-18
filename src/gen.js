@@ -23,7 +23,7 @@ const Gen = (() => {
 
   function station(seed, o = {}) {
     const R = rng32(seed ^ 0x5bd1e995), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), ch = (p) => R() < p, pick = (a) => a[Math.floor(R() * a.length)];
-    const tier = o.tier || 1, W = ri(54, 64), H = ri(36, 42);
+    const tier = o.tier || 1, SZ = { small: [[44, 50], [30, 34]], medium: [[54, 64], [36, 42]], large: [[66, 74], [42, 48]] }[o.size] || [[54, 64], [36, 42]], W = ri(SZ[0][0], SZ[0][1]), H = ri(SZ[1][0], SZ[1][1]);
     const G = Array.from({ length: H }, () => Array(W).fill("~"));
     const rooms = [], corridors = [];
     const inb = (x, y) => x > 0 && y > 0 && x < W - 1 && y < H - 1;
@@ -123,8 +123,10 @@ const Gen = (() => {
     // what kind of station this is shifts which rooms it has
     const KW = { hospital: { medbay: 4, lab: 2.5, crew: 1.2, shrine: 1.4, cargo: .5, armory: .3, fuel: .4 }, mining: { cargo: 2.6, fuel: 3, workshop: 2.4, crew: 1.3, medbay: .5, lab: .2, shrine: .3 },
       fortress: { armory: 3.5, cargo: 1.6, workshop: 1.6, crew: 1.6, mess: 1.2, lab: .2, shrine: .2, medbay: .5 }, hive: { lab: 3.2, workshop: 2.2, fuel: 1.5, cargo: 1.2, crew: .15, mess: .1, shrine: .1 },
-      outpost: { security: 3.5, armory: 2.2, crew: 1.6, mess: 1.2, lab: .4, shrine: .2 } }[o.kind] || {};
-    const MX = o.kind === "outpost" ? { security: 4, armory: 3 } : o.kind === "fortress" ? { armory: 4 } : o.kind === "hospital" ? { medbay: 5 } : {};
+      outpost: { security: 3.5, armory: 2.2, crew: 1.6, mess: 1.2, lab: .4, shrine: .2 },
+      research: { lab: 4, medbay: 1.6, workshop: 1.3, engineering: 1, crew: .6, cargo: .5, shrine: .1 }, freighter: { cargo: 4.5, fuel: 1.8, crew: 1, mess: 1, armory: .7, lab: .15, shrine: .2, medbay: .5 },
+      colony: { crew: 3.6, mess: 2.6, shrine: 1.6, medbay: 1.3, workshop: 1, cargo: 1, armory: .3, lab: .3 } }[o.kind] || {};
+    const MX = o.kind === "outpost" ? { security: 4, armory: 3 } : o.kind === "fortress" ? { armory: 4 } : o.kind === "hospital" ? { medbay: 5 } : o.kind === "colony" ? { mess: 3, shrine: 2 } : {};
     const wOf = (t, T) => T.w * (KW[t] == null ? 1 : KW[t]), maxOf = (t, T) => MX[t] || T.max;
     for (const m of rest()) { const pool = Object.entries(TYPES).filter(([t, T]) => wOf(t, T) > 0 && !(maxOf(t, T) && (used[t] || 0) >= maxOf(t, T))); let x = R() * pool.reduce((a, [t, T]) => a + wOf(t, T), 0); for (const [t, T] of pool) { if ((x -= wOf(t, T)) < 0) { assign(m, t); break; } } if (!m.type) assign(m, "cargo"); }
     // vault: keep only one door, maglocked
@@ -222,7 +224,7 @@ const Gen = (() => {
     }
     // dressing that says whose station this is
     if (o.kind) for (const m of meta) { const tiles = interior(m).filter(([x, y]) => G[y][x] === "."); const n = o.kind === "fortress" || o.kind === "hive" ? ri(1, 3) : ri(0, 2);
-      for (let i = 0; i < n && tiles.length; i++) { const [x, y] = takeFrom(tiles); decals.push({ type: { hospital: "bloodtrail", mining: "ore", fortress: ch(.5) ? "graffiti" : "spikes", hive: "cables", outpost: "tape" }[o.kind], x, y, r: ri(0, 3) }); } }
+      for (let i = 0; i < n && tiles.length; i++) { const [x, y] = takeFrom(tiles); decals.push({ type: { hospital: "bloodtrail", mining: "ore", fortress: ch(.5) ? "graffiti" : "spikes", hive: "cables", outpost: "tape", research: ch(.5) ? "cables" : "bloodtrail", freighter: ch(.6) ? "ore" : "tape", colony: ch(.5) ? "bloodtrail" : "graffiti" }[o.kind], x, y, r: ri(0, 3) }); } }
     // keycard: captain's cabin or security office, else any room except the vault
     const kr = meta.find((m) => m.type === "captain") || meta.find((m) => m.type === "security") || meta.find((m) => m.type !== "vault");
     if (kr) { const p = freeTile(kr); if (p) loot.push({ x: p[0], y: p[1], item: { d: "keycard", r: 0 } }); }

@@ -5,6 +5,7 @@
 const SAVE_V=2, KIT_SLOTS=["w1","w2","melee","head","armor","legs","acc","light","pack"], SLOT_NAME={w1:"Primary",w2:"Secondary",melee:"Melee",head:"Helmet",armor:"Chest",legs:"Legs",acc:"Accessory",light:"Light",pack:"Pack"};
 const ISSUED={}; // nothing is issued: you start in your clothes and find or craft the rest
 const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",head:`Bare head · ${Items.CLOTHES_O2} O₂ rebreather`,armor:"Just your shirt",legs:"Just your trousers",acc:"Nothing. Find scarves, capes, charms, lamps and stranger things",light:"No light. Derelicts are very dark",pack:`No pack · ${Items.POCKETS} slots from pockets and belt`};
+let mapRegion=null;
 let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all", stashSel=null, armed={}, invSel=null;
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:500,
@@ -331,29 +332,44 @@ $("p-tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]")
 $("panel").addEventListener("click",e=>{ if(e.target.id==="panel") closePanel(); });
 
 function viewHelm(){
-  const sh=ship(), cur=here(), sel=World.loc(mapSel||cur.id), cost=World.travelCost(sh,sel.id), sc=World.SECTORS.find(s=>s.id===sel.sector);
-  const Y=v=>v*.75, nodes=World.LOCS.map(l=>{ const col=l.type==="station"?"#76c2c4":l.type==="outpost"?"#c79a4a":"#e0482f", target=sh.contracts.some(c=>World.CONTRACTS[c].site===l.id), isSel=l.id===sel.id, isCur=l.id===cur.id;
+  const sh=ship(), cur=here(), sel=World.loc(mapSel||cur.id)||cur, cost=World.travelCost(sh,sel.id), sc=World.SECTORS.find(s=>s.id===sel.sector);
+  const reg=mapRegion||World.regionOf(sel), RG=World.REGIONS.find(r=>r.id===reg), here0=World.allLocs(sh).filter(l=>World.regionOf(l)===reg), statics=here0.filter(l=>!l.signal);
+  const Y=v=>v*.75;
+  // label placement: try right, left, above, below and keep the one that hits the fewest other labels and dots
+  const boxes=World.SECTORS.filter(q=>q.region===reg).map(q=>[q.x-15,Math.max(5,Y(q.y)-16)-3.6,q.name.length*2.7+2,4.4]), dots=here0.map(l=>[l.x,Y(l.y)]), LBL={};
+  for(const l of statics.slice().sort((a,b)=>a.x-b.x)){ const w=l.name.length*1.55+1, x=l.x, y=Y(l.y), opts=[[x+2.8,y-1.6,"start"],[x-2.8-w,y-1.6,"end"],[x-w/2,y-6,"middle"],[x-w/2,y+2.6,"middle"]];
+    let best=null, bs=1e9; for(const [bx,by,an] of opts){ let sc=0; for(const b of boxes) if(bx<b[0]+b[2]&&bx+w>b[0]&&by<b[1]+b[3]&&by+3.4>b[1]) sc+=10; for(const [dx,dy] of dots) if(dx>bx-1.5&&dx<bx+w+1.5&&dy>by-1.5&&dy<by+4.9) sc+=9; if(bx<1||bx+w>99) sc+=60; if(sc<bs){ bs=sc; best=[bx,by,an]; } }
+    boxes.push([best[0],best[1],w,3.4]); LBL[l.id]=best; }
+  const labelFor=l=>{ const b=LBL[l.id]; if(!b) return ""; const tx=b[2]==="start"?b[0]:b[2]==="end"?b[0]+l.name.length*1.55+1:b[0]+(l.name.length*1.55+1)/2; return `<text x="${tx}" y="${b[1]+2.6}" text-anchor="${b[2]}">${l.name}</text>`; };
+  const nodes=here0.map(l=>{ if(l.signal){ const isSel=l.id===sel.id, isCur=l.id===cur.id, left=l.expires-(sh.day|0);
+      return `<g class="node sig" data-act="sel:${l.id}" role="button" aria-label="Signal: ${esc(l.name)}"><circle cx="${l.x}" cy="${Y(l.y)}" r="2.6" fill="none" stroke="${l.scene.glow}" stroke-width=".35" stroke-dasharray=".8 .6"><animate attributeName="r" values="2;3.4;2" dur="${left<=2?"1s":"2.4s"}" repeatCount="indefinite"/><animate attributeName="opacity" values=".9;.3;.9" dur="${left<=2?"1s":"2.4s"}" repeatCount="indefinite"/></circle>
+        ${isSel?`<circle cx="${l.x}" cy="${Y(l.y)}" r="3.6" fill="none" stroke="#d9d2c0" stroke-width=".35"/>`:""}<circle cx="${l.x}" cy="${Y(l.y)}" r="1.1" fill="${l.scene.glow}"/>${isCur?`<path d="M${l.x-1.6} ${Y(l.y)-3.2} L${l.x+1.6} ${Y(l.y)-3.2} L${l.x} ${Y(l.y)-1.8} Z" fill="#9bc06a"/>`:""}
+        ${isSel?`<text class="sig-t sel" x="${l.x>70?l.x-3.6:l.x+3.6}" y="${Y(l.y)+1.1}" text-anchor="${l.x>70?"end":"start"}">${esc(l.name)}</text>`:""}<circle cx="${l.x}" cy="${Y(l.y)}" r="4" fill="transparent"><title>${esc(l.name)} · signal${left<=2?", fading":""}</title></circle></g>`; }
+    const col=l.type==="station"?"#76c2c4":l.type==="outpost"?"#c79a4a":"#e0482f", target=sh.contracts.some(c=>World.CONTRACTS[c].site===l.id), isSel=l.id===sel.id, isCur=l.id===cur.id;
     const hold=World.controlOf(sh,l.id), HF=hold&&Sim.FACTIONS[hold];
     return `<g class="node" data-act="sel:${l.id}" role="button" aria-label="${l.name}">${HF?`<circle cx="${l.x}" cy="${Y(l.y)}" r="2.7" fill="none" stroke="${HF.col}" stroke-width=".45" opacity=".85"/>`:""}${(sh.jobs||[]).some(j=>j.site===l.id)?`<text x="${l.x-1.3}" y="${Y(l.y)-3}" style="fill:#e8b048;font-size:3px">◆</text>`:""}${isSel?`<circle cx="${l.x}" cy="${Y(l.y)}" r="3.4" fill="none" stroke="#d9d2c0" stroke-width=".35"/>`:""}
       <circle cx="${l.x}" cy="${Y(l.y)}" r="${l.type==="derelict"?1.5:2}" fill="${col}" ${l.type==="derelict"?'stroke="#2a0806" stroke-width=".4"':""}/>
       ${isCur?`<path d="M${l.x-1.6} ${Y(l.y)-3.2} L${l.x+1.6} ${Y(l.y)-3.2} L${l.x} ${Y(l.y)-1.8} Z" fill="#9bc06a"/>`:""}
       ${(typeof Net!=="undefined"&&Net.suggest&&Net.suggest.to===l.id&&Date.now()-Net.suggest.at<180000)?`<circle cx="${l.x}" cy="${Y(l.y)}" r="4.6" fill="none" stroke="${colorOf(Net.suggest.k)}" stroke-width=".45" stroke-dasharray="1 .8"/>`:""}
       ${target?`<text x="${l.x+2.4}" y="${Y(l.y)-1.6}" style="fill:#e8b048;font-size:3.4px">★</text>`:""}
-      <text x="${l.x>70?l.x-2.6:l.x+2.6}" y="${Y(l.y)+1.2}" text-anchor="${l.x>70?"end":"start"}">${l.name}</text><circle cx="${l.x}" cy="${Y(l.y)}" r="4" fill="transparent"/></g>`; }).join("");
-  const lanes=[]; for(const a of World.LOCS) for(const b of World.LOCS) if(a.id<b.id&&a.sector===b.sector) lanes.push(`<line x1="${a.x}" y1="${Y(a.y)}" x2="${b.x}" y2="${Y(b.y)}" stroke="#34504a" stroke-width=".25"/>`);
-  for(const [a,b] of [["ninefold","spire"],["ninefold","lazarus"],["spire","fennick"]]){ const A=World.loc(a),B=World.loc(b); lanes.push(`<line x1="${A.x}" y1="${Y(A.y)}" x2="${B.x}" y2="${Y(B.y)}" stroke="#6f9b8c" stroke-width=".3" stroke-dasharray="1.2 1"/>`); }
-  const secs=World.SECTORS.map(s=>`<circle cx="${s.x}" cy="${Y(s.y)}" r="21" fill="${s.color}" opacity=".05"/><text class="sec" x="${s.x-14}" y="${Math.max(5,Y(s.y)-16)}" style="fill:${s.color}">${s.name}</text>`).join("");
-  const services=sel.type==="derelict"?"Derelict · boardable":[sel.npcs.map(n=>World.NPCS[n].role+": "+World.NPCS[n].name).join(" · "),sel.fuel?`Fuel ${sel.fuel} cr`:""].filter(Boolean).join(" · ");
+      ${labelFor(l)}<circle cx="${l.x}" cy="${Y(l.y)}" r="4" fill="transparent"/></g>`; }).join("");
+  const lanes=[]; for(const a of statics) for(const b of statics) if(a.id<b.id&&a.sector===b.sector) lanes.push(`<line x1="${a.x}" y1="${Y(a.y)}" x2="${b.x}" y2="${Y(b.y)}" stroke="#34504a" stroke-width=".25"/>`);
+  for(const g of here0.filter(l=>l.signal)){ const n=statics.filter(l=>l.sector===g.sector).sort((a,b)=>Math.hypot(a.x-g.x,a.y-g.y)-Math.hypot(b.x-g.x,b.y-g.y))[0]; if(n) lanes.push(`<line x1="${g.x}" y1="${Y(g.y)}" x2="${n.x}" y2="${Y(n.y)}" stroke="${g.scene.glow}" stroke-width=".18" stroke-dasharray=".6 .8" opacity=".6"/>`); }
+  for(const [a,b] of {arm:[["ninefold","spire"],["ninefold","lazarus"],["spire","fennick"]],veil:[["haven","spindle"],["haven","exchange"],["spindle","exchange"]],embers:[["bastion","vorne"],["bastion","garrison"],["vorne","garrison"]]}[reg]){ const A=World.loc(a),B=World.loc(b); lanes.push(`<line x1="${A.x}" y1="${Y(A.y)}" x2="${B.x}" y2="${Y(B.y)}" stroke="#6f9b8c" stroke-width=".3" stroke-dasharray="1.2 1"/>`); }
+  const secs=World.SECTORS.filter(s=>s.region===reg).map(s=>`<circle cx="${s.x}" cy="${Y(s.y)}" r="21" fill="${s.color}" opacity=".05"/><text class="sec" x="${s.x-14}" y="${Math.max(5,Y(s.y)-16)}" style="fill:${s.color}">${s.name}</text>`).join("");
+  const KN2={relay:"comms relay",mining:"mining barge",hospital:"hospital ship",fortress:"Reaver fortress",hive:"Choir hive",outpost:"Marshal outpost",research:"research platform",freighter:"freighter",colony:"colony ship"};
+  const services=sel.type==="derelict"?`${sel.signal?"Signal":"Derelict"} · ${KN2[sel.site.kind]||"station"}${sel.site.size?`, ${sel.site.size}`:""} · threat ${"▲".repeat(sel.site.tier||1)}${sel.signal?` · fades in ${Math.max(0,sel.expires-(sh.day|0))} days`:""}`:[sel.npcs.map(n=>World.NPCS[n].role+": "+World.NPCS[n].name).join(" · "),sel.fuel?`Fuel ${sel.fuel} cr`:""].filter(Boolean).join(" · ");
   const canJump=cost>0&&sh.fuel>=cost;
   const sug=typeof Net!=="undefined"&&Net.suggest&&Date.now()-Net.suggest.at<180000&&Net.suggest.to!==cur.id?Net.suggest:null;
   const sugHTML=sug&&isHost()?`<div class="panel contract-row" style="grid-column:1/-1;border-color:${colorOf(sug.k)}"><div><b>${esc(nameOf(sug.k))} suggests ${World.loc(sug.to).name}</b><br><span>${World.travelCost(sh,sug.to)} fuel · ${World.SECTORS.find(s=>s.id===World.loc(sug.to).sector).name}</span></div><button class="plain" data-act="sel:${sug.to}">Show</button></div>`:"";
-  return `<div class="galaxy">${sugHTML}<div class="gmap"><svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid meet" aria-label="Star map">${secs}${lanes.join("")}${nodes}</svg></div>
+  const regTabs=`<div class="chips regions" style="grid-column:1/-1">${World.REGIONS.map(r=>`<button data-act="region:${r.id}" aria-pressed="${r.id===reg}">${r.name}</button>`).join("")}<span class="risk" style="margin-left:auto">${RG.tier} · ${esc(RG.desc)} Jumps: 1 fuel in a sector, 3 between sectors, 6 to another region.</span></div>`;
+  return `<div class="galaxy">${regTabs}${sugHTML}<div class="gmap"><svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid meet" aria-label="Star map">${secs}${lanes.join("")}${nodes}</svg></div>
     <div class="panel h-card"><div class="h-eyebrow">${sc.name}</div><h3>${sel.name}</h3><p>${sel.desc}</p>
       <div class="h-tags"><span>${sel.type}</span>${World.controlOf(sh,sel.id)?`<span style="border-color:${Sim.FACTIONS[World.controlOf(sh,sel.id)].col};color:${Sim.FACTIONS[World.controlOf(sh,sel.id)].col}">${Sim.FACTIONS[World.controlOf(sh,sel.id)].name}</span>`:`<span>Unclaimed</span>`}${sh.contracts.some(c=>World.CONTRACTS[c].site===sel.id)?`<span class="hot">Contract target</span>`:""}${(sh.jobs||[]).some(j=>j.site===sel.id)?`<span class="hot">Job here</span>`:""}</div>
       <div class="facts"><span>Services</span><span>${services}</span><span>Fuel aboard</span><span>${sh.fuel}/${sh.fuelMax}</span><span>Jump cost</span><span>${cost?cost+" fuel":"You are here"}</span><span>Travel time</span><span>${cost?cost+" day"+(cost>1?"s":""):"—"}</span></div>
       ${cost?(isHost()?`<button class="deploy-btn" data-act="jump:${sel.id}" ${canJump?"":"disabled"}>${canJump?`Jump · ${cost} fuel`:"Not enough fuel"}</button>`:`<button class="deploy-btn" data-act="suggest:${sel.id}">Suggest this course</button><p class="risk">The squad leader flies. Your suggestion shows up on their star map.</p>`):`<p class="risk good">Your ship is here.</p>`}
       ${sh.fuel<1&&cur.id!=="ninefold"?`<button class="plain" data-act="tow">Call a tug to Hangar Ninefold (free, 4 days)</button>`:""}
-      <p class="risk">Jumps inside a sector cost 1 fuel. Crossing to another sector costs 3. Buy fuel when docked at stations and outposts.</p></div>
+      <p class="risk">${sel.signal?"Signals are procedurally found wrecks. They fade after a few days, and once you've stripped one and got out, it's gone for good.":"Buy fuel when docked at stations and outposts."}</p></div>
     <div class="panel h-card war"><div class="h-eyebrow" style="color:#7cff7a">The Iron Choir</div><div class="meter" style="height:8px;margin:6px 0"><i style="width:${Math.round(World.war(sh).choir)}%;background:#7cff7a"></i></div>
       <p class="risk">${World.war(sh).choir>=80?"The Choir's song fills the sector. Its crews are everywhere.":World.war(sh).choir>=40?"The Choir is spreading station by station.":"The Choir's signal is still contained."} It grows every day; jobs against it on the bridge hologram push it back.</p>
       <div class="h-eyebrow">Sector news</div>${World.war(sh).news.slice(0,5).map(n=>`<p class="risk"><b>Day ${n.day}</b> · ${esc(n.text)}</p>`).join("")}</div></div>`;
@@ -609,7 +625,7 @@ function viewNpc(L,id){
 }
 function viewDeploy(L){
   const r=kitResolved(), risk=kitRisk(r), cid=World.siteContract(ship(),L.id), C=cid&&World.CONTRACTS[cid], m=L.site.mods;
-  const KN={relay:"Comms relay",mining:"Mining barge",hospital:"Hospital ship",fortress:"Reaver fortress",hive:"Choir hive",outpost:"Marshal outpost"};
+  const KN={relay:"Comms relay",mining:"Mining barge",hospital:"Hospital ship",fortress:"Reaver fortress",hive:"Choir hive",outpost:"Marshal outpost",research:"Research platform",freighter:"Freighter",colony:"Colony ship"};
   const tags=[KN[L.site.kind]||"",`Threat ${"▲".repeat(L.site.tier||1)}`,m.power===false?"No power":"Power on",m.fires?`${m.fires} fires`:"",m.huskAdd?"Extra husks":"",m.huskDrop?"Fewer husks":"",m.loot>1?`Salvage ×${m.loot}`:"",L.id==="ks9"?"Fire in cargo":""].filter(Boolean);
   siteSeed(L); const rm=profile.remains&&profile.remains.site===L.id&&(ship().day|0)-(profile.remains.day|0)<=6?profile.remains:null;
   const notes=[rm?`<p class="risk good">Your body is still aboard: ${rm.items.length} item${rm.items.length>1?"s":""}, ${(ship().day|0)-(rm.day|0)} day${(ship().day|0)-(rm.day|0)===1?"":"s"} old. Scavengers pick at it every day.</p>`:"",
@@ -689,8 +705,9 @@ $("p-body").addEventListener("click",e=>{
     case "close": closePanel(); return;
     case "open": openPanel(x); return;
     case "back": panelSub=null; break;
+    case "region": mapRegion=x; break;
     case "sel": if(panelKind==="helm") mapSel=x; else stashSel=stashSel===x?null:x; break;
-    case "jump": { const days=World.travelCost(ship(),x), res=worldAct({type:"travel",to:x}); if(res.ok){ travelHunger(days); if(inSquad()) emit({t:"warp",d:days}); closePanel(); mapSel=null; warp={start:performance.now(),dur:2200,done:()=>{ toast(`Arrived at ${here().name}.`); renderShipHud(); }}; renderShipHud(); } break; }
+    case "jump": { const days=World.travelCost(ship(),x), res=worldAct({type:"travel",to:x}); if(res.ok){ mapRegion=null; travelHunger(days); if(inSquad()) emit({t:"warp",d:days}); closePanel(); mapSel=null; warp={start:performance.now(),dur:2200,done:()=>{ toast(`Arrived at ${here().name}.`); renderShipHud(); }}; renderShipHud(); } break; }
     case "suggest": { const L2=World.loc(x); if(!L2) break; emit({t:"suggest",to:x}); emit({t:"chat",m:`suggests a course to ${L2.name}`}); toast(`Suggested ${L2.name} to the squad leader.`); break; }
     case "tow": { const res=worldAct({type:"tow"}); if(res.ok){ travelHunger(4); closePanel(); warp={start:performance.now(),dur:2600,done:()=>renderShipHud()}; } break; }
     case "refuel": worldAct({type:"refuel"}); break;
@@ -801,7 +818,7 @@ function scanSite(L){ const sd=(ship().seeds||{})[L.id]; if(!sd) return null; co
   const g=Sim.newGame(sd,null,raidOpts(L)), H={}; for(const e of g.ents) if(e.kind==="husk"&&e.alive) H[e.type||"husk"]=(H[e.type||"husk"]||0)+1;
   const crews=Object.values(g.crews||{}).filter(C=>!C.hired).map(C=>({fac:C.fac,att:C.att,n:g.ents.filter(e=>e.crew===C.id).length}));
   return scanCache[key]={power:g.power,husks:H,boss:!!g.boss,turrets:g.ents.filter(e=>e.kind==="bot"&&e.type==="turret").length,drones:g.ents.filter(e=>e.kind==="bot"&&e.type==="drone").length,crews,fires:Object.keys(g.fire).length}; }
-function raidOpts(L,fx){ const held=World.controlOf(ship(),L.id); return {jobs:(ship().jobs||[]).filter(j=>j.site===L.id),gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:held==="choir"?"hive":(L.site.kind||"")},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
+function raidOpts(L,fx){ const held=World.controlOf(ship(),L.id); return {jobs:(ship().jobs||[]).filter(j=>j.site===L.id),gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:held==="choir"?"hive":(L.site.kind||""),size:L.site.size||""},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
 // what the station's crews know about you: your standing, and a merc you've paid for (used once)
 function factionSetup(by){ return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null}; }
 function deploy(){
@@ -824,6 +841,7 @@ function settlePersonal(){
     let it=null; for(let n=0;n<8&&(!it||Items.rarOf(it)<1||!Items.slotOf(it));n++) it=Items.roll(Math.random,(L.site.tier||1)+1,["weapon","armor","weapon","pack"][n%4]);
     if(it){ World.grant(profile,it); rep.contract.bonus={n:Items.name(it),c:rc(it)}; } }
   if(isHost()) World.settleRaid(profile.ship,[],{status:bbHome?"extracted":"lost",blackbox:bbHome},L.id);
+  if(isHost()&&L.signal&&crew.some(q=>q.extracted)){ const sh=profile.ship; sh.cleared=[...(sh.cleared||[]),L.id].slice(-80); }
   // dying costs you the work: if nobody got out, every contract and job aimed at this station fails
   rep.failed=[]; if(!crew.some(q=>q.extracted)){ const sh=ship();
     for(const cid of sh.contracts.filter(c=>World.CONTRACTS[c].site===L.id)){ const C=World.CONTRACTS[cid], fee=Math.min(profile.credits,Math.round(C.reward*.1)); profile.credits-=fee; rep.failed.push({title:C.title,who:World.NPCS[C.giver].name,fee,days:5}); }
