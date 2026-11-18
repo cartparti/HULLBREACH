@@ -137,6 +137,6 @@ const World = (() => {
     if(D.k==="dye"){ P.unlocks=P.unlocks||{cloak:[],visor:[],crest:[]}; const u=P.unlocks[D.slot]=P.unlocks[D.slot]||[]; if(!u.includes(D.dye)) u.push(D.dye); return; }
     P.stash.push(mkItem(spec)); }
   let uidN=0; const uid=()=>"i"+Date.now().toString(36)+(uidN++).toString(36)+Math.random().toString(36).slice(2,5);
-  function mkItem(it){ const o={uid:uid(),d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; return o; }
+  function mkItem(it){ const o={uid:uid(),d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; if(it.m) o.m=it.m; return o; }
   return {CONTROL,war,controlOf,warTick,pushChoir,news,jobsFor,SECTORS,LOCS,NPCS,CONTRACTS,CONS,loc,newShip,travelCost,siteContract,act,settleRaid,itemInfo,mkItem,grant};
 })();

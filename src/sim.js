@@ -213,7 +213,7 @@ const Sim = (() => {
     if(m.loot) for(const it of s.items) if(K(it)==="val") it.v=Math.round(Items.value(it)*m.loot);
   }
   function addPlayer(s,id,name,x,y,lo){
-    lo=normLo(lo); const cp=v=>v&&Items.def(v.d)?{d:v.d,r:v.r|0,...(v.l?{l:v.l}:{}),...(v.v?{v:v.v}:{}),...(v.iss?{iss:1}:{})}:null;
+    lo=normLo(lo); const cp=v=>v&&Items.def(v.d)?{d:v.d,r:v.r|0,...(v.l?{l:v.l}:{}),...(v.v?{v:v.v}:{}),...(v.m?{m:v.m}:{}),...(v.iss?{iss:1}:{})}:null;
     const armor=cp(lo.armor), pack=cp(lo.pack), G0={head:cp(lo.head),armor,legs:cp(lo.legs),acc:cp(lo.acc),light:cp(lo.light),pack}, A=gearOf(G0), cap=capOf(G0);
     const ammo={}; for(const t of AMMO_TYPES) ammo[t]=Math.max(0,(lo.ammo&&lo.ammo[t])|0);
     const PK=lo.perks&&typeof lo.perks==="object"?{...lo.perks}:{}, HPX={}; for(const l of LIMBS) HPX[l]=Math.round(PLAYER_HP[l]*(1+.12*(PK.tough|0)));
@@ -1004,7 +1004,7 @@ const Sim = (() => {
       look:{c:pickS(s,F.cloak),v:pickS(s,F.visor),k:pickS(s,F.crest),s:ri(s,0,6),h:g?pickS(s,[3,6,7,8,9,13,1,10]):pickS(s,F.hair),hc:ri(s,0,7),f:0,e:ri(s,0,4),t:ri(s,0,4),tc:pickS(s,F.cloth),b:ri(s,0,2),bc:pickS(s,F.cloth),bt:pickS(s,[4,4,0,7]),bs:ri(s,0,2),g,
         fh:g||syn?0:pickS(s,[0,1,1,2,3,4,5,6]),fm:pickS(s,F.marks),ey:ri(s,0,3),br:ri(s,0,4),mo:ri(s,0,4),no:ri(s,0,3),...(syn?{syn:1,h:0}:{})}};
     for(const w of [w1,w2]) if(w){ const t=ST(w).ammo; if(t) r.ammo[t]=(r.ammo[t]|0)+Math.round(Items.AMMO[t].stack*(1+rand(s)*2)); }
-    r.cap=capOf(r);
+    r.cap=capOf(r); if(w1&&(fac==="hollow"||fac==="marshal"||fac==="blacksun"||tier>=3)&&chance(s,.45)){ const ms=Object.keys(Items.MODS).filter(m=>Items.modFits(m,w1)); if(ms.length) w1.m=pickS(s,ms); }
     if(!syn&&chance(s,.65)) r.inv.push({d:"bandage",r:0,id:s.nextId++}); if(chance(s,.25)) r.inv.push({d:"medkit",r:0,id:s.nextId++});
     for(let k=ri(s,1,3);k>0;k--){ const q=Items.roll(()=>rand(s),tier,pickS(s,["val","val","food","med","mat","ammo","any"])), D=Items.def(q.d);
       if(D.k==="ammo") r.ammo[D.ammo]=(r.ammo[D.ammo]|0)+(q.n|0); else if(D.k==="mat") r.mats[q.d]=(r.mats[q.d]|0)+(q.n||1); else if(r.inv.length<r.cap) r.inv.push({...q,id:s.nextId++}); }

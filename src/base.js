@@ -7,7 +7,7 @@ const ISSUED={}; // nothing is issued: you start in your clothes and find or cra
 const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",head:`Bare head · ${Items.CLOTHES_O2} O₂ rebreather`,armor:"Just your shirt",legs:"Just your trousers",acc:"Nothing. Find scarves, capes, charms, lamps and stranger things",light:"No light. Derelicts are very dark",pack:`No pack · ${Items.POCKETS} slots from pockets and belt`};
 let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all", stashSel=null, armed={}, invSel=null;
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
-function newProfile(){ return {v:SAVE_V,updated:0,credits:300,
+function newProfile(){ return {v:SAVE_V,updated:0,credits:500,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
   ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
@@ -52,7 +52,7 @@ function renderSync(){ const el=$("h-sync"); if(el) el.textContent=Store.mode===
 
 // ---------- item + kit helpers ----------
 const byUid=u=>u?profile.stash.find(q=>q.uid===u)||null:null;
-const strip=it=>{ if(!it) return null; const o={d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; if(it.n) o.n=it.n; if(it.iss) o.iss=1; return o; };
+const strip=it=>{ if(!it) return null; const o={d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; if(it.n) o.n=it.n; if(it.m) o.m=it.m; if(it.iss) o.iss=1; return o; };
 const rc=it=>Items.RAR[Items.rarOf(it)].col;
 const nmHTML=it=>`<b style="color:${rc(it)}">${esc(Items.name(it))}</b>`;
 const capOf=(pack,r)=>Items.POCKETS+(pack?Items.stats(pack).slots:0)+(r?["head","armor","legs","acc"].reduce((a,k)=>a+((r[k]&&Items.stats(r[k]).slots)||0),0):0);
@@ -220,8 +220,8 @@ function commsActs(f){ const F=Sim.FACTIONS[f], [v]=standOf(f), out=[];
   if(f==="saint") out.push({id:"tithe",label:"Offer a tithe",cost:0,mats:{org:3},desc:"Three organics for the Rust. +10 standing."});
   if(f==="choir") out.push({id:"circ",label:"Sell circuits",cost:0,mats:{circ:3},desc:"Three circuits for 110 cr. +3 standing."});
   if(f==="marshal"&&v<0) out.push({id:"fine",label:"Pay your fines",cost:Math.round(-v*6),desc:"Clears your record with the Marshals."});
-  if(f==="vanta"){ const r=kitResolved(), risk=kitRisk(r); out.push({id:"insure",label:profile.insure?"Your next kit is insured":"Insure your next kit",cost:Math.max(40,Math.round(risk*.25)),desc:r.free?"Build a custom kit first. The free scav kit can't be insured.":`If you die, everything you carried in comes back to your stash. Kit at risk: ${risk} cr.`,off:!!profile.insure||r.free}); }
-  if(f==="vanta"||f==="guild") out.push({id:"sellval",label:"Sell salvage",cost:0,desc:"They buy every valuable in your stash at a fair price. +1 standing per piece."});
+  if(f==="vanta"){ const r=kitResolved(), risk=kitRisk(r); out.push({id:"insure",label:profile.insure?"Your next kit is insured":"Insure your next kit",cost:Math.max(40,Math.round(risk*.2)),desc:r.free?"Build a custom kit first. The free scav kit can't be insured.":`If you die, everything you carried in comes back to your stash. Kit at risk: ${risk} cr.`,off:!!profile.insure||r.free}); }
+  if(f==="vanta"||f==="guild") out.push({id:"sellval",label:"Sell salvage",cost:0,desc:"They buy every valuable in your stash at 70% of value, better than most traders. +1 standing per piece."});
   if(HIRE[f]&&v>=HIRE[f][1]) out.push({id:"hire",label:profile.hire?(profile.hire.fac===f?"Hired for your next raid":"You already have a hired gun"):`Hire a ${F.species==="synth"?"synth escort":"gun"} for one raid`,cost:HIRE[f][0],desc:`A veteran ${F.short} with better-than-usual kit follows you on your next raid and fights for you.`,off:!!profile.hire});
   return out; }
 function commsDo(id){ const f=commsFac, F=Sim.FACTIONS[f]; if(!f) return; const A=commsActs(f).find(a=>a.id===id); if(!A||A.off) return;
@@ -230,7 +230,7 @@ function commsDo(id){ const f=commsFac, F=Sim.FACTIONS[f]; if(!f) return; const 
   const say={insure:"Policy issued. Try not to make us pay out.",tribute:"Smart. We'll tell the boys you paid.",tithe:"The Rust accepts your offering.",circ:"Components received. Credits transferred.",fine:"Record cleared. Don't make us do this again.",hire:"Done. They'll meet you at the shuttle."};
   if(id==="tribute") repAdd(f,15); if(id==="tithe") repAdd(f,10); if(id==="circ"){ profile.credits+=110; repAdd(f,3); } if(id==="fine") profile.rep[f]=0;
   if(id==="hire") profile.hire={fac:f}; if(id==="insure") profile.insure=true;
-  if(id==="sellval"){ const vals=profile.stash.filter(q=>Items.kind(q)==="val"); if(!vals.length){ profile.credits+=A.cost||0; toast("No valuables in your stash."); return; } const sum=vals.reduce((a,q)=>a+Items.value(q),0); profile.stash=profile.stash.filter(q=>Items.kind(q)!=="val"); profile.credits+=sum; repAdd(f,Math.min(10,vals.length)); commsMsg=`${vals.length} pieces. ${sum} credits, transferred.`; save(); return; }
+  if(id==="sellval"){ const vals=profile.stash.filter(q=>Items.kind(q)==="val"); if(!vals.length){ profile.credits+=A.cost||0; toast("No valuables in your stash."); return; } const sum=Math.round(vals.reduce((a,q)=>a+Items.value(q),0)*.7); profile.stash=profile.stash.filter(q=>Items.kind(q)!=="val"); profile.credits+=sum; repAdd(f,Math.min(10,vals.length)); commsMsg=`${vals.length} pieces. ${sum} credits, transferred.`; save(); return; }
   commsMsg=F.species==="synth"&&f==="choir"?say[id].toUpperCase():say[id]; toast(`${A.label}: done.`); save(); }
 function commsBuy(i){ const f=commsFac, s=commsStock(f)[i]; if(!s) return; const [d,r,min]=s; if(standOf(f)[0]<min){ toast("They won't sell you that yet."); return; } const pr=priceOf(f,d,r);
   if(profile.credits<pr){ toast("Not enough credits."); return; } profile.credits-=pr; World.grant(profile,{d,r}); repAdd(f,1); commsMsg=`${Items.name({d,r})}. It's in your stash.`; toast(`Bought ${Items.name({d,r})} for ${pr} cr.`); save(); }
@@ -290,11 +290,34 @@ function drawHolo(g,now){ const W=120,H=160; g.imageSmoothingEnabled=false; g.fi
   g.globalCompositeOperation="source-over"; g.globalAlpha=1; holoScan(g,W,H,now); }
 function holoScan(g,W,H,now){ g.fillStyle="rgba(0,0,0,.28)"; for(let y=(now/60|0)%3;y<H;y+=3) g.fillRect(0,y,W,1); const by=(now/18)%(H+30)-15; g.fillStyle="rgba(255,255,255,.05)"; g.fillRect(0,by,W,6); }
 
+// ---------- training: a checklist for your first raids, and a word about the ship ----------
+let tutMoved=0, tutSawKit=false;
+const TUT=[
+  {id:"light",t:"Turn on your flashlight",k:"L, or the Light button",ok:p=>!!(p.light&&!p.lightOff)},
+  {id:"move",t:"Move through the station",k:"WASD or arrows; on a phone, the d-pad",ok:()=>tutMoved>=4},
+  {id:"search",t:"Search a locker or crate",k:"Stand next to it and press F (Search)",ok:()=>S.log.some(l=>/^You (search|crack)/.test(l.msg)&&(!l.pid||l.pid===PID))},
+  {id:"grab",t:"Pick up what you find",k:"G (Grab) while standing on it",ok:()=>S.log.some(l=>/^You (take|grab|pocket|recover)/.test(l.msg)&&(!l.pid||l.pid===PID))},
+  {id:"kit",t:"Open your inventory",k:"I (Kit). Seal your best find in the secure pouch",ok:()=>tutSawKit},
+  {id:"fight",t:"Fight something",k:"X (Fire) shoots; walk into a husk to swing",ok:()=>S.log.some(l=>/^(You hit|Your round hits|\d+ of \d+ pellets)/.test(l.msg)&&(!l.pid||l.pid===PID))},
+  {id:"talk",t:"Say something out loud",k:"Enter or Talk. Raiders will answer",ok:()=>S.log.some(l=>l.kind==="chat"&&l.from===PID)},
+  {id:"out",t:"Get out alive",k:"Back to the shuttle pad, then Q (Extract)",ok:p=>!!p.extracted},
+];
+function tutTick(){ const el=$("tut"); if(!el||!profile||!S) return; profile.tut=profile.tut||{got:[],done:false,ship:false};
+  const T=profile.tut;
+  if(S.mode==="ship"){ if(T.ship||profile.stats.raids>0||!$("menu").hidden){ el.hidden=true; return; } $("tut-title").textContent="Aboard the Lark"; el.hidden=false;
+    const html=`<ol><li class="now">Walk to the <b>airlock</b> (bottom middle) to board a derelict. Relay KS-9 is a good first target.</li><li>The <b>bridge</b> (right) has the star map and the hologram: call factions for work, gear and hired guns.</li><li>The <b>fabricator</b> crafts gear, fits attachments and installs ship systems.</li><li>Your <b>stash</b> and <b>loadout rack</b> build the kit you take in.</li></ol>`; if($("tut-body")._h!==html){ $("tut-body").innerHTML=html; $("tut-body")._h=html; } return; }
+  if(T.done||S.mode!=="raid"||!$("menu").hidden){ el.hidden=true; return; }
+  const p=me(); if(!p) return; let changed=false; for(const st of TUT) if(!T.got.includes(st.id)){ try{ if(st.ok(p)){ T.got.push(st.id); changed=true; } }catch(e){} }
+  if(T.got.length>=TUT.length){ T.done=true; el.hidden=true; save(); toast("Training complete. The rest you'll learn the hard way."); if(typeof Snd!=="undefined") Snd.play("levelup"); return; }
+  if(changed){ save(); if(typeof Snd!=="undefined") Snd.play("coin"); }
+  $("tut-title").textContent=`Field training · ${T.got.length}/${TUT.length}`; el.hidden=false; const cur=TUT.find(st=>!T.got.includes(st.id));
+  const html=`<ol>${TUT.map(st=>`<li class="${T.got.includes(st.id)?"done":st===cur?"now":""}">${st.t}${st===cur?`<small>${st.k}</small>`:""}</li>`).join("")}</ol>`; if($("tut-body")._h!==html){ $("tut-body").innerHTML=html; $("tut-body")._h=html; } }
+$("tut-skip").onclick=()=>{ profile.tut=profile.tut||{got:[]}; if(S&&S.mode==="ship") profile.tut.ship=true; else profile.tut.done=true; save(); $("tut").hidden=true; };
 function onTerminal(kind){ if(warp) return; openPanel(kind==="navtable"?"helm":kind); }
 function onSit(kind){ const name={pilot:"pilot's seat",copilot:"co-pilot's seat",nav:"navigator's seat",eng:"engineer's seat"}[kind]||"seat";
   toast(`You take the ${name}.${kind==="pilot"&&!isHost()?" The squad leader still has the controls.":""} Press ${mode==="pc"?"F":"USE"} for the star map.`);
   if(typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>2000){ flavorCD=Date.now(); emit({t:"chat",m:`takes the ${name}`}); } }
-function openPanel(kind,sub){ if(typeof Snd!=="undefined"&&kind!==panelKind) Snd.play(kind==="comms"?"holo":"open"); if(kind==="inventory"&&panelKind==="inventory"){ closePanel(); return; } panelKind=kind; panelSub=sub||null; invSel=null; stopTravel(); throwMode=null; $("panel").hidden=false; renderPanel(); }
+function openPanel(kind,sub){ if(kind==="inventory") tutSawKit=true; if(typeof Snd!=="undefined"&&kind!==panelKind) Snd.play(kind==="comms"?"holo":"open"); if(kind==="inventory"&&panelKind==="inventory"){ closePanel(); return; } panelKind=kind; panelSub=sub||null; invSel=null; stopTravel(); throwMode=null; $("panel").hidden=false; renderPanel(); }
 function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S.mode==="ship") renderShipHud(); }
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
@@ -409,6 +432,10 @@ function viewWorkbench(){
     <div class="panel h-card span5"><div class="h-eyebrow">Ship upgrade</div>${up?`<p>Upgrade to <b>Mk ${lv+1} · ${Items.FAB_NAME[lv+1]}</b></p><p class="risk">${costHTML(up)}</p><p class="risk">Unlocks: ${esc(nextUnlocks)}${Items.RECIPES.filter(q=>q.lvl===lv+1).length>8?" and more":""}.</p>
       ${canUp?`<button class="deploy-btn" data-act="fabup" ${canPay(up)?"":"disabled"}>Install upgrade</button>`:`<p class="risk">This is the squad leader's ship. Only they can install upgrades.</p>`}`:`<p>Fully upgraded. The forge is sanctified.</p>`}
       <p class="risk">Ship parts and tech cores turn up in engineering rooms, workshops, cargo holds and vaults.</p></div>
+    <div class="panel h-card span12"><div class="h-eyebrow">Attachments</div>${(()=>{ const mods=profile.stash.filter(q=>Items.kind(q)==="mod"), guns=profile.stash.filter(q=>Items.kind(q)==="weapon"&&Items.def(q.d).cls!=="melee");
+      const fitted=guns.filter(g=>g.m).map(g=>`<div class="cm-row">${slotHTML(g)}<div class="cm-t">${nmHTML(g)}<span>${esc(Items.statLine(g))}</span></div><button class="plain" data-act="unfit:${g.uid}">Strip it</button></div>`).join("");
+      const avail=mods.map(m=>{ const opts=guns.filter(g=>!g.m&&Items.modFits(Items.def(m.d).mod,g)).slice(0,4); return `<div class="cm-row">${slotHTML(m)}<div class="cm-t">${nmHTML(m)}<span>${esc(Items.def(m.d).desc)}</span></div><div class="bar-row" style="flex-wrap:wrap;justify-content:flex-end;gap:4px">${opts.map(g=>`<button class="plain" data-act="fit:${m.uid}:${g.uid}">Fit to ${esc(Items.name(g))}</button>`).join("")||`<span class="risk">No gun in your stash takes it</span>`}</div></div>`; }).join("");
+      return (fitted+avail)||`<p class="risk">Craft scopes, suppressors, laser sights and chokes in the Gear tab, then fit them to guns in your stash here. Pros in the field sometimes carry them too.</p>`; })()}</div>
     <div class="panel h-card span12"><div class="h-eyebrow">Ship systems</div><div class="shop">${Object.entries(SHIPUP).map(([k,U])=>{ const n=upLvl(k), c=U.cost[n];
       return `<div class="panel shop-row"><div class="slot"><span class="num" style="font-size:15px;color:var(--brass)">${n}/${U.max}</span></div><div class="nm"><b>${U.name}</b><span>${esc(n<U.max?U.desc[n]:U.desc[U.max-1])}${c?` · ${costHTML(c)}`:" · Installed"}</span></div><span></span>${c?(canUp?`<button class="plain" data-act="shipup:${k}" ${canPay(c)?"":"disabled"}>Install</button>`:`<span class="risk">Leader only</span>`):`<span class="risk good">Done</span>`}</div>`; }).join("")}</div></div>
     <div class="panel h-card span12"><div class="chips">${tabs.map(([k,n])=>`<button data-act="fabtab:${k}" aria-pressed="${fabTab===k}">${n}</button>`).join("")}</div><div class="shop" style="margin-top:8px">${recipes}</div></div>
@@ -708,6 +735,8 @@ $("p-body").addEventListener("click",e=>{
     case "ilight": send({type:"light"}); break;
     case "iunequip": invSel=null; send({type:"unequip",slot:x}); break;
     case "unslot": { const k=profile.kit; if(k.type==="custom"){ k[x]=null; save(); refreshLook(); } invSel=null; break; }
+    case "fit": { const mi=profile.stash.findIndex(q=>q.uid===x), g=profile.stash.find(q=>q.uid===y); if(mi<0||!g||g.m) break; const md=Items.def(profile.stash[mi].d).mod; if(!Items.modFits(md,g)) break; g.m=md; profile.stash.splice(mi,1); toast(`Fitted: ${Items.name(g)}.`); save(); break; }
+    case "unfit": { const g=profile.stash.find(q=>q.uid===x); if(!g||!g.m) break; profile.stash.push(World.mkItem({d:"mod_"+g.m,r:0})); toast(`${Items.MODS[g.m].name} removed.`); delete g.m; save(); break; }
     case "shipup": { const U=SHIPUP[x], n=upLvl(x), c=U&&U.cost[n]; if(!c||!canPay(c)||(inSquad()&&!Net.host)) break; pay(c); profile.ship.up={...(profile.ship.up||{}),[x]:n+1}; if(x==="tanks") profile.ship.fuelMax=(profile.ship.fuelMax|0)+2;
       toast(`${U.name} installed.`); if(typeof Snd!=="undefined") Snd.play("levelup"); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "fabup": { const lv=fabLvl(), up=Items.FAB_UP[lv]; if(!up||!canPay(up)||(inSquad()&&!Net.host)) break; pay(up); profile.ship.fab=lv+1; toast(`Fabricator upgraded to Mk ${lv+1}: ${Items.FAB_NAME[lv+1]}.`); save(); if(inSquad()) hostBroadcastShip(false); break; }
@@ -845,14 +874,15 @@ $("dr-new").textContent="Abandon run";
 // ---------- main menu ----------
 function showMenu(){ const m=$("menu"); $("menu-art").src=emblemURL(); paintMenuStars($("menu-stars")); $("m-ship").textContent=(ship().name||"Lark").replace(/^Ninefold /,"");
   const st=profile.stats; $("m-stats").textContent=`${st.raids} raids · ${st.extracts} extracted · ${st.deaths} lost · ${profile.credits} cr`; $("m-save").textContent=Store.mode==="cloud"?"Saved to your account":"Saved on this device";
-  $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; $("m-sound").textContent=sndLabel(); $("m-music").textContent=Snd.cfg().music>0?"Music: on":"Music: off"; m.hidden=false; }
+  $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; $("m-sound").textContent=sndLabel(); $("m-music").textContent=Snd.cfg().music>0?"Music on":"Music off"; $("m-gfx").textContent=LOWFX?"Low graphics":"High graphics"; m.hidden=false; }
 function hideMenu(){ $("menu").hidden=true; }
 $("m-play").onclick=()=>{ hideMenu(); if(!profile.welcomed){ profile.welcomed=true; save(); } toast(`Aboard. Walk to a terminal and press ${mode==="pc"?"F":"USE"}. ${mode==="pc"?"I or Tab":"The Inventory button"} opens your kit.`); };
 $("m-crew").onclick=()=>{ hideMenu(); openPanel("crew"); };
 $("m-ward").onclick=()=>{ hideMenu(); openPanel("wardrobe"); };
-const sndLabel=()=>{ const c=Snd.cfg(); return c.on?`Sound: ${Math.round(c.vol*100)}%`:"Sound: off"; };
+const sndLabel=()=>{ const c=Snd.cfg(); return c.on?`Sound ${Math.round(c.vol*100)}%`:"Sound off"; };
 $("m-sound").onclick=()=>{ Snd.unlock(); const c=Snd.cfg(), steps=[0,.35,.65,1], i=c.on?steps.findIndex(v=>v>=c.vol-.01):0; Snd.setVol(steps[(i+1)%steps.length]); $("m-sound").textContent=sndLabel(); Snd.play("click"); };
-$("m-music").onclick=()=>{ Snd.unlock(); const c=Snd.cfg(); Snd.setMusic(c.music>0?0:.5); $("m-music").textContent=Snd.cfg().music>0?"Music: on":"Music: off"; };
+$("m-gfx").onclick=()=>{ setLowFx(!LOWFX); $("m-gfx").textContent=LOWFX?"Low graphics":"High graphics"; };
+$("m-music").onclick=()=>{ Snd.unlock(); const c=Snd.cfg(); Snd.setMusic(c.music>0?0:.5); $("m-music").textContent=Snd.cfg().music>0?"Music on":"Music off"; };
 $("m-mode").onclick=()=>{ setMode(mode==="pc"?"touch":"pc"); $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; };
 $("s-menu").onclick=()=>{ closePanel(); showMenu(); };
 

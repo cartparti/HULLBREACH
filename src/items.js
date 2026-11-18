@@ -133,6 +133,10 @@ const Items = (() => {
     bandage:  { k: "med", name: "Bandage roll", value: 15, desc: "Stops bleeding on one limb." },
     medkit:   { k: "med", name: "Trauma kit", value: 55, rar: 1, desc: "Stops all bleeding and patches every limb." },
     o2:       { k: "med", name: "Oxygen canister", value: 25, desc: "Refills 50 suit O₂." },
+    mod_scope: { k: "mod", mod: "scope", name: "Scope", value: 160, desc: "Fits pistols, rifles, SMGs and snipers. Halves the accuracy you lose over distance." },
+    mod_suppressor: { k: "mod", mod: "suppressor", name: "Suppressor", value: 180, desc: "Fits pistols, rifles, SMGs and snipers. Shots carry far less, for a little less damage." },
+    mod_laser: { k: "mod", mod: "laser", name: "Laser sight", value: 140, desc: "Fits pistols, SMGs, rifles and shotguns. +6% to hit and no point-blank penalty." },
+    mod_choke: { k: "mod", mod: "choke", name: "Choke", value: 120, desc: "Fits shotguns. +10% to hit: a tighter spread lands more pellets." },
     jobitem:  { k: "key", name: "Contract cargo", value: 0, desc: "What you were sent for. Get it to your shuttle." },
     splint:   { k: "med", name: "Field splint", value: 45, desc: "Sets a broken limb so the fracture stops wrecking your aim or your stride." },
     antibiotic:{ k: "med", name: "Antibiotics", value: 60, rar: 1, desc: "Kills an infection before the fever takes hold." },
@@ -178,16 +182,23 @@ const Items = (() => {
   const rarOf = (it) => { const D = def(it.d); return D && (D.rar >= 3 || D.k === "dye") ? D.rar : it.r | 0; };
   const MULT = [1, 1.12, 1.25];
 
+  // weapon attachments: one per gun, stored on the gun as it.m
+  const MODS = { scope: { name: "Scope", fits: ["pistol", "rifle", "smg", "sniper"], fx: (s) => { s.fall = (s.fall ?? .035) * .5; } },
+    suppressor: { name: "Suppressor", fits: ["pistol", "rifle", "smg", "sniper"], fx: (s) => { s.quiet = 5; if (s.dmg) s.dmg = [Math.max(1, s.dmg[0] - 1), Math.max(1, s.dmg[1] - 1)]; } },
+    laser: { name: "Laser sight", fits: ["pistol", "smg", "rifle", "shotgun"], fx: (s) => { s.acc = (s.acc || 0) + .06; s.close = 0; } },
+    choke: { name: "Choke", fits: ["shotgun"], fx: (s) => { s.acc = (s.acc || 0) + .1; } } };
+  const modFits = (mod, it) => { const D = def(it && it.d), M = MODS[mod]; return !!(D && M && D.k === "weapon" && M.fits.includes(D.cls)); };
+  const withMod = (s, it) => { if (it.m && MODS[it.m] && modFits(it.m, it)) { MODS[it.m].fx(s); s.mod = it.m; } return s; };
   function stats(it) {
     const D = def(it.d); if (!D) return null; const r = rarOf(it), s = { ...D, rar: r };
-    if (D.rar >= 3) return s;
+    if (D.rar >= 3) return withMod(s, it);
     if (D.k === "weapon" || D.k === "throw") { const m = MULT[r] || 1; if (D.dmg) s.dmg = [Math.round(D.dmg[0] * m), Math.round(D.dmg[1] * m)]; s.acc = (D.acc || 0) + r * .03; }
     if (D.k === "armor") { s.dr = D.dr ? Math.min(.5, D.dr + r * .04) : 0; s.o2 = D.o2 ? D.o2 + r * 5 : 0; s.fire = D.fire ? Math.min(.8, D.fire + r * .05) : 0; if (D.acc) s.acc = D.acc + r * .01; if (D.tdr) s.tdr = D.tdr + r * .02; }
     if (D.k === "pack") s.slots = D.slots + (it.l | 0);
     if (D.k === "light") s.range = D.range + r * 1.2;
-    return s;
+    return withMod(s, it);
   }
-  function name(it) { if (it && it.jn) return it.jn; const D = def(it.d); if (!D) return "Unknown"; if (D.k === "ammo") return `${D.name} ×${it.n | 0}`; if (D.k === "mat") return it.n > 1 ? `${D.name} ×${it.n}` : D.name; const r = rarOf(it); return D.name + (D.rar >= 3 || ["weapon", "armor", "throw", "light"].indexOf(D.k) < 0 ? "" : RAR[r].tag) + (it.l ? ` +${it.l}` : ""); }
+  function name(it) { if (it && it.jn) return it.jn; if (it && it.m && MODS[it.m]) return name({ ...it, m: null }) + " + " + MODS[it.m].name; const D = def(it.d); if (!D) return "Unknown"; if (D.k === "ammo") return `${D.name} ×${it.n | 0}`; if (D.k === "mat") return it.n > 1 ? `${D.name} ×${it.n}` : D.name; const r = rarOf(it); return D.name + (D.rar >= 3 || ["weapon", "armor", "throw", "light"].indexOf(D.k) < 0 ? "" : RAR[r].tag) + (it.l ? ` +${it.l}` : ""); }
   function value(it) { const D = def(it.d); if (!D) return 0; if (D.k === "val") return it.v || D.value; if (D.k === "ammo" || D.k === "mat") return D.value * (it.n || 1); if (D.k === "dye") return D.value; const r = rarOf(it); return Math.round(D.value * (D.rar >= 3 ? 1 : [1, 1.7, 2.8][r]) * (1 + (it.l | 0) * .25)); }
   const make = (d, r = 0, extra) => ({ d, r: def(d) && def(d).rar >= 3 ? def(d).rar : r, ...(extra || {}) });
   const kind = (it) => (def(it.d) ? def(it.d).k : null);
@@ -237,6 +248,7 @@ const Items = (() => {
     R_("f_paste", "food", 1, "paste", { org: 2 }), R_("f_water", "food", 1, "waterflask", { org: 1, scrap: 1 }), R_("f_stew", "food", 2, "stew", { org: 3 }),
     R_("f_pure", "food", 2, "purewater", { org: 1, circ: 1 }), R_("f_recaf", "food", 2, "recaf", { org: 2 }), R_("f_amber", "food", 4, "amber", { org: 4, prop: 1 }), R_("f_feast", "food", 5, "feast", { org: 6 }),
     R_("m_bandage", "meds", 1, "bandage", { scrap: 1, org: 1 }), R_("m_o2", "meds", 2, "o2", { scrap: 2, circ: 1 }), R_("m_medkit", "meds", 2, "medkit", { scrap: 2, circ: 2, org: 1 }, { r: 1 }),
+    R_("x_laser", "gear", 2, "mod_laser", { scrap: 2, circ: 2 }), R_("x_choke", "gear", 2, "mod_choke", { scrap: 4, parts: 1 }), R_("x_scope", "gear", 3, "mod_scope", { scrap: 2, circ: 3, parts: 1 }), R_("x_supp", "gear", 3, "mod_suppressor", { scrap: 4, circ: 2, parts: 1 }),
     R_("m_stim", "meds", 3, "stim", { circ: 2, org: 3 }, { r: 2 }), R_("m_splint", "meds", 1, "splint", { scrap: 2, org: 1 }), R_("m_anti", "meds", 2, "antibiotic", { org: 3, circ: 1 }),
     R_("t_decoy", "meds", 2, "decoy", { scrap: 2, circ: 1 }), R_("t_frag", "weapon", 2, "frag", { scrap: 2, prop: 2 }), R_("t_inc", "weapon", 2, "incendiary", { scrap: 1, prop: 3 }), R_("t_stun", "weapon", 3, "stun", { scrap: 2, circ: 2 }),
     R_("w_crowbar", "weapon", 1, "crowbar", { scrap: 3 }), R_("w_knife", "weapon", 1, "knife", { scrap: 3 }), R_("w_pipe", "weapon", 1, "pipe", { scrap: 5, prop: 1 }),
@@ -286,5 +298,5 @@ const Items = (() => {
   };
   const CLOTHES_O2 = 20, POCKETS = 10;
   const UPGRADE_COST = (lvl) => ({ scrap: 4 + lvl * 2, circ: 2 + lvl });
-  return { RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, craftRarity, FAB_UP, FAB_NAME, BAR, BAR_TOGO, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
+  return { MODS, modFits, RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, craftRarity, FAB_UP, FAB_NAME, BAR, BAR_TOGO, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
 })();
