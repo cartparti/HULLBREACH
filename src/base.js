@@ -540,7 +540,8 @@ function viewNpc(L,id){
 }
 function viewDeploy(L){
   const r=kitResolved(), risk=kitRisk(r), cid=World.siteContract(ship(),L.id), C=cid&&World.CONTRACTS[cid], m=L.site.mods;
-  const tags=[m.power===false?"No power":"Power on",m.fires?`${m.fires} fires`:"",m.huskAdd?"Extra husks":"",m.huskDrop?"Fewer husks":"",m.loot>1?`Salvage ×${m.loot}`:"",L.id==="ks9"?"Fire in cargo":""].filter(Boolean);
+  const KN={relay:"Comms relay",mining:"Mining barge",hospital:"Hospital ship",fortress:"Reaver fortress",hive:"Choir hive",outpost:"Marshal outpost"};
+  const tags=[KN[L.site.kind]||"",`Threat ${"▲".repeat(L.site.tier||1)}`,m.power===false?"No power":"Power on",m.fires?`${m.fires} fires`:"",m.huskAdd?"Extra husks":"",m.huskDrop?"Fewer husks":"",m.loot>1?`Salvage ×${m.loot}`:"",L.id==="ks9"?"Fire in cargo":""].filter(Boolean);
   let squadHTML, btn;
   if(!inSquad()){ squadHTML=`<p>Going in solo.</p><p class="risk">Use the Crew button to open a squad. Up to four contractors share this ship, its contracts and its raids.</p>`;
     btn=`<button class="deploy-btn" data-act="deploy">Board ${L.name}</button>`; }
@@ -695,7 +696,7 @@ function consumeKit(lo){
     profile.kit={...profile.kit,inv:[],ammo:{}}; for(const s of KIT_SLOTS) profile.kit[s]=null; }
   save();
 }
-function raidOpts(L,fx){ return {gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
+function raidOpts(L,fx){ return {gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:L.site.kind||""},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
 // what the station's crews know about you: your standing, and a merc you've paid for (used once)
 function factionSetup(by){ return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null}; }
 function deploy(){

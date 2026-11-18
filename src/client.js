@@ -1074,7 +1074,9 @@ function buildStatic(){
       if(t.kind==="altar") SOURCES.push({kind:"fire",x,y,bx:x*TS+12,by:y*TS+2,r:3.6,i:.7,col:[1,.6,.28],ph:hh(x,y)%100});
     }
   }
-  for(const d of S.decals||[]) if(d.type==="ritual") drawRitual(g,d.x,d.y);
+  for(const d of S.decals||[]){ if(d.type==="ritual") drawRitual(g,d.x,d.y); else drawKindDecal(g,d); }
+  // a colour grade that says whose station this is
+  { const K={hospital:"rgba(150,190,200,.07)",mining:"rgba(200,140,60,.08)",fortress:"rgba(160,40,20,.09)",hive:"rgba(60,200,90,.07)",outpost:"rgba(70,110,200,.07)"}[S.kind]; if(K){ g.fillStyle=K; g.fillRect(0,0,S.W*TS,S.H*TS); } }
   if(S.mode==="ship") for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const t=S.tiles[Sim.idx(S,x,y)]; if(!(t.t==="prop"&&t.kind==="drive")) continue;
     let wx=x-1; while(wx>0&&T(wx,y).t!=="wall") wx--; const nx=wx-1; if(T(nx,y).t!=="space") continue; const ox=nx*TS, oy=y*TS;
     R(g,ox+10,oy+4,14,16,"#2a2e32"); R(g,ox+10,oy+4,14,1.5,"#5a6268"); R(g,ox+4,oy+2,8,20,"#3a3e42"); R(g,ox+4,oy+2,8,1,"#6a7278"); R(g,ox+2,oy+1,3,22,"#22262a"); R(g,ox+2,oy+1,1,22,"#4a5056");
@@ -1322,6 +1324,16 @@ function drawBot(g,e,x,y,now){ const off=!S.power, fc=e.face||[0,1], a=Math.atan
     disc(g,cx,by,5.5,hit?"#ffffff":"#3a4248"); disc(g,cx,by,4.4,hit?"#ffffff":"#22282c"); R(g,cx-9,by-1,4,2,"#2a3034"); R(g,cx+5,by-1,4,2,"#2a3034");
     if(!off){ const r=((now/40)|0)%2; R(g,cx-10,by-2,6,.6,r?"rgba(200,220,240,.6)":"rgba(200,220,240,.2)"); R(g,cx+4,by-2,6,.6,r?"rgba(200,220,240,.2)":"rgba(200,220,240,.6)"); }
     disc(g,cx+Math.cos(a)*2,by+Math.sin(a)*1.5,1.5,led); } }
+function drawKindDecal(g,d){ const ox=d.x*TS, oy=d.y*TS, h=hh(d.x,d.y,555);
+  switch(d.type){
+    case "bloodtrail": for(let k=0;k<5;k++){ const y=oy+4+k*3+(h>>k)%3; g.fillStyle=`rgba(${70+k*6},8,6,${.55-k*.06})`; g.fillRect(ox+(k*4)%10,y,14+((h>>(k+2))%8),1.6); } disc(g,ox+18,oy+16,2.5,"rgba(60,6,4,.7)"); break;
+    case "ore": for(let k=0;k<7;k++){ const v=hh(d.x,d.y,k+600), x=ox+3+v%17, y=oy+6+(v>>>5)%14; disc(g,x,y,1.2+(v>>>9)%2,"#4a4440"); hp(g,x-.4,y-.4,"#6a625a"); if(v%3===0) hp(g,x+.4,y,"#e8b048"); } break;
+    case "graffiti": { const c="rgba(200,30,20,.55)"; g.fillStyle=c; for(const [x,y,w,hh2] of [[6,6,2,10],[16,6,2,10],[6,6,12,2],[9,16,2,4],[13,16,2,4]]) g.fillRect(ox+x,oy+y,w,hh2); for(let k=0;k<6;k++) hp(g,ox+4+((h>>k)%16),oy+20+((h>>(k+3))%3),c); break; }
+    case "spikes": for(let k=0;k<4;k++){ const x=ox+4+k*4+((h>>k)%2); g.fillStyle="#5a564e"; g.beginPath(); g.moveTo(x,oy+20); g.lineTo(x+3,oy+20); g.lineTo(x+1.5+((h>>(k+4))%3-1),oy+9+((h>>(k+6))%4)); g.fill(); hp(g,x+1,oy+18,"#8a2a1a"); } R(g,ox+3,oy+19,18,2,"#3a3630"); break;
+    case "cables": { g.strokeStyle="rgba(20,40,24,.95)"; g.lineWidth=2; g.beginPath(); g.moveTo(ox,oy+6+h%10); g.bezierCurveTo(ox+8,oy+20,ox+16,oy+2,ox+24,oy+8+(h>>4)%10); g.stroke(); g.strokeStyle="rgba(124,255,122,.55)"; g.lineWidth=.6; g.stroke(); disc(g,ox+12,oy+12,2,"#1a2a1c"); disc(g,ox+12,oy+12,1,"#7cff7a");
+      SOURCES.push({kind:"tank",x:d.x,y:d.y,bx:ox+12,by:oy+12,r:2.4,i:.35,col:[.35,1,.45],ph:h%100}); break; }
+    case "tape": { g.save(); g.translate(ox+12,oy+12); g.rotate(((h%5)-2)*.3); for(let k=-12;k<12;k+=3) g.fillStyle=(k/3|0)%2?"#e8c020":"#141210", g.fillRect(k,-1,3,2); g.restore(); R(g,ox+4,oy+17,3,4,"#e8c020"); R(g,ox+4,oy+17,3,1,"#141210"); hp(g,ox+15,oy+18,"#c9a24a"); hp(g,ox+17,oy+19,"#c9a24a"); break; }
+  } }
 function drawCorpse(g,e,x,y,now,downed){
   if(e.kind==="bot"){ R(g,x+5,y+16,14,4,"#1a1e22"); R(g,x+7,y+14,6,3,"#3a4046"); R(g,x+13,y+17,5,2,"#2a3034"); hp(g,x+9,y+15,"#5a2a1a"); if(((now/300)|0)%7===0) hp(g,x+11,y+14,"#ffd070"); return; }
   if(deathT[e.id]==null) deathT[e.id]=downed?now-1000:now;

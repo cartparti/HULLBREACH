@@ -158,7 +158,7 @@ const Sim = (() => {
     const mapId=G?"gen":(opts.map||"ks9"), MAP=G?G.rows:MAPS[mapId].rows; ROOMS=G?G.rooms:MAPS[mapId].rooms;
     const W=Math.max(...MAP.map(r=>r.length)), H=MAP.length;
     const s={v:1,seed:seed>>>0,rng:seed|0,turn:1,W,H,tiles:[],P:[],wind:[],blood:{},items:[],ents:[],
-      log:[],fx:[],fire:{},fuel:[],scorch:{},power:true,map:mapId,rooms:G?G.rooms:null,decals:G?G.decals:(mapId==="ks9"?[{type:"ritual",x:33,y:29}]:[]),mode:opts.mode||"raid",site:opts.site||"Relay KS-9",status:"playing",nextId:1,cause:null,crews:{}};
+      log:[],fx:[],fire:{},fuel:[],scorch:{},power:true,map:mapId,kind:(opts.gen&&opts.gen.kind)||"",rooms:G?G.rooms:null,decals:G?G.decals:(mapId==="ks9"?[{type:"ritual",x:33,y:29}]:[]),mode:opts.mode||"raid",site:opts.site||"Relay KS-9",status:"playing",nextId:1,cause:null,crews:{}};
     for(let y=0;y<H;y++)for(let x=0;x<W;x++){
       const c=MAP[y][x]||"~"; let t;
       switch(c){
@@ -969,9 +969,10 @@ const Sim = (() => {
       if(D.k==="ammo") r.ammo[D.ammo]=(r.ammo[D.ammo]|0)+(q.n|0); else if(D.k==="mat") r.mats[q.d]=(r.mats[q.d]|0)+(q.n||1); else if(r.inv.length<r.cap) r.inv.push({...q,id:s.nextId++}); }
     return r;
   }
-  function spawnRaiders(s,tier,mods,FX){ FX=FX||{}; const REP=FX.rep||{};
+  function spawnRaiders(s,tier,mods,FX){ FX=FX||{}; const REP=FX.rep||{}; const KIND=s.kind, FORCE={fortress:["reaver","reaver","reaver"],hive:["choir","choir"],outpost:["marshal","marshal"],hospital:["saint"],mining:["guild"]}[KIND]||[];
     const p0=players(s)[0]; if(!p0) return;
-    let n=mods.raiders!=null?mods.raiders|0:(chance(s,.7)?1:0)+(tier>=2&&chance(s,.4)?1:0)+(tier>=3&&chance(s,.3)?1:0); if(!n) return;
+    let n=mods.raiders!=null?mods.raiders|0:(chance(s,.7)?1:0)+(tier>=2&&chance(s,.4)?1:0)+(tier>=3&&chance(s,.3)?1:0);
+    if(mods.raiders==null&&FORCE.length) n=Math.max(n,KIND==="fortress"?3:KIND==="hive"||KIND==="outpost"?2:1); if(!n) return;
     // reachable floor from the shuttle (raiders came in through the same wreck)
     const seen=new Uint8Array(s.W*s.H), q=[idx(s,p0.x,p0.y)]; seen[q[0]]=1;
     for(let k=0;k<q.length;k++){ const c=q[k], x=c%s.W, y=(c/s.W)|0; for(const [dx,dy] of N4){ const nx=x+dx, ny=y+dy; if(!inb(s,nx,ny)) continue; const j=idx(s,nx,ny), t=s.tiles[j]; if(seen[j]) continue; if(walk(t)||(t.t==="door"&&!t.locked)){ seen[j]=1; q.push(j); } } }
@@ -981,7 +982,7 @@ const Sim = (() => {
       :[["reaver",3],["guild",3],["saint",2],["vanta",1],["unbound",1],["marshal",1]];
     s.crews=s.crews||{}; const used=new Set();
     for(let c=0;c<n&&rooms.length;c++){
-      const rm=rooms.splice(ri(s,0,rooms.length-1),1)[0]; let tot=facW.reduce((a,f)=>a+f[1],0), v=rand(s)*tot, fac="reaver"; for(const [f,w] of facW){ if((v-=w)<0){ fac=f; break; } }
+      const rm=rooms.splice(ri(s,0,rooms.length-1),1)[0]; let tot=facW.reduce((a,f)=>a+f[1],0), v=rand(s)*tot, fac="reaver"; for(const [f,w] of facW){ if((v-=w)<0){ fac=f; break; } } if(c<FORCE.length) fac=FORCE[c];
       const F=FACTIONS[fac], st=+(REP[fac]||0), ph=Math.max(.03,Math.min(.97,F.hostile-st/120)), att=chance(s,ph)?"hostile":chance(s,Math.max(.1,.6-st/200))?"wary":"friendly", id="c"+(c+1);
       const tiles=[]; for(let y=rm[2];y<=rm[4];y++)for(let x=rm[1];x<=rm[3];x++){ const j=idx(s,x,y); if(seen[j]&&s.tiles[j].t==="floor"&&!entAt(s,x,y)&&!s.items.some(i=>i.x===x&&i.y===y)) tiles.push([x,y]); }
       const size=Math.min(tiles.length,ri(s,1,3)+(tier>=3?1:0)); if(!size) continue;
