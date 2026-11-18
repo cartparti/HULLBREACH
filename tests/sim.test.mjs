@@ -307,4 +307,16 @@ test("death and its consolations: secure pouch, your old body, prisoners; skills
   assert.ok(Sim.act(s, "p1", { type: "extract" })); assert.equal(s.prisoners.length, 1);
 });
 
+test("sector war and faction jobs: the Choir advances, jobs are the same for every crew member and spawn their objectives", () => {
+  const sh = World.newShip(); World.warTick(sh, 0); const before = Object.values(World.war(sh).control).filter((f) => f === "choir").length;
+  World.warTick(sh, 40); assert.ok(Object.values(World.war(sh).control).filter((f) => f === "choir").length > before, "the Choir takes stations over time");
+  World.pushChoir(sh, -60, "Pushed back."); assert.ok(World.war(sh).choir < 100);
+  const a = World.jobsFor(sh, "marshal", Sim.FACTIONS), b = World.jobsFor(JSON.parse(JSON.stringify(sh)), "marshal", Sim.FACTIONS); assert.deepEqual(a, b); assert.equal(a.length, 2);
+  const base = { fac: "marshal", site: "tithe", tier: 2, reward: 500, rep: 8 };
+  const s = Sim.newGame(77, null, { gen: { tier: 2 }, jobs: [{ ...base, id: "k", type: "kill", target: { fac: "reaver", name: "Warboss Test" }, title: "Kill" }, { ...base, id: "p", type: "purge", n: 2, title: "Purge" }, { ...base, id: "r", type: "rescue", title: "Rescue" }, { ...base, id: "c", type: "recover", item: "Thing", title: "Recover" }] });
+  assert.ok(s.ents.some((e) => e.jobTarget === "k")); assert.ok(s.ents.some((e) => e.rescue === "r" && e.stranded)); assert.ok(s.tiles.some((t) => t.loot && t.loot.some((i) => i.job === "c")) || s.items.some((i) => i.job === "c"));
+  const t = s.ents.find((e) => e.jobTarget === "k"); for (const l of ["head"]) t.hp[l] = 1; const p = playerOf(s); p.ammo.pistol = 99;
+  for (const h of s.ents.filter((e) => e.kind === "husk").slice(0, 2)) { h.hp.head = 0; h.alive = false; }
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

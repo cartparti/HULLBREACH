@@ -133,6 +133,7 @@ const Items = (() => {
     bandage:  { k: "med", name: "Bandage roll", value: 15, desc: "Stops bleeding on one limb." },
     medkit:   { k: "med", name: "Trauma kit", value: 55, rar: 1, desc: "Stops all bleeding and patches every limb." },
     o2:       { k: "med", name: "Oxygen canister", value: 25, desc: "Refills 50 suit O₂." },
+    jobitem:  { k: "key", name: "Contract cargo", value: 0, desc: "What you were sent for. Get it to your shuttle." },
     splint:   { k: "med", name: "Field splint", value: 45, desc: "Sets a broken limb so the fracture stops wrecking your aim or your stride." },
     antibiotic:{ k: "med", name: "Antibiotics", value: 60, rar: 1, desc: "Kills an infection before the fever takes hold." },
     stim:     { k: "med", name: "Combat stim", value: 140, rar: 2, desc: "Restores 25 blood and numbs crippled legs for 10 turns." },
@@ -186,7 +187,7 @@ const Items = (() => {
     if (D.k === "light") s.range = D.range + r * 1.2;
     return s;
   }
-  function name(it) { const D = def(it.d); if (!D) return "Unknown"; if (D.k === "ammo") return `${D.name} ×${it.n | 0}`; if (D.k === "mat") return it.n > 1 ? `${D.name} ×${it.n}` : D.name; const r = rarOf(it); return D.name + (D.rar >= 3 || ["weapon", "armor", "throw", "light"].indexOf(D.k) < 0 ? "" : RAR[r].tag) + (it.l ? ` +${it.l}` : ""); }
+  function name(it) { if (it && it.jn) return it.jn; const D = def(it.d); if (!D) return "Unknown"; if (D.k === "ammo") return `${D.name} ×${it.n | 0}`; if (D.k === "mat") return it.n > 1 ? `${D.name} ×${it.n}` : D.name; const r = rarOf(it); return D.name + (D.rar >= 3 || ["weapon", "armor", "throw", "light"].indexOf(D.k) < 0 ? "" : RAR[r].tag) + (it.l ? ` +${it.l}` : ""); }
   function value(it) { const D = def(it.d); if (!D) return 0; if (D.k === "val") return it.v || D.value; if (D.k === "ammo" || D.k === "mat") return D.value * (it.n || 1); if (D.k === "dye") return D.value; const r = rarOf(it); return Math.round(D.value * (D.rar >= 3 ? 1 : [1, 1.7, 2.8][r]) * (1 + (it.l | 0) * .25)); }
   const make = (d, r = 0, extra) => ({ d, r: def(d) && def(d).rar >= 3 ? def(d).rar : r, ...(extra || {}) });
   const kind = (it) => (def(it.d) ? def(it.d).k : null);

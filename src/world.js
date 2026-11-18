@@ -20,13 +20,13 @@ const World = (() => {
       desc:"A comms relay gone silent six weeks ago. A fire still burns in its cargo hold.",site:{tier:1,fireStart:true,kind:"relay",mods:{}}},
     {id:"tithe",sector:"reach",name:"Tithe Hulk 7",type:"derelict",x:36,y:18,scene:{kind:"hulk",glow:"#3a6a5a"},
       desc:"An ore tithe barge, powerless and cold. Rich holds, more husks.",site:{tier:2,kind:"mining",mods:{power:false,huskAdd:2,loot:1.3}}},
-    {id:"vesper",sector:"reach",name:"Vesper Outpost",type:"derelict",x:26,y:9,scene:{kind:"hulk",glow:"#6aa0ff"},
+    {id:"vesper",sector:"reach",name:"Vesper Outpost",type:"derelict",x:5,y:34,scene:{kind:"hulk",glow:"#6aa0ff"},
       desc:"A Concord Marshal outpost that stopped answering hails. Its turrets are still watching.",site:{tier:2,kind:"outpost",mods:{}}},
     {id:"spire",sector:"vigil",name:"Saint Orrin's Spire",type:"station",x:66,y:14,scene:{kind:"spire",hue:"#c79a4a"},
       desc:"A shrine station of bells and candle-smoke. The reliquary sells armour blessed or otherwise.",npcs:["caul","ysolde"],fuel:50},
     {id:"mercy",sector:"vigil",name:"The Mercy of Iron",type:"derelict",x:80,y:32,scene:{kind:"hulk",glow:"#c22a1a"},
       desc:"A pilgrim hospital ship. Lights out, doors sealed, something singing in the vents.",site:{tier:3,kind:"hospital",mods:{power:false,huskAdd:3,loot:1.5}}},
-    {id:"theta",sector:"vigil",name:"Choir Node Theta",type:"derelict",x:88,y:12,scene:{kind:"hulk",glow:"#7cff7a"},
+    {id:"theta",sector:"vigil",name:"Choir Node Theta",type:"derelict",x:86,y:46,scene:{kind:"hulk",glow:"#7cff7a"},
       desc:"An Iron Choir relay node. The walls hum in harmony and the turrets never sleep.",site:{tier:3,kind:"hive",mods:{loot:1.4}}},
     {id:"lazarus",sector:"cinder",name:"Lazarus Yards",type:"outpost",x:44,y:66,scene:{kind:"planet",a:"#7a3a1e",b:"#2a0e08",ring:false},
       desc:"Breaker yards on a smouldering world. Mott takes the jobs nobody else will.",npcs:["mott"],fuel:40},
@@ -34,7 +34,7 @@ const World = (() => {
       desc:"A black market bolted onto a gutted freighter. Rare weapons, no questions.",npcs:["fennick"],fuel:55},
     {id:"pyre",sector:"cinder",name:"Pyre Station",type:"derelict",x:38,y:84,scene:{kind:"hulk",glow:"#ffb040"},
       desc:"A refinery that has been burning for a month. Fewer husks. Much more fire.",site:{tier:3,kind:"mining",mods:{fires:7,huskDrop:.35,loot:1.4}}},
-    {id:"maw",sector:"cinder",name:"Breaker's Maw",type:"derelict",x:74,y:64,scene:{kind:"hulk",glow:"#e0482f"},
+    {id:"maw",sector:"cinder",name:"Breaker's Maw",type:"derelict",x:76,y:74,scene:{kind:"hulk",glow:"#e0482f"},
       desc:"A Reaver fortress welded together from a dozen wrecks. Their war bands sleep here, and so does their loot.",site:{tier:3,kind:"fortress",mods:{loot:1.6}}},
   ];
   const NPCS={
@@ -64,6 +64,35 @@ const World = (() => {
     o2:{name:"Oxygen canister",sell:25,desc:"Refills 50 suit O₂."},keycard:{name:"Captain's keycard",sell:20,desc:"Opens a station vault while power is on."}};
 
   const loc=id=>LOCS.find(l=>l.id===id);
+  // ---- the sector war: who holds what, and the Iron Choir's slow advance ----
+  const CONTROL={ninefold:"marshal",ossuary:"guild",ks9:null,tithe:"guild",vesper:"marshal",spire:"saint",mercy:"saint",theta:"choir",lazarus:"blacksun",fennick:"blacksun",pyre:"blacksun",maw:"reaver"};
+  const CHOIR_PATH=["mercy","vesper","tithe","ks9","pyre","maw"]; // the order the Choir takes derelicts in
+  function war(ship){ if(!ship.war) ship.war={control:{...CONTROL},choir:10,news:[{day:ship.day|0,text:"The Iron Choir's signal is spreading out of Choir Node Theta. Nobody is answering it yet."}]}; return ship.war; }
+  function controlOf(ship,id){ const W=war(ship); return id in W.control?W.control[id]:CONTROL[id]||null; }
+  function news(ship,text){ const W=war(ship); W.news.unshift({day:ship.day|0,text}); W.news=W.news.slice(0,12); }
+  // every day the Choir sings a little louder; at each 20 points it takes the next derelict on its path
+  function warTick(ship,days){ const W=war(ship); for(let d=0;d<days;d++){ const before=W.choir; W.choir=Math.min(100,W.choir+2.5);
+      if(Math.floor(W.choir/20)>Math.floor(before/20)){ const next=CHOIR_PATH.find(id=>W.control[id]!=="choir"); if(next){ const was=W.control[next]; W.control[next]="choir"; news(ship,`The Iron Choir has taken ${loc(next).name}${was?` from the ${was}`:""}. Its crews are converting the station.`); } } } }
+  function pushChoir(ship,n,why){ const W=war(ship); W.choir=Math.max(0,Math.min(100,W.choir+n));
+    if(n<0){ const lost=[...CHOIR_PATH].reverse().find(id=>W.control[id]==="choir"); if(lost&&W.choir<CHOIR_PATH.filter(id=>W.control[id]==="choir").length*20-10){ W.control[lost]=CONTROL[lost]; news(ship,`${why} The Choir's hold on ${loc(lost).name} breaks. ${CONTROL[lost]?`The ${CONTROL[lost]} move back in.`:"It's open salvage again."}`); } else news(ship,why); }
+    else news(ship,why); }
+  // ---- faction jobs: two offers per faction per day, worked out from the day so every crew member sees the same ----
+  const JOBITEM={choir:"Choir harmonic core",unbound:"Freed-synth memory drive",saint:"Rust Saint reliquary",guild:"Guild survey drive",vanta:"Vanta cargo ledger",blacksun:"Black Sun strongbox key",marshal:"Marshal evidence locker",hollow:"Hollow Company contract file",reaver:"Reaver war-banner"};
+  const LEAD=["Warboss","Captain","Deacon","Foreman","Broker","Overseer","Cantor","Fixer","Sergeant"];
+  function jobsFor(ship,fac,FAC){ const day=ship.day|0, out=[]; let h=(day*2246822519^fac.length*3266489917^fac.charCodeAt(0)*668265263)>>>0; const R=()=>((h=(h*1664525+1013904223)>>>0)/4294967296);
+    const sites=LOCS.filter(l=>l.type==="derelict"), F=FAC[fac]; if(!F) return out;
+    for(let i=0;i<2;i++){ const site=sites[Math.floor(R()*sites.length)], tier=site.site.tier||1, holder=controlOf(ship,site.id);
+      const foes=(F.foes||[]).filter(f=>FAC[f]); let type=["kill","recover","purge","rescue"][Math.floor(R()*4)];
+      if(fac!=="choir"&&holder==="choir"&&R()<.6) type=R()<.5?"sabotage":"kill"; if(type==="kill"&&!foes.length&&holder!=="choir") type="purge";
+      const target=type==="kill"?(holder==="choir"&&fac!=="choir"?"choir":foes[Math.floor(R()*foes.length)]):null;
+      const base=[0,450,750,1100][tier]+Math.round(R()*8)*25, j={id:`j${day}${fac}${i}`,fac,type,site:site.id,tier,reward:base+(type==="kill"?150:type==="sabotage"?200:0),rep:type==="kill"||type==="sabotage"?10:8};
+      if(type==="kill"){ const TF=FAC[target]; j.target={fac:target,name:`${TF.species==="synth"?"Conductor":LEAD[Math.floor(R()*LEAD.length)]} ${["Vane","Korr","Sato","Lisk","Morrow","Hale","Quist","Dray","Ferro","Ash"][Math.floor(R()*10)]}`}; j.title=`Kill ${j.target.name}`; j.brief=`${j.target.name} of the ${TF.name} is holed up on ${site.name}. Put them down.`; }
+      if(type==="recover"){ j.item=JOBITEM[fac]; j.title=`Recover the ${j.item}`; j.brief=`The ${j.item} was lost on ${site.name}. It's locked in the vault or a strongbox. Bring it out.`; }
+      if(type==="purge"){ j.n=6+tier*3; j.title=`Purge ${site.name}`; j.brief=`Kill ${j.n} of the dead aboard ${site.name} so a salvage crew can follow.`; }
+      if(type==="rescue"){ j.title=`Rescue a stranded ${F.short}`; j.brief=`One of ours is trapped somewhere on ${site.name}. Find them, get them to your shuttle alive.`; }
+      if(type==="sabotage"){ j.title=`Silence the Choir on ${site.name}`; j.brief=`Get to ${site.name}'s main power relay and upload our worm. It'll set the Choir's song back by weeks.`; }
+      out.push(j); }
+    return out; }
   function newShip(){ return {v:1,name:"Ninefold Lark",loc:"ninefold",fuel:6,fuelMax:8,day:1,contracts:[],done:[],log:[],fab:1}; }
   function travelCost(ship,to){ const a=loc(ship.loc), b=loc(to); if(!a||!b||a.id===b.id) return 0; return a.sector===b.sector?1:3; }
   function siteContract(ship,site){ return ship.contracts.find(c=>CONTRACTS[c].site===site)||null; }
@@ -73,8 +102,8 @@ const World = (() => {
     switch(a.type){
       case "travel": { const c=travelCost(ship,a.to); if(!loc(a.to)||!c) return {ok:false,msg:"Already here."};
         if(ship.fuel<c) return {ok:false,msg:`Not enough fuel. That jump needs ${c}.`};
-        ship.fuel-=c; ship.loc=a.to; ship.day+=c; return {ok:true,msg:`Jumped to ${loc(a.to).name}.`}; }
-      case "tow": { if(ship.fuel>=1) return {ok:false,msg:"You still have fuel."}; ship.loc="ninefold"; ship.day+=4; return {ok:true,msg:"A Ninefold tug hauls you home. Four days lost."}; }
+        ship.fuel-=c; ship.loc=a.to; ship.day+=c; warTick(ship,c); return {ok:true,msg:`Jumped to ${loc(a.to).name}.`}; }
+      case "tow": { if(ship.fuel>=1) return {ok:false,msg:"You still have fuel."}; ship.loc="ninefold"; ship.day+=4; warTick(ship,4); return {ok:true,msg:"A Ninefold tug hauls you home. Four days lost."}; }
       case "refuel": { if(!L.fuel) return {ok:false,msg:"No fuel sold here."}; const need=ship.fuelMax-ship.fuel; if(!need) return {ok:false,msg:"Tanks are full."};
         const n=Math.min(need,Math.floor(P.credits/L.fuel)); if(!n) return {ok:false,msg:"You can't afford any fuel."};
         P.credits-=n*L.fuel; ship.fuel+=n; return {ok:true,msg:`Bought ${n} fuel for ${n*L.fuel} cr.`}; }
@@ -98,7 +127,7 @@ const World = (() => {
     const cid=siteContract(ship,site), out={contract:null};
     if(cid&&raid.status==="extracted"&&raid.blackbox){ const C=CONTRACTS[cid]; ship.contracts=ship.contracts.filter(c=>c!==cid); ship.done.push(cid);
       for(const P of profiles) P.credits+=C.reward; out.contract={title:C.title,reward:C.reward}; }
-    ship.day+=1; return out;
+    ship.day+=1; warTick(ship,1); return out;
   }
   const itemInfo=it=>Items.info(it);
   // put an item into a player's base: ammo and materials stack, everything else goes to the stash
@@ -109,5 +138,5 @@ const World = (() => {
     P.stash.push(mkItem(spec)); }
   let uidN=0; const uid=()=>"i"+Date.now().toString(36)+(uidN++).toString(36)+Math.random().toString(36).slice(2,5);
   function mkItem(it){ const o={uid:uid(),d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; return o; }
-  return {SECTORS,LOCS,NPCS,CONTRACTS,CONS,loc,newShip,travelCost,siteContract,act,settleRaid,itemInfo,mkItem,grant};
+  return {CONTROL,war,controlOf,warTick,pushChoir,news,jobsFor,SECTORS,LOCS,NPCS,CONTRACTS,CONS,loc,newShip,travelCost,siteContract,act,settleRaid,itemInfo,mkItem,grant};
 })();

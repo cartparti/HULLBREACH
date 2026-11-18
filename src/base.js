@@ -262,6 +262,8 @@ function viewComms(){
       <div class="cm-talk"><div class="h-eyebrow" style="color:${F.col}">${esc(F.name)} · ${F.kind}</div><h3>${esc(R.name)}</h3><p class="risk">${esc(R.title)}. Standing: <b style="color:${c}">${w} (${v>0?"+":""}${v})</b></p>
         <blockquote class="cm-line">“${esc(line)}”</blockquote><p class="risk">${esc(F.desc)}</p>
         ${acts.map(a=>`<div class="cm-row"><div class="cm-t"><b>${esc(a.label)}</b><span>${esc(a.desc)}</span></div><button class="plain" data-act="cmdo:${a.id}" ${a.off?"disabled":""}>${a.cost?a.cost+" cr":a.mats?Object.entries(a.mats).map(([m,n])=>n+" "+Items.MATS[m].toLowerCase()).join(", "):"Go"}</button></div>`).join("")}
+        ${v>-15?(()=>{ const jobs=World.jobsFor(ship(),f,Sim.FACTIONS), act=ship().jobs||[], lead=!inSquad()||Net.host; return `<div class="h-eyebrow" style="margin-top:8px">Work · ${act.length}/3 taken</div>${jobs.map(j=>{ const L2=World.loc(j.site), have=act.some(q=>q.id===j.id);
+          return `<div class="cm-row"><div class="cm-t"><b>${esc(j.title)}</b><span>${esc(j.brief)} · ${L2.name} · threat ${"▲".repeat(j.tier)} · ${j.reward} cr, +${j.rep} standing</span></div>${have?`<span class="risk good">Taken</span>`:lead?`<button class="plain" data-act="job:${j.id}" ${act.length>=3?"disabled":""}>Take it</button>`:`<span class="risk">Leader takes jobs</span>`}</div>`; }).join("")}`; })():""}
         ${stock.length?`<div class="h-eyebrow" style="margin-top:8px">Today's stock</div>${stock.map(([d,r,min],i)=>{ const it={d,r}, locked=v<min; return `<div class="cm-row">${slotHTML(it)}<div class="cm-t">${nmHTML(it)}<span>${esc(Items.statLine(it))}${locked?` · needs standing ${min>0?"+":""}${min}`:""}</span></div><button class="plain" data-act="cmbuy:${i}" ${locked?"disabled":""}>${priceOf(f,d,r)} cr</button></div>`; }).join("")}`:""}
         ${v<=-50&&!acts.length?`<p class="risk bad">They won't deal with you. Raise your standing in the field: truces, trades, and not shooting their people.</p>`:""}
       </div></div></section>`;
@@ -308,7 +310,8 @@ $("panel").addEventListener("click",e=>{ if(e.target.id==="panel") closePanel();
 function viewHelm(){
   const sh=ship(), cur=here(), sel=World.loc(mapSel||cur.id), cost=World.travelCost(sh,sel.id), sc=World.SECTORS.find(s=>s.id===sel.sector);
   const Y=v=>v*.75, nodes=World.LOCS.map(l=>{ const col=l.type==="station"?"#76c2c4":l.type==="outpost"?"#c79a4a":"#e0482f", target=sh.contracts.some(c=>World.CONTRACTS[c].site===l.id), isSel=l.id===sel.id, isCur=l.id===cur.id;
-    return `<g class="node" data-act="sel:${l.id}" role="button" aria-label="${l.name}">${isSel?`<circle cx="${l.x}" cy="${Y(l.y)}" r="3.4" fill="none" stroke="#d9d2c0" stroke-width=".35"/>`:""}
+    const hold=World.controlOf(sh,l.id), HF=hold&&Sim.FACTIONS[hold];
+    return `<g class="node" data-act="sel:${l.id}" role="button" aria-label="${l.name}">${HF?`<circle cx="${l.x}" cy="${Y(l.y)}" r="2.7" fill="none" stroke="${HF.col}" stroke-width=".45" opacity=".85"/>`:""}${(sh.jobs||[]).some(j=>j.site===l.id)?`<text x="${l.x-1.3}" y="${Y(l.y)-3}" style="fill:#e8b048;font-size:3px">◆</text>`:""}${isSel?`<circle cx="${l.x}" cy="${Y(l.y)}" r="3.4" fill="none" stroke="#d9d2c0" stroke-width=".35"/>`:""}
       <circle cx="${l.x}" cy="${Y(l.y)}" r="${l.type==="derelict"?1.5:2}" fill="${col}" ${l.type==="derelict"?'stroke="#2a0806" stroke-width=".4"':""}/>
       ${isCur?`<path d="M${l.x-1.6} ${Y(l.y)-3.2} L${l.x+1.6} ${Y(l.y)-3.2} L${l.x} ${Y(l.y)-1.8} Z" fill="#9bc06a"/>`:""}
       ${(typeof Net!=="undefined"&&Net.suggest&&Net.suggest.to===l.id&&Date.now()-Net.suggest.at<180000)?`<circle cx="${l.x}" cy="${Y(l.y)}" r="4.6" fill="none" stroke="${colorOf(Net.suggest.k)}" stroke-width=".45" stroke-dasharray="1 .8"/>`:""}
@@ -323,11 +326,14 @@ function viewHelm(){
   const sugHTML=sug&&isHost()?`<div class="panel contract-row" style="grid-column:1/-1;border-color:${colorOf(sug.k)}"><div><b>${esc(nameOf(sug.k))} suggests ${World.loc(sug.to).name}</b><br><span>${World.travelCost(sh,sug.to)} fuel · ${World.SECTORS.find(s=>s.id===World.loc(sug.to).sector).name}</span></div><button class="plain" data-act="sel:${sug.to}">Show</button></div>`:"";
   return `<div class="galaxy">${sugHTML}<div class="gmap"><svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid meet" aria-label="Star map">${secs}${lanes.join("")}${nodes}</svg></div>
     <div class="panel h-card"><div class="h-eyebrow">${sc.name}</div><h3>${sel.name}</h3><p>${sel.desc}</p>
-      <div class="h-tags"><span>${sel.type}</span>${sh.contracts.some(c=>World.CONTRACTS[c].site===sel.id)?`<span class="hot">Contract target</span>`:""}</div>
+      <div class="h-tags"><span>${sel.type}</span>${World.controlOf(sh,sel.id)?`<span style="border-color:${Sim.FACTIONS[World.controlOf(sh,sel.id)].col};color:${Sim.FACTIONS[World.controlOf(sh,sel.id)].col}">${Sim.FACTIONS[World.controlOf(sh,sel.id)].name}</span>`:`<span>Unclaimed</span>`}${sh.contracts.some(c=>World.CONTRACTS[c].site===sel.id)?`<span class="hot">Contract target</span>`:""}${(sh.jobs||[]).some(j=>j.site===sel.id)?`<span class="hot">Job here</span>`:""}</div>
       <div class="facts"><span>Services</span><span>${services}</span><span>Fuel aboard</span><span>${sh.fuel}/${sh.fuelMax}</span><span>Jump cost</span><span>${cost?cost+" fuel":"You are here"}</span><span>Travel time</span><span>${cost?cost+" day"+(cost>1?"s":""):"—"}</span></div>
       ${cost?(isHost()?`<button class="deploy-btn" data-act="jump:${sel.id}" ${canJump?"":"disabled"}>${canJump?`Jump · ${cost} fuel`:"Not enough fuel"}</button>`:`<button class="deploy-btn" data-act="suggest:${sel.id}">Suggest this course</button><p class="risk">The squad leader flies. Your suggestion shows up on their star map.</p>`):`<p class="risk good">Your ship is here.</p>`}
       ${sh.fuel<1&&cur.id!=="ninefold"?`<button class="plain" data-act="tow">Call a tug to Hangar Ninefold (free, 4 days)</button>`:""}
-      <p class="risk">Jumps inside a sector cost 1 fuel. Crossing to another sector costs 3. Buy fuel when docked at stations and outposts.</p></div></div>`;
+      <p class="risk">Jumps inside a sector cost 1 fuel. Crossing to another sector costs 3. Buy fuel when docked at stations and outposts.</p></div>
+    <div class="panel h-card war"><div class="h-eyebrow" style="color:#7cff7a">The Iron Choir</div><div class="meter" style="height:8px;margin:6px 0"><i style="width:${Math.round(World.war(sh).choir)}%;background:#7cff7a"></i></div>
+      <p class="risk">${World.war(sh).choir>=80?"The Choir's song fills the sector. Its crews are everywhere.":World.war(sh).choir>=40?"The Choir is spreading station by station.":"The Choir's signal is still contained."} It grows every day; jobs against it on the bridge hologram push it back.</p>
+      <div class="h-eyebrow">Sector news</div>${World.war(sh).news.slice(0,5).map(n=>`<p class="risk"><b>Day ${n.day}</b> · ${esc(n.text)}</p>`).join("")}</div></div>`;
 }
 function gearRow(label,it,extra,btn){ return `<div class="eq-row"><span class="lbl">${label}</span>${slotHTML(it,label)}<div class="nm">${it?nmHTML(it):`<b>No ${label.replace(" ●","").toLowerCase()}</b>`}<span>${it?`<span class="rar" style="color:${rc(it)}">${Items.RAR[Items.rarOf(it)].name}${it.iss?" · issued":""}</span> · ${esc(Items.statLine(it))}`:extra||""}</span></div>${btn||""}</div>`; }
 function viewLoadout(){
@@ -546,7 +552,8 @@ function contractRow(id,btn){ const C=World.CONTRACTS[id], site=World.loc(C.site
 function viewBoard(){ const sh=ship();
   return `<section class="h-grid"><div class="panel h-card span7"><div class="h-eyebrow">Active · ${sh.contracts.length}/3</div>
       ${sh.contracts.length?sh.contracts.map(id=>contractRow(id,`<button class="plain" data-act="drop:${id}">${armed["drop:"+id]?"Confirm drop":"Drop"}</button>`)).join(""):`<p class="risk">No contracts. Dock at a station or outpost and talk to a contract giver through the airlock.</p>`}
-      <p class="risk">Fly to the target, board it from the airlock, and extract with its black box. The reward is paid to everyone in the crew.</p></div>
+      <p class="risk">Fly to the target, board it from the airlock, and extract with its black box. The reward is paid to everyone in the crew.</p>
+      <div class="h-eyebrow" style="margin-top:10px">Faction jobs · ${(sh.jobs||[]).length}/3</div>${(sh.jobs||[]).map(j=>{ const F=Sim.FACTIONS[j.fac]; return `<div class="cm-row"><div class="cm-t"><b style="color:${F.col}">${esc(j.title)}</b><span>${esc(F.name)} · ${World.loc(j.site).name} · ${j.reward} cr</span></div><button class="plain" data-act="dropjob:${j.id}">Drop</button></div>`; }).join("")||`<p class="risk">None. Call a faction on the bridge hologram to find work.</p>`}</div>
     <div class="panel h-card span5"><div class="h-eyebrow">Completed</div>${sh.done.length?sh.done.map(id=>`<div class="risk">✓ ${World.CONTRACTS[id].title} · ${World.CONTRACTS[id].reward} cr</div>`).join(""):`<p class="risk">None yet.</p>`}</div></section>`; }
 function viewAirlock(){
   const L=here();
@@ -593,7 +600,7 @@ function viewDeploy(L){
       :`<button class="deploy-btn" data-act="ready">${Net.ready?"Stand down":"Ready up"}</button><p class="risk">${Net.ready?"Ready. The squad leader launches the raid.":"Pick your kit, then ready up."}</p>`; }
   return `<section class="h-grid">
     <div class="panel h-card span7"><div class="h-eyebrow">Target</div><h3>${L.name}</h3><p>${L.desc}</p><div class="h-tags">${tags.map(t=>`<span class="${/fire|husk|power/i.test(t)?"hot":""}">${t}</span>`).join("")}</div>
-      <div class="facts"><span>Contract</span><span>${C?`${C.title} · ${C.reward} cr`:"None · salvage run"}</span><span>Objective</span><span>${C?"Black box from the vault":"Anything worth carrying"}</span><span>Extraction</span><span>Your shuttle pad, docking bay</span></div>${notes}${intel}</div>
+      <div class="facts"><span>Contract</span><span>${C?`${C.title} · ${C.reward} cr`:"None · salvage run"}</span><span>Objective</span><span>${[C?"Black box from the vault":"",...(ship().jobs||[]).filter(j=>j.site===L.id).map(j=>j.title)].filter(Boolean).join(" · ")||"Anything worth carrying"}</span>${World.controlOf(ship(),L.id)?`<span>Held by</span><span style="color:${Sim.FACTIONS[World.controlOf(ship(),L.id)].col}">${Sim.FACTIONS[World.controlOf(ship(),L.id)].name}</span>`:""}<span>Extraction</span><span>Your shuttle pad, docking bay</span></div>${notes}${intel}</div>
     <div class="panel h-card span5"><div class="h-eyebrow">${inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew"}</div>${squadHTML}</div>
     <div class="panel h-card span12"><div class="bar-row"><div class="h-eyebrow grow">Loadout · ${r.free?"Starter kit":"Custom kit"}</div><button class="plain" data-act="open:rack">Loadout rack</button></div>
       ${kitSummaryHTML(r)}<p class="risk ${r.free?"good":"bad"}">${r.free?"Free kit. Nothing from your stash is at risk.":profile.insure?`Insured: if you die, this kit comes back to your stash.`:`If you die you lose this kit (about ${risk} cr), except what you seal in your secure pouch (${2+upLvl("pouch")} slots). Insure it on the bridge hologram with the Vanta Combine.`}${!r.w1&&!r.w2?" You are going in without a gun.":""}</p>
@@ -627,6 +634,7 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
       ${Lr.ammo&&Object.keys(Lr.ammo).length?`<div class="h-eyebrow">Ammo recovered</div>${ammoChips(Lr.ammo)}`:""}${Lr.mats&&MAT_T.some(t=>Lr.mats[t])?`<div class="h-eyebrow" style="margin-top:6px">Materials</div>${matChips(Lr.mats)}`:""}`
       :`<p>${Lr.cause||"You did not come back."} ${Lr.kit==="custom"?"Your custom kit is gone.":"You went in on the starter kit, so your stash is untouched."}</p>`}
     ${Lr.xp?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
+    ${Lr.jobs&&Lr.jobs.length?`<p class="risk good">${Lr.jobs.map(j=>`Job done: ${esc(j.title)} · ${j.reward} cr from the ${esc(Sim.FACTIONS[j.fac].name)}`).join(". ")}.</p>`:""}
     ${Lr.secured&&Lr.secured.length?`<p class="risk good">Secure pouch: ${Lr.secured.map(x=>`<b style="color:${x.c}">${esc(x.n)}</b>`).join(", ")} came home with you.</p>`:""}
     ${Lr.insured&&Lr.insured.length?`<p class="risk good">Vanta insurance returned ${Lr.insured.length} item${Lr.insured.length>1?"s":""} to your stash.</p>`:""}
     ${Lr.remains?`<p class="risk">Your body is still aboard with ${Lr.remains} item${Lr.remains>1?"s":""}. Go back within 6 days to recover them, before scavengers do.</p>`:""}
@@ -679,6 +687,8 @@ $("p-body").addEventListener("click",e=>{
     // stash + workbench
     case "scrap": { const it=byUid(x); if(!it) break; if(!arm("scrap:"+x)) break; const yv=scrapYield(it); profile.stash=profile.stash.filter(q=>q.uid!==x); stashSel=null;
       for(const m in yv) profile.mats[m]=(profile.mats[m]|0)+yv[m]; toast(`Broke down ${Items.name(it)}: ${MAT_T.filter(m=>yv[m]).map(m=>yv[m]+" "+Items.MATS[m].toLowerCase()).join(", ")}.`); save(); refreshLook(); break; }
+    case "job": { if(inSquad()&&!Net.host) break; const sh=profile.ship; sh.jobs=sh.jobs||[]; if(sh.jobs.length>=3||sh.jobs.some(q=>q.id===x)) break; const j=World.jobsFor(sh,commsFac,Sim.FACTIONS).find(q=>q.id===x); if(!j) break; sh.jobs.push(j); commsMsg="Good. Don't come back without it done."; toast(`Job taken: ${j.title}.`); save(); if(inSquad()) hostBroadcastShip(false); break; }
+    case "dropjob": { if(inSquad()&&!Net.host) break; profile.ship.jobs=(profile.ship.jobs||[]).filter(q=>q.id!==x); toast("Job dropped."); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "perk": if(perkPoints()>0&&PERKS[x]&&(profile.perks[x]|0)<PERKS[x].max){ profile.perks[x]=(profile.perks[x]|0)+1; save(); toast(`${PERKS[x].name} rank ${profile.perks[x]}.`); } break;
     case "treat": { const i=profile.stash.findIndex(q=>q.d===x); if(i<0) break; const I=profile.injury; if(x==="splint"){ const l=Object.keys(I.frac||{})[0]; if(!l) break; delete I.frac[l]; toast(`Splinted your ${Sim.LNAME[l]}.`); } else { if(!I.inf) break; I.inf=0; toast("Infection treated."); } profile.stash.splice(i,1); save(); break; }
     case "call": if(commsFac!==x){ commsFac=x; commsT0=performance.now(); commsMsg=""; } break;
@@ -758,7 +768,7 @@ function scanSite(L){ const sd=(ship().seeds||{})[L.id]; if(!sd) return null; co
   const g=Sim.newGame(sd,null,raidOpts(L)), H={}; for(const e of g.ents) if(e.kind==="husk"&&e.alive) H[e.type||"husk"]=(H[e.type||"husk"]||0)+1;
   const crews=Object.values(g.crews||{}).filter(C=>!C.hired).map(C=>({fac:C.fac,att:C.att,n:g.ents.filter(e=>e.crew===C.id).length}));
   return scanCache[key]={power:g.power,husks:H,boss:!!g.boss,turrets:g.ents.filter(e=>e.kind==="bot"&&e.type==="turret").length,drones:g.ents.filter(e=>e.kind==="bot"&&e.type==="drone").length,crews,fires:Object.keys(g.fire).length}; }
-function raidOpts(L,fx){ return {gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:L.site.kind||""},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
+function raidOpts(L,fx){ const held=World.controlOf(ship(),L.id); return {jobs:(ship().jobs||[]).filter(j=>j.site===L.id),gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:held==="choir"?"hive":(L.site.kind||"")},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
 // what the station's crews know about you: your standing, and a merc you've paid for (used once)
 function factionSetup(by){ return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null}; }
 function deploy(){
@@ -781,6 +791,12 @@ function settlePersonal(){
     let it=null; for(let n=0;n<8&&(!it||Items.rarOf(it)<1||!Items.slotOf(it));n++) it=Items.roll(Math.random,(L.site.tier||1)+1,["weapon","armor","weapon","pack"][n%4]);
     if(it){ World.grant(profile,it); rep.contract.bonus={n:Items.name(it),c:rc(it)}; } }
   if(isHost()) World.settleRaid(profile.ship,[],{status:bbHome?"extracted":"lost",blackbox:bbHome},L.id);
+  // faction jobs: paid when they're done and someone got out
+  rep.jobs=[]; { const out=crew.some(q=>q.extracted); for(const J of S.jobs||[]){ const j=(ship().jobs||[]).find(q=>q.id===J.id); if(!j||!J.done||!out) continue; profile.credits+=j.reward; profile.rep[j.fac]=Math.max(-100,Math.min(100,(profile.rep[j.fac]|0)+j.rep)); if(j.target) profile.rep[j.target.fac]=Math.max(-100,(profile.rep[j.target.fac]|0)-10); rep.jobs.push({title:j.title,reward:j.reward,fac:j.fac}); p.xp=(p.xp|0)+60;
+    if(isHost()){ const sh=profile.ship; sh.jobs=(sh.jobs||[]).filter(q=>q.id!==j.id); const F=Sim.FACTIONS[j.fac];
+      if(j.fac==="choir") World.pushChoir(sh,10,`The Iron Choir grows louder: a contractor did its work on ${World.loc(j.site).name}.`);
+      else if(j.type==="sabotage"||(j.target&&j.target.fac==="choir")) World.pushChoir(sh,-18,`Contractors struck the Iron Choir on ${World.loc(j.site).name} for the ${F.name}.`);
+      else { const held=World.controlOf(sh,j.site); if(held&&held!==j.fac&&(F.foes||[]).includes(held)){ World.war(sh).control[j.site]=j.fac; World.news(sh,`The ${F.name} have taken ${World.loc(j.site).name} from the ${Sim.FACTIONS[held].name}.`); } } } } }
   // prisoners you got out alive: Marshals pay bounties on outlaws, everyone else pays to get their people back
   rep.prisoners=[]; for(const q of (S.prisoners||[]).filter(q=>q.by===p.id)){ const outlaw=["reaver","blacksun","choir"].includes(q.fac)&&(profile.rep.marshal|0)>=0, pay=outlaw?260:190;
     profile.credits+=pay; profile.rep[outlaw?"marshal":q.fac]=Math.max(-100,Math.min(100,(profile.rep[outlaw?"marshal":q.fac]|0)+(outlaw?4:6))); rep.prisoners.push({name:q.name,fac:q.fac,pay,to:outlaw?"Concord Marshals":Sim.FACTIONS[q.fac].name}); }
@@ -795,7 +811,7 @@ function settlePersonal(){
     profile.remains=lost.length||prev.length?{site:L.id,siteName:L.name,day:ship().day|0,items:[...lost,...prev].slice(0,14),ammo:{...(p.ammo||{})}}:null; rep.remains=profile.remains?profile.remains.items.length:0; }
   profile.insured=null;
   if(win){
-    const bring=it=>{ if(!it||it.iss) return; World.grant(profile,it); rep.items.push({n:Items.name(it),c:rc(it)}); rep.value+=Math.round(Items.value(it)*.5); };
+    const bring=it=>{ if(!it||it.iss||it.job) return; World.grant(profile,it); rep.items.push({n:Items.name(it),c:rc(it)}); rep.value+=Math.round(Items.value(it)*.5); };
     for(const s of KIT_SLOTS) bring(p[s]); for(const it of p.inv) bring(it);
     for(const t of AMMO_T){ const n=(p.ammo||{})[t]|0; if(n){ profile.ammo[t]=(profile.ammo[t]|0)+n; rep.ammo[t]=n; } }
     for(const t of MAT_T){ const n=(p.mats||{})[t]|0; if(n){ profile.mats[t]=(profile.mats[t]|0)+n; rep.mats[t]=n; } }

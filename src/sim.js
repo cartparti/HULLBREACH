@@ -188,7 +188,7 @@ const Sim = (() => {
       for(const [x,y] of G.fires){ const i=idx(s,x,y); s.fire[i]=2; s.fuel[i]=14; } }
     if(s.mode==="ship"){ for(const p of players(s)) p.seen.fill(1); for(const t of s.tiles) if(t.t==="door") t.open=true; return s; }
     applyMods(s,opts.mods||{});
-    spawnRemains(s); s.prisoners=[];
+    spawnRemains(s); s.prisoners=[]; s.huskKills=0; if(G) setupJobs(s,opts.jobs||[],(opts.gen&&opts.gen.tier)||1);
     s.repd={}; s.kills={}; s.factionRep=(opts.factions&&opts.factions.rep)||{};
     if(G) placeSecurity(s,opts.gen.tier||1,opts.gen.kind||"",opts.gen.kind==="hive"?"choir":opts.gen.kind==="outpost"?"marshal":null);
     if(G){ spawnRaiders(s,opts.gen.tier||1,opts.mods||{},opts.factions); if(opts.factions&&opts.factions.hire) spawnHire(s,opts.gen.tier||1,opts.factions.hire); }
@@ -223,6 +223,19 @@ const Sim = (() => {
       inv:(lo.inv||[]).slice(0,cap+((lo.perks&&lo.perks.mule)|0)).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
     const P=s.ents[s.ents.length-1]; P.cap=capOf(P); P.secCap=Math.max(0,lo.secCap==null?2:lo.secCap|0); P.brig=!!lo.brig; if(lo.remains&&lo.remains.items) P.remainsLo=lo.remains;
   }
+  // ---- faction jobs on this station ----
+  function farTiles(s,min){ const p0=players(s)[0], out=[]; for(let i=0;i<s.tiles.length;i++){ const x=i%s.W, y=(i/s.W)|0; if(s.tiles[i].t==="floor"&&!entAt(s,x,y)&&(!p0||Math.hypot(x-p0.x,y-p0.y)>min)) out.push([x,y]); } return out; }
+  function setupJobs(s,jobs,tier){ s.jobs=[]; const used=new Set();
+    for(const j of jobs){ const J={id:j.id,type:j.type,fac:j.fac,title:j.title,done:false,n:j.n|0,prog:0}; s.jobs.push(J); const T=farTiles(s,14); if(!T.length) continue; const at=()=>T.splice(ri(s,0,T.length-1),1)[0];
+      if(j.type==="kill"&&j.target&&FACTIONS[j.target.fac]){ const cid="job"+s.jobs.length; s.crews[cid]={id:cid,fac:j.target.fac,att:"hostile",met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:99999};
+        const [x,y]=at(), r=makeRaider(s,j.target.fac,Math.min(3,tier+1),x,y,cid,true,used); r.name=j.target.name; for(const l of LIMBS){ r.max[l]=Math.round(r.max[l]*1.6); r.hp[l]=r.max[l]; } r.jobTarget=j.id; r.trait="veteran"; s.ents.push(r);
+        for(let k=0;k<ri(s,1,2);k++){ const sp=N4.map(([dx,dy])=>[x+dx,y+dy]).find(([a,b])=>walk(tileAt(s,a,b))&&!entAt(s,a,b)); if(sp) s.ents.push(makeRaider(s,j.target.fac,tier,sp[0],sp[1],cid,false,used)); } }
+      if(j.type==="recover"){ const item={d:"jobitem",r:0,jn:j.item,job:j.id}; let placed=false;
+        const boxes=[]; for(let i=0;i<s.tiles.length;i++){ const t=s.tiles[i]; if(t.t==="prop"&&(t.kind==="strongbox"||(roomName(i%s.W,(i/s.W)|0)==="Vault"&&CONTAINERS.has(t.kind)))) boxes.push(t); }
+        if(boxes.length){ const t=boxes[ri(s,0,boxes.length-1)]; t.loot=t.loot||[]; t.loot.push(item); t.searched=false; placed=true; }
+        if(!placed){ const [x,y]=at(); spawnItem(s,item,x,y); } }
+      if(j.type==="rescue"&&FACTIONS[j.fac]){ const cid="res"+s.jobs.length; s.crews[cid]={id:cid,fac:j.fac,att:"friendly",met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:99999,hired:true};
+        const [x,y]=at(), r=makeRaider(s,j.fac,tier,x,y,cid,true,used); r.w1=null; r.w2=null; r.ammo={}; r.hp.torso=Math.round(r.max.torso*.55); r.rescue=j.id; r.stranded=true; s.ents.push(r); } } }
   // your own body from an earlier, failed raid: still here, picked over a little more each day
   function spawnRemains(s){ for(const p of players(s)){ const R0=p.remainsLo; if(!R0) continue; delete p.remainsLo;
       const tiles=[]; for(let i=0;i<s.tiles.length;i++){ const x=i%s.W, y=(i/s.W)|0; if(s.tiles[i].t==="floor"&&Math.hypot(x-p.x,y-p.y)>12&&!entAt(s,x,y)) tiles.push([x,y]); } if(!tiles.length) continue;
@@ -324,6 +337,8 @@ const Sim = (() => {
   function kill(s,e,cause){
     e.alive=false; bleedDecal(s,e.x,e.y,3); fx(s,{type:"die",id:e.id,x:e.x,y:e.y});
     if(e.kind==="player"){ s.cause=cause; e.cause=cause; const c0=CTX; CTX=e.id; say(s,`You die. ${cause}`,"bad"); CTX=c0; }
+    if(e.jobTarget){ const J=(s.jobs||[]).find(q=>q.id===e.jobTarget); if(J&&!J.done){ J.done=true; say(s,`${e.name} is dead. Contract target eliminated.`,"good"); } }
+    if(e.kind==="husk"&&isPid(s,ATK)){ s.huskKills=(s.huskKills|0)+1; for(const J of s.jobs||[]) if(J.type==="purge"&&!J.done){ J.prog++; if(J.prog>=J.n){ J.done=true; say(s,`That's ${J.n}. The purge contract is done. Get out alive to collect.`,"good"); } } }
     if(e.kind!=="player"&&isPid(s,ATK)) gainXP(s,ATK,e.kind==="husk"?(XP_KILL[e.type||"husk"]||6):e.kind==="bot"?10:18);
     else if(e.kind==="raider"){ const C=crewOf(s,e), m=crewMates(s,e)[0]; e.surr=false;
       if(anyPlayerSees(s,e.x,e.y)) say(s,`${e.name} of the ${FACTIONS[e.fac].name} goes down. Search the body with F.`,isPid(s,ATK)?"good":"info");
@@ -549,6 +564,8 @@ const Sim = (() => {
   }
   function doInteract(s,p){
     for(const [dx,dy] of N4){ const q=s.ents.find(e=>e.kind==="player"&&e.alive&&e.downed&&e.x===p.x+dx&&e.y===p.y+dy); if(q){ face(p,dx,dy); return doRevive(s,p,q); } }
+    if(s.mode==="raid"){ const sv=s.ents.find(e=>e.kind==="raider"&&e.alive&&e.stranded&&Math.abs(e.x-p.x)+Math.abs(e.y-p.y)===1);
+      if(sv){ sv.stranded=false; sv.prisoner=p.id; face(p,sv.x-p.x,sv.y-p.y); s.log.push({t:s.turn,msg:"Thank the void. Get me out of here, I'll stay right behind you.",kind:"chat",from:sv.id,who:sv.name,fac:sv.fac,att:"friendly",pid:null}); fx(s,{type:"speech",id:sv.id,x:sv.x,y:sv.y}); say(s,`${sv.name} falls in behind you. Get them to the shuttle alive.`,"good"); return true; } }
     if(s.mode==="raid"){ const b=s.ents.filter(e=>(e.kind==="raider"||e.kind==="remains")&&!e.extracted&&(!e.alive||e.surr)&&Math.max(Math.abs(e.x-p.x),Math.abs(e.y-p.y))<=1)
         .sort((a,b2)=>(a.alive?1:0)-(b2.alive?1:0)||(Math.abs(a.x-p.x)+Math.abs(a.y-p.y))-(Math.abs(b2.x-p.x)+Math.abs(b2.y-p.y)))[0];
       if(b){ face(p,b.x-p.x,b.y-p.y); fx(s,{type:"lootbody",id:b.id,pid:p.id}); return false; } }
@@ -565,6 +582,8 @@ const Sim = (() => {
       if(!got.length){ say(s,`You search the ${nm2}. Nothing worth taking.`,"info"); return true; }
       for(const it of got) spawnItem(s,it,p.x,p.y);
       say(s,`${t.kind==="strongbox"?"You crack the strongbox open":"You search the "+nm2}: ${got.map(i=>nm(i)).join(", ")}. It's at your feet.`,"good"); return true; }
+    for(const [dx,dy] of N4){ const t=tileAt(s,p.x+dx,p.y+dy); const J=t.t==="console"&&(s.jobs||[]).find(q=>q.type==="sabotage"&&!q.done); if(J){ J.done=true; p.busy=Math.max(p.busy,2); noise(s,p.x,p.y,8); fx(s,{type:"robot",x:p.x+dx,y:p.y+dy});
+        say(s,"You jack in and upload the worm. The relay screams static as the Choir's song stutters. Done. Now get out.","good"); for(const b of s.ents) if(b.kind==="bot"&&b.alive) b.seen={}; return true; } }
     for(const [dx,dy] of N4){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="console"){
       s.power=!s.power; fx(s,{type:"power"});
       say(s, s.power?"You slam the relay closed. Lights and door motors hum back to life.":"You pull the main breaker. The station goes dark. Doors are dead, maglocks released.", s.power?"good":"warn");
@@ -620,7 +639,9 @@ const Sim = (() => {
   function doExtract(s,p){
     if(tileAt(s,p.x,p.y).t!=="extract"){ say(s,"You need to be standing on the shuttle pad to extract.","warn"); return false; }
     p.extracted=true; p.alive=false; say(s,"You seal the shuttle hatch and punch the undock.","good");
-    for(const r of s.ents) if(r.kind==="raider"&&r.alive&&r.prisoner===p.id&&Math.abs(r.x-p.x)+Math.abs(r.y-p.y)<=3){ r.alive=false; r.extracted=true; s.prisoners.push({by:p.id,fac:r.fac,name:r.name}); say(s,`You shove ${r.name} into the shuttle's cargo cage.`,"good"); }
+    for(const r of s.ents) if(r.kind==="raider"&&r.alive&&r.prisoner===p.id&&Math.abs(r.x-p.x)+Math.abs(r.y-p.y)<=3){ r.alive=false; r.extracted=true;
+      if(r.rescue){ const J=(s.jobs||[]).find(q=>q.id===r.rescue); if(J) J.done=true; say(s,`${r.name} collapses into the shuttle seat, alive.`,"good"); } else { s.prisoners.push({by:p.id,fac:r.fac,name:r.name}); say(s,`You shove ${r.name} into the shuttle's cargo cage.`,"good"); } }
+    for(const it of p.inv) if(it.job){ const J=(s.jobs||[]).find(q=>q.id===it.job); if(J) J.done=true; }
     if(players(s).every(q=>!q.alive)) s.status="ended"; return true;
   }
 
@@ -1144,7 +1165,8 @@ const Sim = (() => {
       if(r.busy>0){ r.busy--; continue; } if(r.stun>0){ r.stun--; continue; }
       if(s.fire[idx(s,r.x,r.y)]){ if(rAway(s,r,r.x,r.y)) continue; }
       const ps=players(s).filter(p=>p.alive);
-      // ---- a prisoner: shuffles after whoever bound them ----
+      if(r.stranded) continue;
+      // ---- a prisoner (or someone you rescued): shuffles after whoever has them ----
       if(r.prisoner){ const cap=ps.find(q=>q.id===r.prisoner); if(!cap){ r.prisoner=null; r.surr=false; r.flee=10; rsay(s,r,"flee",{},true); continue; }
         if(Math.abs(cap.x-r.x)+Math.abs(cap.y-r.y)>1) rGo(s,r,cap.x,cap.y); continue; }
       // ---- surrendered: hands up until nobody's watching for a while ----
@@ -1274,7 +1296,7 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
+    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 
