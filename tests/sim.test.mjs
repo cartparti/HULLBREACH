@@ -342,4 +342,16 @@ test("close quarters and getting out: strikes hit adjacent enemies, the pad work
   p.x = nb[0]; p.y = nb[1]; p.acted = false; assert.ok(Sim.canExtract(s, p)); assert.ok(Sim.act(s, "p1", { type: "extract" }) && p.extracted, "extract from beside a blocked pad");
 });
 
+test("sight is fair: raiders see no further than you, except with sniper rifles and scopes", () => {
+  const s = Sim.newGame(5, { w1: { d: "pistol", r: 0 }, melee: { d: "knife", r: 0 }, ammo: { pistol: 9 }, inv: [] }, { map: "ks9" }), p = playerOf(s);
+  s.power = false; s.ents = s.ents.filter((e) => e.kind === "player"); p.x = 20; p.y = 13; for (const t of s.tiles) if (t.t === "door") t.open = true;
+  // a corridor tile 6 east is out of a dark 4-tile view, for both sides
+  assert.ok(!Sim.canSee(s, p, p.x + 6, p.y), "you can't see 6 tiles in the dark");
+  const r = { kind: "raider", x: p.x + 6, y: p.y, w1: { d: "pistol", r: 0 }, act: 1, light: { d: "flashlight", r: 0 }, trait: "veteran" };
+  assert.ok(!Sim.canSee(s, r, p.x, p.y), "a raider with a pistol and a light can't either");
+  r.w1 = { d: "longbore", r: 0 }; r.x = p.x + 5; assert.ok(Sim.canSee(s, r, p.x, p.y), "a sniper rifle sees a little further");
+  r.w1 = { d: "carbine", r: 0, m: "scope" }; assert.ok(Sim.canSee(s, r, p.x, p.y), "so does a scope");
+  p.w1 = { d: "longbore", r: 0 }; assert.ok(Sim.canSee(s, p, p.x + 5, p.y), "and it works for you too");
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

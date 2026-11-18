@@ -294,11 +294,13 @@ const Sim = (() => {
     const pts=line(x0,y0,x1,y1); for(let i=0;i<pts.length-1;i++){ if(!clear(tileAt(s,pts[i][0],pts[i][1]))) return false; } return true;
   }
   const sightR=s=>s.power?8:4;
-  function canSee(s,p,x,y){ const d=Math.hypot(p.x-x,p.y-y); return d<=sightR(s)+.5 && los(s,p.x,p.y,x,y); }
+  // everyone sees the same distance; only sniper rifles and scoped guns see a few tiles further
+  function sightFor(s,e){ let r=sightR(s); const g=e&&(e.kind==="player"||e.kind==="raider")&&gun(e), st=g&&ST(g); if(st){ if(st.cls==="sniper") r+=s.power?3:2; else if(st.mod==="scope") r+=s.power?2:1; } return r; }
+  function canSee(s,p,x,y){ const d=Math.hypot(p.x-x,p.y-y); return d<=sightFor(s,p)+.5 && los(s,p.x,p.y,x,y); }
   function anyPlayerSees(s,x,y){ return players(s).some(p=>p.alive&&canSee(s,p,x,y)); }
   function fov(s,p){
     if(s.mode==="ship"){ p.seen.fill(1); return new Array(s.W*s.H).fill(1); }
-    const v=new Array(s.W*s.H).fill(0), R=sightR(s);
+    const v=new Array(s.W*s.H).fill(0), R=Math.ceil(sightFor(s,p));
     for(let y=Math.max(0,p.y-R);y<=Math.min(s.H-1,p.y+R);y++)for(let x=Math.max(0,p.x-R);x<=Math.min(s.W-1,p.x+R);x++){
       if(canSee(s,p,x,y)){ v[idx(s,x,y)]=1; p.seen[idx(s,x,y)]=1; }
     }
@@ -1054,7 +1056,7 @@ const Sim = (() => {
     if(o.frac&&limb!=="head"&&limb!=="torso"&&!(p.frac&&p.frac[limb])&&(dmg>=8||p.hp[limb]<p.max[limb]*.4)&&chance(s,o.frac*(ST2.steady?.5:1))){ p.frac=p.frac||{}; p.frac[limb]=1; fx(s,{type:"bash",x:p.x,y:p.y}); const c0=CTX; CTX=p.id; say(s,`Something snaps. Your ${LNAME[limb]} is broken.${limb.endsWith("leg")?" You can barely walk on it.":" Your aim is shot."} A splint would set it.`,"bad"); CTX=c0; }
     if(o.infect&&!p.inf&&chance(s,o.infect*((ST2.medic|0)>=2?.5:1))){ p.inf=1; const c0=CTX; CTX=p.id; say(s,"The wound is filthy. It will turn septic if you don't get antibiotics.","warn"); CTX=c0; } }
   function addRep(s,fac,n){ if(!s.repd||!FACTIONS[fac]) return; s.repd[fac]=(s.repd[fac]||0)+n; }
-  const sightOf=(s,r)=>sightR(s)+(r.light&&!s.power?3:0)+(r.trait==="veteran"?1:0);
+  const sightOf=(s,r)=>sightFor(s,r);
   const rSees=(s,r,e)=>e.alive&&Math.hypot(e.x-r.x,e.y-r.y)<=sightOf(s,r)+.5&&los(s,r.x,r.y,e.x,e.y);
   const crewMates=(s,r)=>s.ents.filter(e=>e.kind==="raider"&&e.alive&&e.crew===r.crew&&e!==r);
   function setAtt(s,crew,att){ const C=s.crews[crew]; if(!C||C.att===att) return; C.att=att; if(att==="hostile"){ C.follow=null; C.followT=0; } }
