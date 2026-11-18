@@ -330,4 +330,16 @@ test("galaxy: three regions, signals that come and go, every location boards cle
   for (const L of [...World.LOCS.filter((l) => l.type === "derelict"), ...sg.slice(0, 6)]) { const s = Sim.newGame(91, null, { gen: { tier: L.site.tier, kind: L.site.kind, size: L.site.size }, mods: L.site.mods }); assert.ok(s.ents.some((e) => e.kind === "player")); for (let i = 0; i < 20; i++) Sim.act(s, "p1", { type: "wait" }); }
 });
 
+test("close quarters and getting out: strikes hit adjacent enemies, the pad works from beside it, starter kit has a knife", () => {
+  assert.equal(Sim.STARTER.melee.d, "knife");
+  const s = Sim.newGame(12, null, { gen: { tier: 1 } }), p = playerOf(s); for (const e of s.ents) if (e.kind !== "player") e.alive = false;
+  const sp = [[1, 1], [1, 0], [0, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)));
+  s.ents.push({ id: "hz", kind: "husk", type: "husk", name: "husk", x: sp[0], y: sp[1], hp: { head: 40, torso: 40, larm: 40, rarm: 40, lleg: 40, rleg: 40 }, max: { head: 40, torso: 40, larm: 40, rarm: 40, lleg: 40, rleg: 40 }, bleed: {}, blood: 60, alive: true, aware: false, face: [0, 1] });
+  const t0 = s.turn; assert.ok(Sim.act(s, "p1", { type: "melee", x: sp[0], y: sp[1] })); assert.equal(s.turn, t0 + 1, "a strike takes a turn");
+  assert.ok(!Sim.act(s, "p1", { type: "melee", x: p.x + 3, y: p.y }), "can't strike at range");
+  const pad = s.tiles.findIndex((t) => t.t === "extract"), px = pad % s.W, py = (pad / s.W) | 0; const h = s.ents.find((e) => e.id === "hz"); h.x = px; h.y = py;
+  const nb = [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, -1], [1, -1], [-1, 1]].map(([a, b]) => [px + a, py + b]).find(([x, y]) => Sim.tileAt(s, x, y).t === "floor" && !Sim.entAt(s, x, y));
+  p.x = nb[0]; p.y = nb[1]; p.acted = false; assert.ok(Sim.canExtract(s, p)); assert.ok(Sim.act(s, "p1", { type: "extract" }) && p.extracted, "extract from beside a blocked pad");
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

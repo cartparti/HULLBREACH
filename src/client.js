@@ -476,6 +476,10 @@ function drawHuman(g,{step=0,b=0,view="f"},L){
       case "sidecut": cap(shade(hl,.82),3.8,[4.8,4.7,9.2]); if(!sd){ poly(h,[[9.4,1.8+b],[16.8,2.6+b],[17.6,7.4+b],[15.4,6.4+b],[11.2,4.4+b]],H); R(h,12,2.4+b,4,.4,hlH); } else poly(h,[[10.6,1.8+b],[16.4,2.4+b],[17,6.4+b],[12.6,4.6+b]],H); break;
       case "buns": cap(H,4.2,[4.6,4.5,9.6]); if(!sd){ P2(7.4,2.6,1.9,1.7,H); P2(16.6,2.6,1.9,1.7,H); P2(7,2.1,.7,.5,hlH); P2(16.2,2.1,.7,.5,hlH); R(h,11.9,2+b,.4,3,hlD); } else P2(9.2,2.6,1.9,1.7,H); break;
     }
+    // in profile the back of the skull needs hair too (otherwise there's a bald patch behind the ear)
+    if(sd&&hair!=="mohawk"){ const col=hair==="buzz"?shade(hl,.82):(hair==="undercut"||hair==="sidecut")?shade(hl,.78):H;
+      P2(9.2,7.4,3,4.1,col); P2(9.8,4.4,2.8,1.9,col); for(let k=0;k<6;k++){ const v=hh(k,11,4); hp(h,7.2+(v%8)/2,5+((v>>>4)%10)/2+b,shade(col,.72)); }
+      if(!["long","bob","afro","curly","dreads"].includes(hair)){ ell(h,10.3,9.2+b,.9,1.3,sk); hp(h,10.4,9.2+b,skD); hp(h,10.1,8.6+b,skH); } }
     if(!["buzz","mohawk","undercut","slick","curly","afro","sidecut","dreads"].includes(hair)) for(let k=0;k<6;k++) P2(8.8+k*1.35+fxo,2.4+(k%2)*.4,.6,.25,hlH);
     g.drawImage(hc2,0,0);
   } else if(open&&hair==="none"&&!bk){ ell(g,10.4,4.2+b,1.6,.8,skH); }
@@ -1265,7 +1269,7 @@ function processFx(){
       case "bash": if(vis()){ spawn(8,cpx(f.x),cpx(f.y),{col:["#6a5f50","#3a332a"],speed:35,life:.5}); shake=Math.max(shake,1.2); } break;
       case "spit": { const x0=cpx(f.x),y0=cpx(f.y)-8,x1=cpx(f.x1),y1=cpx(f.y1)-6; for(let k=0;k<10;k++){ const t=k/9; parts.push({x:x0+(x1-x0)*t,y:y0+(y1-y0)*t-Math.sin(t*Math.PI)*10,vx:0,vy:3,life:.25+t*.2,max:.45,col:k%2?"#9ae83a":"#4a8a1a",size:2,emit:true,drag:2}); } spawn(10,x1,y1,{col:["#9ae83a","#4a8a1a","#d8ff90"],speed:40,life:.5}); break; }
       case "claw": slashes.push({x:f.x,y:f.y,t:0,dur:.28}); atkT[f.id]=now; break;
-      case "melee": spawn(7,cpx(f.x),cpx(f.y)-6,{col:["#5a0e0a","#8a1a12"],speed:40,life:.35,size:2}); shake=Math.max(shake,1.5); break;
+      case "melee": if(f.id) atkT[f.id]=now; spawn(7,cpx(f.x),cpx(f.y)-6,{col:["#5a0e0a","#8a1a12"],speed:40,life:.35,size:2}); shake=Math.max(shake,1.5); break;
       case "spaced": spawn(18,cpx(f.x),cpx(f.y),{col:["#5a0e0a","#a39379"],speed:90,life:.6,size:2}); break;
       case "power": powerFlicker=.7; break;
       case "throw": arcs.push({x0:cpx(f.x0),y0:cpx(f.y0)-8,x1:cpx(f.x1),y1:cpx(f.y1),t:0,dur:.35,d:f.d}); break;
@@ -1696,12 +1700,18 @@ function useLabel(p){ if(!p||!p.alive) return "Use";
   for(const [dx,dy] of [p.face||[0,-1],[1,0],[-1,0],[0,1],[0,-1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="prop"&&BOXES.has(t.kind)&&!t.searched) return t.kind==="strongbox"?"Crack":"Search"; }
   for(const [dx,dy] of [p.face||[0,-1],[1,0],[-1,0],[0,1],[0,-1]]){ const t=Sim.tileAt(S,p.x+dx,p.y+dy); if(t.t==="door") return t.open?"Close":"Open"; if(t.t==="console") return "Breaker"; }
   return "Use"; }
+// an enemy right next to you (diagonals count): what Strike hits
+function adjacentFoe(){ if(!S||S.mode!=="raid") return null; const p=me(); if(!p||!p.alive) return null; let best=null;
+  for(const e of S.ents){ if(!e.alive||e===p||Math.max(Math.abs(e.x-p.x),Math.abs(e.y-p.y))!==1) continue;
+    if(e.kind==="husk"||(e.kind==="bot"&&Sim.botHostile(S,e,p))||(e.kind==="raider"&&!e.surr&&attOf(e)==="hostile")){ if(!best||(target&&target.x===e.x&&target.y===e.y)) best=e; } } return best; }
+function strike(){ const f=adjacentFoe(); if(!f){ note("Nothing hostile in reach. Strike hits an enemy right beside you."); return; } send({type:"melee",x:f.x,y:f.y}); }
 function renderPanels(){
   if(typeof tutTick==="function") tutTick();
   if(typeof renderCrew==="function") renderCrew();
   if(S.mode==="raid"&&typeof panelKind!=="undefined"&&(panelKind==="inventory"||panelKind==="body")) renderPanel();
   if(S.mode==="ship"){ $("end").hidden=true; if(typeof renderShipHud==="function") renderShipHud(); return; }
-  const p=me(), onPad=Sim.tileAt(S,p.x,p.y).t==="extract"&&S.status==="playing";
+  const p=me(), onPad=Sim.canExtract(S,p)&&S.status==="playing";
+  { const foe=adjacentFoe(); const ts=$("t-swap"); if(ts){ const want=foe?"Strike":"Swap"; if(ts.textContent!==want){ ts.textContent=want; ts.classList.toggle("strike",!!foe); } } }
   { const lb=useLabel(p); const bi=$("b-int"); if(bi&&bi.dataset.l!==lb){ bi.dataset.l=lb; bi.innerHTML=`<span class="key">F</span>${lb}`; } const tu=$("t-use"); if(tu&&tu.textContent!==lb) tu.textContent=lb; }
   if(mode==="pc"){
     const wk=(Sim.gun(p)||{}).d||"none"; if($("ic-gun").dataset.w!==wk){ $("ic-gun").dataset.w=wk; $("ic-gun").src=gunURL(Sim.gun(p)?wk:null); $("ic-gun").alt=Sim.gun(p)?Items.name(Sim.gun(p)):"Unarmed"; }
@@ -1833,6 +1843,7 @@ document.addEventListener("keydown",e=>{
   if(k==="escape"){ stopTravel(); return; }
   if(k==="r"&&S.mode==="raid"){ send({type:"swap"}); return; }
   if(k==="l"){ toggleLight(); return; }
+  if(k==="v"&&S.mode==="raid"){ strike(); return; }
   if(k==="m"&&typeof Snd!=="undefined"){ const on=Snd.toggle(); note(on?"Sound on.":"Sound muted. Press M to turn it back on."); return; }
   if(k==="i"||k==="tab"){ e.preventDefault(); if(typeof openPanel==="function") openPanel("inventory"); return; }
   if(k==="escape"&&throwMode){ throwMode=null; return; }
@@ -1882,7 +1893,7 @@ for(const id of ["dinv","thot","hotbar"]) $(id).addEventListener("click",ev=>{ c
 function useSlot(i){ if(!S||S.mode!=="raid") return; const it=me().inv[i]; if(!it) return;
   if(Items.kind(it)==="throw"){ throwMode={index:i}; toast(`${mode==="pc"?"Click":"Tap"} a spot within 6 tiles to throw the ${Items.name(it)}. ${mode==="pc"?"Esc":"Tap your character"} to cancel.`); return; }
   send({type:"use",index:i}); }
-$("b-inv").onclick=()=>openPanel("inventory"); $("b-swap").onclick=()=>send({type:"swap"}); $("t-swap").onclick=()=>send({type:"swap"});
+$("b-inv").onclick=()=>openPanel("inventory"); $("b-swap").onclick=()=>send({type:"swap"}); $("t-swap").onclick=()=>{ if(adjacentFoe()) strike(); else send({type:"swap"}); };
 function armAbandon(b,label){ if(b.dataset.armed==="1"){ b.dataset.armed=""; b.textContent=label; openDrawer(false); abandonRaid(); return; } b.dataset.armed="1"; b.textContent=mode==="pc"?"Click again":"Tap again to abandon"; setTimeout(()=>{ b.dataset.armed=""; b.textContent=label; },3000); }
 function abandonRaid(){ if(!S||S.status!=="playing"||!me().alive) return; stopTravel(); send({type:"abandon"}); }
 $("dr-new").onclick=()=>armAbandon($("dr-new"),"Abandon run");

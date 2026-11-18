@@ -629,6 +629,7 @@ function viewDeploy(L){
   const tags=[KN[L.site.kind]||"",`Threat ${"▲".repeat(L.site.tier||1)}`,m.power===false?"No power":"Power on",m.fires?`${m.fires} fires`:"",m.huskAdd?"Extra husks":"",m.huskDrop?"Fewer husks":"",m.loot>1?`Salvage ×${m.loot}`:"",L.id==="ks9"?"Fire in cargo":""].filter(Boolean);
   siteSeed(L); const rm=profile.remains&&profile.remains.site===L.id&&(ship().day|0)-(profile.remains.day|0)<=6?profile.remains:null;
   const notes=[rm?`<p class="risk good">Your body is still aboard: ${rm.items.length} item${rm.items.length>1?"s":""}, ${(ship().day|0)-(rm.day|0)} day${(ship().day|0)-(rm.day|0)===1?"":"s"} old. Scavengers pick at it every day.</p>`:"",
+    !(profile.gifts||{})[GIFT_SG]?`<p class="risk good">Delivered for this run: a pump-action shotgun (Mk II) and 2 stacks of shotgun shells. Bring it home and it's yours.</p>`:"",
     profile.insure?`<p class="risk good">Your kit is insured with the Vanta Combine for this raid.</p>`:"", profile.hire?`<p class="risk good">A ${Sim.FACTIONS[profile.hire.fac].short} escort is coming with you.</p>`:""].join("");
   const atStake=[...(cid?[C.title]:[]),...(ship().jobs||[]).filter(j=>j.site===L.id).map(j=>j.title)];
   const stakeHTML=atStake.length?`<p class="risk bad">On the line: ${atStake.map(esc).join(", ")}. If ${inSquad()?"the whole crew dies":"you die"}, ${atStake.length>1?"they fail":"it fails"}: contracts are pulled with a 10% fee, jobs cost standing.</p>`:"";
@@ -800,8 +801,10 @@ function boardShip(){
 }
 // the loadout that travels to the station (compact: no uids)
 function remainsHere(){ const R0=profile.remains; if(!R0) return null; if((ship().day|0)-(R0.day|0)>6){ profile.remains=null; save(); return null; } return R0.site===ship().loc?{items:R0.items.slice(0,14),ammo:R0.ammo||{},days:(ship().day|0)-(R0.day|0)}:null; }
-function loadoutFromKit(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
-function consumeKit(lo){
+const GIFT_SG="sg1";
+function loadoutFromKit(r){ const lo0=loadoutFromKit0(r); if(!(profile.gifts||{})[GIFT_SG]){ const sg={d:"pump",r:1}; if(!lo0.w2) lo0.w2=sg; else if(!lo0.w1) lo0.w1=sg; else lo0.inv=[sg,...lo0.inv]; lo0.ammo={...lo0.ammo,shell:((lo0.ammo||{}).shell|0)+2*Items.AMMO.shell.stack}; lo0.gift=GIFT_SG; } return lo0; }
+function loadoutFromKit0(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
+function consumeKit(lo){ if(lo.gift){ profile.gifts={...(profile.gifts||{}),[lo.gift]:1}; }
   profile.insured=null; if(profile.insure&&!lo.starter){ profile.insured=[...KIT_SLOTS.map(s=>lo[s]),...(lo.inv||[])].filter(it=>it&&!it.iss).map(it=>({...it})); } profile.insure=false;
   profile.stats.raids++; profile.active={kit:lo.starter?"starter":"custom",site:ship().loc,at:Date.now()};
   if(!lo.starter){ const r=kitResolved(), gone=new Set([...KIT_SLOTS.map(s=>r[s]&&!r[s].iss&&r[s].uid),...r.inv.map(i=>i.uid)].filter(Boolean));

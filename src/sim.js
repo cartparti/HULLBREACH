@@ -143,7 +143,7 @@ const Sim = (() => {
   const walk = t => t.t==="floor"||t.t==="extract"||t.t==="seat"||(t.t==="door"&&t.open);
   const clear= t => !(t.t==="wall"||t.t==="console"||(t.t==="door"&&!t.open));
 
-  const STARTER={w1:{d:"pistol",r:0},w2:null,melee:null,armor:null,pack:null,light:{d:"flashlight",r:0},ammo:{pistol:12},inv:[{d:"bandage",r:0},{d:"ration",r:0},{d:"waterflask",r:0}]};
+  const STARTER={w1:{d:"pistol",r:0},w2:null,melee:{d:"knife",r:0},armor:null,pack:null,light:{d:"flashlight",r:0},ammo:{pistol:12},inv:[{d:"bandage",r:0},{d:"ration",r:0},{d:"waterflask",r:0}]};
   // accept old saves' loadouts too
   const OLD={pistol:"pistol",scatter:"scatter",rifle:"rivet",suit:"suit",flak:"flak",hazard:"hazard",sling:"sling",hauler:"hauler"};
   function normLo(lo){
@@ -378,6 +378,7 @@ const Sim = (() => {
       case "move": { const r=doMove(s,p,a.dx,a.dy); ok=!!r; slow=r==="walked"&&crippled(p); break; }
       case "wait": ok=true; break;
       case "shoot": ok=doShoot(s,p,a.x,a.y); break;
+      case "melee": ok=doStrike(s,p,a.x,a.y); break;
       case "interact": ok=doInteract(s,p); break;
       case "pickup": ok=doPickup(s,p); break;
       case "use": ok=doUse(s,p,a.index); break;
@@ -434,14 +435,17 @@ const Sim = (() => {
     return true;
   }
   function melee(s,p,h){
-    const st=ST(p.melee)||WRENCH, pen=(p.hp.rarm<=0?.3:0)+(p.hp.larm<=0?.1:0), wn=p.melee?nm(p.melee):"wrench";
-    fx(s,{type:"melee",x:h.x,y:h.y});
+    const st=ST(p.melee)||WRENCH, pen=(p.hp.rarm<=0?.3:0)+(p.hp.larm<=0?.1:0), wn=p.melee?nm(p.melee):(gun(p)?"gun butt":"fists");
+    fx(s,{type:"melee",x:h.x,y:h.y,id:p.id});
     const strike=(t)=>{ if(chance(s,.82+(st.acc||0)-pen)){ const l=pickLimb(s), d=ri(s,st.dmg[0],st.dmg[1]); say(s,`You hit ${t.kind==="raider"?t.name+"'s":label(t)+"'s"} ${LNAME[l]} with your ${wn}.`,"info"); damage(s,t,l,d,st.bleed??.25,"beaten"); if(st.stun&&t.alive) t.stun=Math.max(t.stun|0,st.stun); return true; } say(s,`Your ${wn} swing misses.`,"info"); return false; };
     strike(h);
     if(st.cleave) for(const [dx,dy] of N4){ const o=entAt(s,p.x+dx,p.y+dy); if(o&&o!==h&&o.kind==="husk") strike(o); }
     if(h.kind==="husk"){ h.aware=true; h.last={x:p.x,y:p.y}; } else h.last={x:p.x,y:p.y};
     return true;
   }
+  function doStrike(s,p,tx,ty){ const t=entAt(s,tx,ty); if(!t||t===p||Math.max(Math.abs(tx-p.x),Math.abs(ty-p.y))!==1){ say(s,"Nothing in reach to hit.","info"); return false; }
+    if(t.kind==="player"){ say(s,"That's your crewmate.","info"); return false; } if(t.kind==="raider"&&t.surr){ say(s,`${t.name} has their hands up.`,"info"); return false; }
+    face(p,tx-p.x,ty-p.y); return melee(s,p,t); }
   function hitChance(s,p,tx,ty){
     const st=ST(gun(p))||{acc:0,fall:.035}, d=Math.hypot(tx-p.x,ty-p.y);
     const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<8||p.water<8)) c-=.05;
@@ -460,6 +464,8 @@ const Sim = (() => {
     if(!canSee(s,p,tx,ty)){ say(s,"You can't see that spot.","info"); return false; }
     const t=tileAt(s,tx,ty), target=entAt(s,tx,ty), barrel=t.t==="prop"&&t.kind==="barrel";
     if(!target&&t.t!=="window"&&!barrel&&st.cls!=="launcher"){ say(s,"Nothing worth a bullet there.","info"); return false; }
+    const close=target&&target!==p&&Math.max(Math.abs(tx-p.x),Math.abs(ty-p.y))===1&&target.kind!=="player"&&!(target.kind==="raider"&&target.surr);
+    if(close&&((p.ammo[st.ammo]|0)<=0||st.cls==="sniper"||st.cls==="launcher")){ say(s,(p.ammo[st.ammo]|0)<=0?"Out of ammo. You lash out up close instead.":"Too close to aim that. You strike instead.","info"); face(p,tx-p.x,ty-p.y); return melee(s,p,target); }
     if((p.ammo[st.ammo]|0)<=0){ say(s,`*click* Out of ${Items.AMMO[st.ammo].name.toLowerCase()}.`,"warn"); return false; }
     face(p,tx-p.x,ty-p.y); noise(s,p.x,p.y,Math.max(4,(st.cls==="sniper"||st.cls==="launcher"?14:st.cls==="shotgun"?11:10)-2*((p.perks&&p.perks.ghost)|0)-(st.quiet|0)));
     const shots=Math.min(st.burst||1,p.ammo[st.ammo]);
@@ -636,8 +642,10 @@ const Sim = (() => {
     if(it.d==="keycard"){ say(s,"Captain's keycard. Opens the vault while station power is on.","info"); return false; }
     say(s,`${nm(it)}. Worth about ${Items.value(it)} cr to the right buyer.`,"info"); return false;
   }
+  // you can climb aboard from the pad or any tile touching it, so a crowd on the pad can't trap you
+  function canExtract(s,p){ for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++) if(tileAt(s,p.x+dx,p.y+dy).t==="extract") return true; return false; }
   function doExtract(s,p){
-    if(tileAt(s,p.x,p.y).t!=="extract"){ say(s,"You need to be standing on the shuttle pad to extract.","warn"); return false; }
+    if(!canExtract(s,p)){ let d=99; for(let i=0;i<s.tiles.length;i++) if(s.tiles[i].t==="extract") d=Math.min(d,Math.max(Math.abs(i%s.W-p.x),Math.abs(((i/s.W)|0)-p.y))); say(s,d<99?`The shuttle pad is ${d} tile${d>1?"s":""} away. Get on it (or right beside it) to extract.`:"There's no shuttle pad here.","warn"); return false; }
     p.extracted=true; p.alive=false; say(s,"You seal the shuttle hatch and punch the undock.","good");
     for(const r of s.ents) if(r.kind==="raider"&&r.alive&&r.prisoner===p.id&&Math.abs(r.x-p.x)+Math.abs(r.y-p.y)<=3){ r.alive=false; r.extracted=true;
       if(r.rescue){ const J=(s.jobs||[]).find(q=>q.id===r.rescue); if(J) J.done=true; say(s,`${r.name} collapses into the shuttle seat, alive.`,"good"); } else { s.prisoners.push({by:p.id,fac:r.fac,name:r.name}); say(s,`You shove ${r.name} into the shuttle's cargo cage.`,"good"); } }
@@ -1028,8 +1036,8 @@ const Sim = (() => {
       const F=FACTIONS[fac], st=+(REP[fac]||0), ph=Math.max(.03,Math.min(.97,F.hostile-st/120)), att=chance(s,ph)?"hostile":chance(s,Math.max(.1,.6-st/200))?"wary":"friendly", id="c"+(c+1);
       const tiles=[]; for(let y=rm[2];y<=rm[4];y++)for(let x=rm[1];x<=rm[3];x++){ const j=idx(s,x,y); if(seen[j]&&s.tiles[j].t==="floor"&&!entAt(s,x,y)&&!s.items.some(i=>i.x===x&&i.y===y)) tiles.push([x,y]); }
       const size=Math.min(tiles.length,ri(s,1,3)+(tier>=3?1:0)); if(!size) continue;
-      s.crews[id]={id,fac,att,met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:110+ri(s,0,90)};
-      for(let k=0;k<size;k++){ const [x,y]=tiles.splice(ri(s,0,tiles.length-1),1)[0]; s.ents.push(makeRaider(s,fac,tier,x,y,id,k===0,used)); }
+      s.crews[id]={id,fac,att,met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:110+ri(s,0,90),home:null};
+      for(let k=0;k<size;k++){ const [x,y]=tiles.splice(ri(s,0,tiles.length-1),1)[0]; if(!s.crews[id].home) s.crews[id].home=[x,y]; s.ents.push(makeRaider(s,fac,tier,x,y,id,k===0,used)); }
     }
   }
   // a gun you paid for on the comms: arrives with you, follows whoever hired them
@@ -1210,8 +1218,8 @@ const Sim = (() => {
       // search whatever's within reach first
       let did=false; for(const [dx,dy] of N4){ if(rSearch(s,r,r.x+dx,r.y+dy)){ did=true; break; } } if(did) continue;
       if(C.leave||r.inv.length>=r.cap){ if(!C.leave){ C.leave=true; rsay(s,r,"leave"); }
-        const ex=extracts.sort((a,b)=>(Math.abs(a[0]-r.x)+Math.abs(a[1]-r.y))-(Math.abs(b[0]-r.x)+Math.abs(b[1]-r.y)))[0];
-        if(ex&&r.x===ex[0]&&r.y===ex[1]){ r.alive=false; r.extracted=true; if(anyPlayerSees(s,r.x,r.y)) say(s,`${r.name} climbs into a waiting skiff and is gone${r.inv.some(i=>i.d==="blackbox")?", with the black box":""}.`,r.inv.some(i=>i.d==="blackbox")?"bad":"info"); continue; }
+        const ex=C.home||extracts.sort((a,b)=>(Math.abs(a[0]-r.x)+Math.abs(a[1]-r.y))-(Math.abs(b[0]-r.x)+Math.abs(b[1]-r.y)))[0];
+        if(ex&&r.x===ex[0]&&r.y===ex[1]){ r.alive=false; r.extracted=true; if(anyPlayerSees(s,r.x,r.y)) say(s,`${r.name} slips out through their boarding breach and is gone${r.inv.some(i=>i.d==="blackbox")?", with the black box":""}.`,r.inv.some(i=>i.d==="blackbox")?"bad":"info"); continue; }
         if(ex){ if(!rGo(s,r,ex[0],ex[1])){ const side=N4.map(([dx,dy])=>[r.x+dx,r.y+dy]).filter(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)); if(side.length){ const [x,y]=side[ri(s,0,side.length-1)]; rStep(s,r,x,y); } } } continue; }
       if(r!==lead){ if(chance(s,.3)){ const side=N4.map(([dx,dy])=>[r.x+dx,r.y+dy]).filter(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)); if(side.length){ const [x,y]=side[ri(s,0,side.length-1)]; rStep(s,r,x,y); } } continue; }
       if(!C.goal||chance(s,.02)) C.goal=pickGoal(s,r);
@@ -1301,6 +1309,6 @@ const Sim = (() => {
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 
-  return {FACTIONS,HTYPES,BTYPES,botHostile,intentOf,gearOf,STARTER,VALUABLES,MAPS,bind,hash,normLo,gun,newGame,act,fov,canSee,hitChance,roomName,lootValue,tileAt,entAt,idx,los,walk,LIMBS,LNAME};
+  return {canExtract,FACTIONS,HTYPES,BTYPES,botHostile,intentOf,gearOf,STARTER,VALUABLES,MAPS,bind,hash,normLo,gun,newGame,act,fov,canSee,hitChance,roomName,lootValue,tileAt,entAt,idx,los,walk,LIMBS,LNAME};
 })();
 // ============================== SIM END ==============================
