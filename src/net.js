@@ -97,7 +97,7 @@ function hostLaunch(){
   const crew=Net.roster.map(r=>({id:r.key,name:"",loadout:r.key===Net.myKey?Net.readyLo:r.lo})).filter(c=>c.loadout).sort((a,b)=>a.id<b.id?-1:1);
   if(crew.length!==Net.roster.length){ toast("Everyone needs to ready up first."); return; }
   Net.ep++; Net.n=0; Net.log=[];
-  Net.setup={t:"state",ep:Net.ep,scene:"raid",hostKey:Net.myKey,seed:(Math.random()*2**32)>>>0,site:L.id,crew,ship:profile.ship,fx:factionSetup(Net.myKey)};
+  Net.setup={t:"state",ep:Net.ep,scene:"raid",hostKey:Net.myKey,seed:useSeed(L),site:L.id,crew,ship:profile.ship,fx:factionSetup(Net.myKey)};
   if(profile.hire){ profile.hire=null; save(); }
   const json=JSON.stringify(Net.setup); if(json.length>3900){ toast("Loadouts are too large to send. Carry fewer supplies."); return; }
   emit(Net.setup); buildFromSetup();

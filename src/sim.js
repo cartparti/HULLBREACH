@@ -188,6 +188,7 @@ const Sim = (() => {
       for(const [x,y] of G.fires){ const i=idx(s,x,y); s.fire[i]=2; s.fuel[i]=14; } }
     if(s.mode==="ship"){ for(const p of players(s)) p.seen.fill(1); for(const t of s.tiles) if(t.t==="door") t.open=true; return s; }
     applyMods(s,opts.mods||{});
+    spawnRemains(s); s.prisoners=[];
     s.repd={}; s.kills={}; s.factionRep=(opts.factions&&opts.factions.rep)||{};
     if(G) placeSecurity(s,opts.gen.tier||1,opts.gen.kind||"",opts.gen.kind==="hive"?"choir":opts.gen.kind==="outpost"?"marshal":null);
     if(G){ spawnRaiders(s,opts.gen.tier||1,opts.mods||{},opts.factions); if(opts.factions&&opts.factions.hire) spawnHire(s,opts.gen.tier||1,opts.factions.hire); }
@@ -220,8 +221,14 @@ const Sim = (() => {
       w1:cp(lo.w1),w2:cp(lo.w2),melee:cp(lo.melee),head:G0.head,armor,legs:G0.legs,acc:G0.acc,light:G0.light,pack,act:1,ammo,mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),cap,look:lo.look||null,stimT:0,
       food:lo.food==null?80:Math.max(0,Math.min(100,+lo.food)),water:lo.water==null?80:Math.max(0,Math.min(100,+lo.water)),
       inv:(lo.inv||[]).slice(0,cap+((lo.perks&&lo.perks.mule)|0)).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
-    const P=s.ents[s.ents.length-1]; P.cap=capOf(P);
+    const P=s.ents[s.ents.length-1]; P.cap=capOf(P); P.secCap=Math.max(0,lo.secCap==null?2:lo.secCap|0); P.brig=!!lo.brig; if(lo.remains&&lo.remains.items) P.remainsLo=lo.remains;
   }
+  // your own body from an earlier, failed raid: still here, picked over a little more each day
+  function spawnRemains(s){ for(const p of players(s)){ const R0=p.remainsLo; if(!R0) continue; delete p.remainsLo;
+      const tiles=[]; for(let i=0;i<s.tiles.length;i++){ const x=i%s.W, y=(i/s.W)|0; if(s.tiles[i].t==="floor"&&Math.hypot(x-p.x,y-p.y)>12&&!entAt(s,x,y)) tiles.push([x,y]); } if(!tiles.length) continue;
+      const [x,y]=tiles[ri(s,0,tiles.length-1)], lose=Math.min(.6,.12*Math.max(0,(R0.days|0)-1)), inv=(R0.items||[]).filter(()=>!chance(s,lose)).slice(0,14).map(it=>({...it,id:s.nextId++}));
+      s.ents.push({id:"rm"+p.id,kind:"remains",owner:p.id,name:p.name&&p.name!=="You"?p.name:"Your body",x,y,alive:false,inv,ammo:{...(R0.ammo||{})},mats:{},look:p.look||null,hp:{...p.max},max:{...p.max},bleed:{},face:[0,1],flags:{}});
+      const c0=CTX; CTX=p.id; say(s,inv.length?`Your old suit beacon is pinging somewhere aboard. Your body is still here${lose>0?", though someone has been through it":""}.`:"Your old suit beacon pings faintly. Scavengers got there first: nothing left on your body.",inv.length?"good":"warn"); CTX=c0; } }
   function addHusk(s,x,y,type="husk"){ const T0=HTYPES[type]||HTYPES.husk, hp={}; for(const l of LIMBS) hp[l]=Math.round(HUSK_HP[l]*T0.hp);
     const h={id:"h"+(s.nextId++),kind:"husk",type,name:T0.name,x,y,hp,max:{...hp},bleed:{},blood:type==="matriarch"?200:60,
       alive:true,aware:false,last:null,limp:false,busy:0,face:[0,1]}; s.ents.push(h); return h;
@@ -229,11 +236,11 @@ const Sim = (() => {
   function addBot(s,x,y,type,owner){ const B=BTYPES[type]; const b={id:"b"+(s.nextId++),kind:"bot",type,name:B.name,owner:owner||null,x,y,hp:{...B.hp},max:{...B.hp},bleed:{},blood:100,alive:true,busy:0,face:[0,1],syn:true,seen:{},home:{x,y}}; s.ents.push(b); return b; }
   // pick what each husk spawn becomes: tougher variants on harder stations, stalkers in packs
   function huskType(s,tier,kind){ const w=tier>=3?[["husk",42],["stalker",24],["spitter",16],["brute",18]]:tier===2?[["husk",58],["stalker",20],["spitter",12],["brute",10]]:[["husk",80],["stalker",14],["spitter",6]];
-    if(kind==="hospital") w.forEach(x=>{ if(x[0]==="spitter") x[1]*=2.2; }); if(kind==="mining") w.forEach(x=>{ if(x[0]==="brute"||x[0]==="stalker") x[1]*=1.8; });
+    if(kind==="hospital") w.forEach(x=>{ if(x[0]==="spitter") x[1]*=2.2; }); if(kind==="mining") w.forEach(x=>{ if(x[0]==="brute") x[1]*=1.8; if(x[0]==="stalker") x[1]*=1.2; });
     let t=w.reduce((a,x)=>a+x[1],0)*rand(s); for(const [k,v] of w){ if((t-=v)<0) return k; } return "husk"; }
   function populate(s,G,tier,kind){
     for(const [x,y] of G.husks){ if(entAt(s,x,y)) continue; const t=huskType(s,tier,kind); addHusk(s,x,y,t);
-      if(t==="stalker") for(let k=0,n=ri(s,1,2);k<n;k++){ const sp=N4.map(([dx,dy])=>[x+dx,y+dy]).find(([a,b])=>walk(tileAt(s,a,b))&&!entAt(s,a,b)); if(sp) addHusk(s,sp[0],sp[1],"stalker"); } }
+      if(t==="stalker"&&chance(s,.6)) for(let k=0,n=1;k<n;k++){ const sp=N4.map(([dx,dy])=>[x+dx,y+dy]).find(([a,b])=>walk(tileAt(s,a,b))&&!entAt(s,a,b)); if(sp) addHusk(s,sp[0],sp[1],"stalker"); } }
     // a Matriarch nests in the vault (or the biggest room) on harder stations
     const bossP=(tier>=3?.6:tier===2?.3:0)+(kind==="hospital"?.25:0); if(chance(s,bossP)){ const rs=(s.rooms||[]).filter(r=>r[0]&&!/Docking|corridor|shaft|hall/i.test(r[0])).sort((a,b)=>(b[0]==="Vault"?999:0)+(b[3]-b[1])*(b[4]-b[2])-((a[0]==="Vault"?999:0)+(a[3]-a[1])*(a[4]-a[2])));
       const rm=rs[0]; if(rm){ const c=[(rm[1]+rm[3])>>1,(rm[2]+rm[4])>>1]; let spot=null; for(let d=0;d<4&&!spot;d++) for(let dy=-d;dy<=d&&!spot;dy++) for(let dx=-d;dx<=d&&!spot;dx++){ const x=c[0]+dx,y=c[1]+dy; if(walk(tileAt(s,x,y))&&!entAt(s,x,y)) spot=[x,y]; }
@@ -348,6 +355,8 @@ const Sim = (() => {
     if(a.type==="unequip") return doUnequip(s,p,a.slot);
     if(a.type==="light"){ if(!p.light){ say(s,"You don't have a light equipped.","info"); return false; } p.lightOff=!p.lightOff; say(s,p.lightOff?"You switch your light off. The dark closes in.":"You click your light on.","info"); return true; }
     if(a.type==="drop") return doDrop(s,p,a.index);
+    if(a.type==="secure"){ const it=p.inv[a.index|0]; if(!it) return false; if(it.sec){ delete it.sec; say(s,`You take the ${nm(it)} out of your secure pouch.`,"info"); return true; }
+      const n=p.inv.filter(q=>q.sec).length; if(n>=(p.secCap|0)){ say(s,`Your secure pouch is full (${p.secCap} slot${p.secCap===1?"":"s"}).`,"warn"); return false; } it.sec=1; say(s,`You seal the ${nm(it)} in your secure pouch. It comes home even if you don't.`,"good"); return true; }
     if(a.type==="talk") return doTalk(s,p,a.text);
     if(a.type==="loot") return doLoot(s,p,a);
     switch(a.type){
@@ -540,7 +549,7 @@ const Sim = (() => {
   }
   function doInteract(s,p){
     for(const [dx,dy] of N4){ const q=s.ents.find(e=>e.kind==="player"&&e.alive&&e.downed&&e.x===p.x+dx&&e.y===p.y+dy); if(q){ face(p,dx,dy); return doRevive(s,p,q); } }
-    if(s.mode==="raid"){ const b=s.ents.filter(e=>e.kind==="raider"&&!e.extracted&&(!e.alive||e.surr)&&Math.max(Math.abs(e.x-p.x),Math.abs(e.y-p.y))<=1)
+    if(s.mode==="raid"){ const b=s.ents.filter(e=>(e.kind==="raider"||e.kind==="remains")&&!e.extracted&&(!e.alive||e.surr)&&Math.max(Math.abs(e.x-p.x),Math.abs(e.y-p.y))<=1)
         .sort((a,b2)=>(a.alive?1:0)-(b2.alive?1:0)||(Math.abs(a.x-p.x)+Math.abs(a.y-p.y))-(Math.abs(b2.x-p.x)+Math.abs(b2.y-p.y)))[0];
       if(b){ face(p,b.x-p.x,b.y-p.y); fx(s,{type:"lootbody",id:b.id,pid:p.id}); return false; } }
     if(s.mode==="ship"&&tileAt(s,p.x,p.y).t==="seat"){ fx(s,{type:"terminal",kind:"navtable",pid:p.id}); return false; }
@@ -611,6 +620,7 @@ const Sim = (() => {
   function doExtract(s,p){
     if(tileAt(s,p.x,p.y).t!=="extract"){ say(s,"You need to be standing on the shuttle pad to extract.","warn"); return false; }
     p.extracted=true; p.alive=false; say(s,"You seal the shuttle hatch and punch the undock.","good");
+    for(const r of s.ents) if(r.kind==="raider"&&r.alive&&r.prisoner===p.id&&Math.abs(r.x-p.x)+Math.abs(r.y-p.y)<=3){ r.alive=false; r.extracted=true; s.prisoners.push({by:p.id,fac:r.fac,name:r.name}); say(s,`You shove ${r.name} into the shuttle's cargo cage.`,"good"); }
     if(players(s).every(q=>!q.alive)) s.status="ended"; return true;
   }
 
@@ -1134,6 +1144,9 @@ const Sim = (() => {
       if(r.busy>0){ r.busy--; continue; } if(r.stun>0){ r.stun--; continue; }
       if(s.fire[idx(s,r.x,r.y)]){ if(rAway(s,r,r.x,r.y)) continue; }
       const ps=players(s).filter(p=>p.alive);
+      // ---- a prisoner: shuffles after whoever bound them ----
+      if(r.prisoner){ const cap=ps.find(q=>q.id===r.prisoner); if(!cap){ r.prisoner=null; r.surr=false; r.flee=10; rsay(s,r,"flee",{},true); continue; }
+        if(Math.abs(cap.x-r.x)+Math.abs(cap.y-r.y)>1) rGo(s,r,cap.x,cap.y); continue; }
       // ---- surrendered: hands up until nobody's watching for a while ----
       if(r.surr){ const close=ps.some(p=>Math.hypot(p.x-r.x,p.y-r.y)<7); r.surrT=close?0:r.surrT+1; if(r.surrT>12){ r.surr=false; r.flee=8; } else continue; }
       // ---- what can they see ----
@@ -1188,18 +1201,20 @@ const Sim = (() => {
     CTX=null;
   }
   // ---- looting a body (or a raider who gave up) ----
-  function lootable(s,p,id){ const b=s.ents.find(e=>e.id===id&&e.kind==="raider"&&!e.extracted&&(!e.alive||e.surr)); if(!b) return null; return Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y))<=1?b:null; }
+  function lootable(s,p,id){ const b=s.ents.find(e=>e.id===id&&(e.kind==="raider"||e.kind==="remains")&&!e.extracted&&(!e.alive||e.surr)); if(!b) return null; return Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y))<=1?b:null; }
   function doLoot(s,p,a){ const b=lootable(s,p,a.id); if(!b){ say(s,"You need to be right next to them.","info"); return false; }
     const took=[], give=(it)=>{ const k=K(it), D=Items.def(it.d); if(k==="ammo"){ p.ammo[D.ammo]=(p.ammo[D.ammo]|0)+(it.n|0); return true; } if(k==="mat"){ p.mats[it.d]=(p.mats[it.d]|0)+(it.n||1); return true; }
       if(p.inv.length>=p.cap) return false; p.inv.push({...it,id:s.nextId++}); return true; };
     const takeAmmo=()=>{ for(const t of Object.keys(b.ammo)) if(b.ammo[t]>0){ p.ammo[t]=(p.ammo[t]|0)+b.ammo[t]; took.push(`${b.ammo[t]} ${Items.AMMO[t].name.toLowerCase()}`); b.ammo[t]=0; } for(const m of Object.keys(b.mats)) if(b.mats[m]>0){ p.mats[m]=(p.mats[m]|0)+b.mats[m]; took.push(`${b.mats[m]} ${(Items.MATS[m]||m).toLowerCase()}`); b.mats[m]=0; } };
+    if(a.src==="bind"){ if(!b.alive||b.kind!=="raider") return false; if(!p.brig){ say(s,"You'd need a brig on your ship to hold a prisoner.","info"); return false; } if(b.prisoner){ say(s,`${b.name} is already bound.`,"info"); return false; }
+      b.prisoner=p.id; b.surr=true; addRep(s,b.fac,-2); say(s,`You bind ${b.name}'s wrists. They'll follow you to the shuttle. Bring them out alive for a ransom or a bounty.`,"good"); rsay(s,b,"robbed",{},true); return true; }
     if(a.all){ takeAmmo(); for(const it of b.inv.slice()){ if(give(it)){ b.inv.splice(b.inv.indexOf(it),1); took.push(nm(it)); } }
       for(const sl of EQ_SLOTS){ const it=b[sl]; if(it&&give(it)){ b[sl]=null; took.push(nm(it)); } } }
     else if(a.src==="ammo") takeAmmo();
     else if(a.src==="inv"){ const it=b.inv[a.key|0]; if(!it) return false; if(!give(it)){ say(s,"Your pack is full.","warn"); return false; } b.inv.splice(a.key|0,1); took.push(nm(it)); }
     else if(a.src==="eq"&&EQ_SLOTS.includes(a.key)){ const it=b[a.key]; if(!it) return false; if(!give(it)){ say(s,"Your pack is full.","warn"); return false; } b[a.key]=null; took.push(nm(it)); }
     if(!took.length){ say(s,p.inv.length>=p.cap?"Your pack is full.":"Nothing left to take.","info"); return false; }
-    say(s,`You take ${took.join(", ")} from ${b.name}${b.alive?"":"'s body"}.`,"good"); if(b.alive&&!b.flags.robbed){ b.flags.robbed=1; addRep(s,b.fac,-3); } if(b.alive&&chance(s,.5)) rsay(s,b,"robbed",{},true); return true; }
+    say(s,b.kind==="remains"?`You recover ${took.join(", ")} from your old body.`:`You take ${took.join(", ")} from ${b.name}${b.alive?"":"'s body"}.`,"good"); if(b.alive&&!b.flags.robbed){ b.flags.robbed=1; addRep(s,b.fac,-3); } if(b.alive&&chance(s,.5)) rsay(s,b,"robbed",{},true); return true; }
 
   function wound(s,p,limb,dmg,o){ if(typeof injure==="function") injure(s,p,limb,dmg,o); }
   // ---- turrets and drones ----

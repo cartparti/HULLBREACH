@@ -9,7 +9,7 @@ let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all",
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:300,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
-  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -165,20 +165,20 @@ const PANELS={
   board:{eye:"Break room",title:()=>"Job board",view:viewBoard},
   crew:{eye:"Crew",title:()=>inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew",view:viewCrew},
   airlock:{eye:"Airlock",title:()=>here().type==="derelict"?`Board ${here().name}`:here().name,view:viewAirlock},
-  body:{eye:()=>{ const b=lootBody(); return b?Sim.FACTIONS[b.fac].name:"Search"; },title:()=>{ const b=lootBody(); return b?(b.alive?`${b.name} · hands up`:`${b.name}'s body`):"Gone"; },view:viewBody},
+  body:{eye:()=>{ const b=lootBody(); return b?(b.kind==="remains"?"Recovery":Sim.FACTIONS[b.fac].name):"Search"; },title:()=>{ const b=lootBody(); return b?(b.kind==="remains"?"Your old body":b.alive?`${b.name} · hands up`:`${b.name}'s body`):"Gone"; },view:viewBody},
   comms:{eye:"Bridge · hologram comms",title:()=>commsFac?`Channel open · ${Sim.FACTIONS[commsFac].name}`:"Hail a faction",view:viewComms},
   debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
 };
 // ---------- searching a dead (or surrendered) raider ----------
-function lootBody(){ return S&&S.mode==="raid"?S.ents.find(e=>e.id===panelSub&&e.kind==="raider"&&!e.extracted&&(!e.alive||e.surr)):null; }
+function lootBody(){ return S&&S.mode==="raid"?S.ents.find(e=>e.id===panelSub&&(e.kind==="raider"||e.kind==="remains")&&!e.extracted&&(!e.alive||e.surr)):null; }
 function viewBody(){ const b=lootBody(), p=me(); if(!b) return `<p class="risk">There's nothing here any more.</p>`;
   const near=Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y))<=1, SL=[["w1","Primary"],["w2","Sidearm"],["melee","Melee"],["head","Helmet"],["armor","Chest"],["legs","Legs"],["acc","Trinket"],["light","Light"],["pack","Pack"]];
   const row=(it,lbl,act)=>`<div class="eq-row"><span class="lbl">${lbl}</span>${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${esc(Items.statLine(it))}</span></div><button class="plain" data-act="${act}" ${near?"":"disabled"}>Take</button></div>`;
   const eq=SL.filter(([k])=>b[k]).map(([k,l])=>row(b[k],l,`loot:eq:${k}`)).join(""), inv=b.inv.map((it,i)=>row(it,"Pack",`loot:inv:${i}`)).join("");
   const am=Object.keys(b.ammo||{}).filter(t=>b.ammo[t]>0).map(t=>`${b.ammo[t]} ${Items.AMMO[t].name.toLowerCase()}`).concat(Object.keys(b.mats||{}).filter(m=>b.mats[m]>0).map(m=>`${b.mats[m]} ${(Items.MATS[m]||m).toLowerCase()}`));
-  const F=Sim.FACTIONS[b.fac];
-  return `<section class="panel h-card"><div class="bar-row"><div class="grow"><div class="h-eyebrow">${esc(F.name)}${b.alive?" · surrendered":""}</div><p class="risk">${b.alive?`${esc(b.name)} watches you with their hands up. Take what you want. Their crew won't like it.`:`What ${esc(b.name)} was carrying.`} Your pack: ${p.inv.length}/${p.cap}.${near?"":" Step next to them to take anything."}</p></div>
-    <button class="plain" data-act="lootall" ${near?"":"disabled"}>Take everything</button></div>
+  const F=b.kind==="remains"?{name:"Your remains"}:Sim.FACTIONS[b.fac], bind=b.alive&&!b.prisoner?`<button class="plain" data-act="loot:bind:0" ${near&&p.brig?"":"disabled"} title="${p.brig?"":"Needs a brig on your ship"}">Take prisoner</button>`:b.prisoner?`<span class="risk good">Bound</span>`:"";
+  return `<section class="panel h-card"><div class="bar-row"><div class="grow"><div class="h-eyebrow">${esc(F.name)}${b.alive?" · surrendered":""}</div><p class="risk">${b.alive?`${esc(b.name)} watches you with their hands up. Take what you want. Their crew won't like it.`:(b.kind==="remains"?"What you were carrying when you died.":`What ${esc(b.name)} was carrying.`)} Your pack: ${p.inv.length}/${p.cap}.${near?"":" Step next to them to take anything."}</p></div>
+    ${bind}<button class="plain" data-act="lootall" ${near?"":"disabled"}>Take everything</button></div>
     <div class="h-eyebrow">Worn and carried</div>${eq||`<p class="risk">Stripped bare.</p>`}
     <div class="h-eyebrow">Pack</div>${inv||`<p class="risk">Empty.</p>`}
     <div class="h-eyebrow">Ammo and materials</div>${am.length?`<div class="bar-row"><p class="grow" style="margin:0">${esc(am.join(", "))}</p><button class="plain" data-act="loot:ammo:0" ${near?"":"disabled"}>Take</button></div>`:`<p class="risk">None.</p>`}</section>`; }
@@ -220,15 +220,16 @@ function commsActs(f){ const F=Sim.FACTIONS[f], [v]=standOf(f), out=[];
   if(f==="saint") out.push({id:"tithe",label:"Offer a tithe",cost:0,mats:{org:3},desc:"Three organics for the Rust. +10 standing."});
   if(f==="choir") out.push({id:"circ",label:"Sell circuits",cost:0,mats:{circ:3},desc:"Three circuits for 110 cr. +3 standing."});
   if(f==="marshal"&&v<0) out.push({id:"fine",label:"Pay your fines",cost:Math.round(-v*6),desc:"Clears your record with the Marshals."});
+  if(f==="vanta"){ const r=kitResolved(), risk=kitRisk(r); out.push({id:"insure",label:profile.insure?"Your next kit is insured":"Insure your next kit",cost:Math.max(40,Math.round(risk*.25)),desc:r.free?"Build a custom kit first. The free scav kit can't be insured.":`If you die, everything you carried in comes back to your stash. Kit at risk: ${risk} cr.`,off:!!profile.insure||r.free}); }
   if(f==="vanta"||f==="guild") out.push({id:"sellval",label:"Sell salvage",cost:0,desc:"They buy every valuable in your stash at a fair price. +1 standing per piece."});
   if(HIRE[f]&&v>=HIRE[f][1]) out.push({id:"hire",label:profile.hire?(profile.hire.fac===f?"Hired for your next raid":"You already have a hired gun"):`Hire a ${F.species==="synth"?"synth escort":"gun"} for one raid`,cost:HIRE[f][0],desc:`A veteran ${F.short} with better-than-usual kit follows you on your next raid and fights for you.`,off:!!profile.hire});
   return out; }
 function commsDo(id){ const f=commsFac, F=Sim.FACTIONS[f]; if(!f) return; const A=commsActs(f).find(a=>a.id===id); if(!A||A.off) return;
   if(A.cost&&profile.credits<A.cost){ toast("Not enough credits."); return; } if(A.mats&&Object.entries(A.mats).some(([m,n])=>(profile.mats[m]|0)<n)){ toast("You don't have the materials."); return; }
   profile.credits-=A.cost||0; if(A.mats) for(const [m,n] of Object.entries(A.mats)) profile.mats[m]-=n;
-  const say={tribute:"Smart. We'll tell the boys you paid.",tithe:"The Rust accepts your offering.",circ:"Components received. Credits transferred.",fine:"Record cleared. Don't make us do this again.",hire:"Done. They'll meet you at the shuttle."};
+  const say={insure:"Policy issued. Try not to make us pay out.",tribute:"Smart. We'll tell the boys you paid.",tithe:"The Rust accepts your offering.",circ:"Components received. Credits transferred.",fine:"Record cleared. Don't make us do this again.",hire:"Done. They'll meet you at the shuttle."};
   if(id==="tribute") repAdd(f,15); if(id==="tithe") repAdd(f,10); if(id==="circ"){ profile.credits+=110; repAdd(f,3); } if(id==="fine") profile.rep[f]=0;
-  if(id==="hire") profile.hire={fac:f};
+  if(id==="hire") profile.hire={fac:f}; if(id==="insure") profile.insure=true;
   if(id==="sellval"){ const vals=profile.stash.filter(q=>Items.kind(q)==="val"); if(!vals.length){ profile.credits+=A.cost||0; toast("No valuables in your stash."); return; } const sum=vals.reduce((a,q)=>a+Items.value(q),0); profile.stash=profile.stash.filter(q=>Items.kind(q)!=="val"); profile.credits+=sum; repAdd(f,Math.min(10,vals.length)); commsMsg=`${vals.length} pieces. ${sum} credits, transferred.`; save(); return; }
   commsMsg=F.species==="synth"&&f==="choir"?say[id].toUpperCase():say[id]; toast(`${A.label}: done.`); save(); }
 function commsBuy(i){ const f=commsFac, s=commsStock(f)[i]; if(!s) return; const [d,r,min]=s; if(standOf(f)[0]<min){ toast("They won't sell you that yet."); return; } const pr=priceOf(f,d,r);
@@ -378,6 +379,15 @@ function viewStash(){
 const costHTML=c=>Object.entries(c).map(([m,n])=>m==="credits"?`<span style="color:${profile.credits>=n?"var(--brass)":"var(--blood2)"}">${n} cr</span>`:`<span style="color:${(profile.mats[m]|0)>=n?"inherit":"var(--blood2)"}">${n} ${Items.MATS[m].toLowerCase()}</span>`).join(" · ");
 const canPay=c=>Object.entries(c).every(([m,n])=>m==="credits"?profile.credits>=n:(profile.mats[m]|0)>=n);
 const fabLvl=()=>Math.max(1,Math.min(5,ship().fab|0||1));
+// ship systems beyond the fabricator: each level has a cost and a plain-language effect
+const SHIPUP={
+  medbay:{name:"Medbay",max:2,cost:[{parts:3,circ:2,credits:400},{parts:4,core:1,org:4,credits:800}],desc:["Sets broken bones when you get back aboard.","Also clears infections when you get back aboard."]},
+  pouch:{name:"Secure pouch",max:1,cost:[{scrap:6,parts:2,credits:300}],desc:["A third secure slot: one more item that comes home even if you don't."]},
+  scanner:{name:"Scanner array",max:1,cost:[{circ:4,parts:2,credits:500}],desc:["Sweeps a derelict before you board: power, creatures, the Matriarch, turrets and which crews are aboard."]},
+  brig:{name:"Brig",max:1,cost:[{scrap:8,parts:3,credits:450}],desc:["Lets you bind surrendered raiders and bring them home for a ransom or a Marshal bounty."]},
+  tanks:{name:"Fuel tanks",max:2,cost:[{scrap:5,parts:2,credits:250},{scrap:6,parts:3,credits:400}],desc:["+2 fuel capacity.","+2 more fuel capacity."]},
+};
+const upLvl=k=>((ship().up||{})[k])|0;
 let fabTab="weapon";
 function eatDrink(food,water,heal){ profile.food=Math.max(0,Math.min(100,profile.food+(food||0))); profile.water=Math.max(0,Math.min(100,profile.water+(water||0))); }
 function travelHunger(days){ if(!profile) return; profile.food=Math.max(0,profile.food-1.5*days); profile.water=Math.max(0,profile.water-2*days); if(profile.food<15||profile.water<15) toast(profile.water<20?"You're parched. Get something to drink at the galley.":"You're starving. Get a meal at the galley."); save(); }
@@ -393,6 +403,8 @@ function viewWorkbench(){
     <div class="panel h-card span5"><div class="h-eyebrow">Ship upgrade</div>${up?`<p>Upgrade to <b>Mk ${lv+1} · ${Items.FAB_NAME[lv+1]}</b></p><p class="risk">${costHTML(up)}</p><p class="risk">Unlocks: ${esc(nextUnlocks)}${Items.RECIPES.filter(q=>q.lvl===lv+1).length>8?" and more":""}.</p>
       ${canUp?`<button class="deploy-btn" data-act="fabup" ${canPay(up)?"":"disabled"}>Install upgrade</button>`:`<p class="risk">This is the squad leader's ship. Only they can install upgrades.</p>`}`:`<p>Fully upgraded. The forge is sanctified.</p>`}
       <p class="risk">Ship parts and tech cores turn up in engineering rooms, workshops, cargo holds and vaults.</p></div>
+    <div class="panel h-card span12"><div class="h-eyebrow">Ship systems</div><div class="shop">${Object.entries(SHIPUP).map(([k,U])=>{ const n=upLvl(k), c=U.cost[n];
+      return `<div class="panel shop-row"><div class="slot"><span class="num" style="font-size:15px;color:var(--brass)">${n}/${U.max}</span></div><div class="nm"><b>${U.name}</b><span>${esc(n<U.max?U.desc[n]:U.desc[U.max-1])}${c?` · ${costHTML(c)}`:" · Installed"}</span></div><span></span>${c?(canUp?`<button class="plain" data-act="shipup:${k}" ${canPay(c)?"":"disabled"}>Install</button>`:`<span class="risk">Leader only</span>`):`<span class="risk good">Done</span>`}</div>`; }).join("")}</div></div>
     <div class="panel h-card span12"><div class="chips">${tabs.map(([k,n])=>`<button data-act="fabtab:${k}" aria-pressed="${fabTab===k}">${n}</button>`).join("")}</div><div class="shop" style="margin-top:8px">${recipes}</div></div>
     <div class="panel h-card span12"><div class="h-eyebrow">Pack upgrades · +1 slot each, up to +3</div><div class="shop">${profile.stash.filter(q=>Items.kind(q)==="pack").map(q=>{ const l=q.l|0, c=Items.UPGRADE_COST(l);
       return `<div class="panel shop-row">${slotHTML(q)}<div class="nm">${nmHTML(q)}<span>+${Items.stats(q).slots} slots${l<3?` → +${Items.stats(q).slots+1} · ${costHTML(c)}`:" · fully upgraded"}</span></div><span></span><button class="plain" data-act="upg:${q.uid}" ${l<3&&canPay(c)?"":"disabled"}>${l<3?"Upgrade":"Maxed"}</button></div>`; }).join("")||`<p class="risk">No packs in your stash.</p>`}</div></div></section>`;
@@ -436,7 +448,7 @@ function roleOf(eq){ const d=k=>eq[k]&&eq[k].d; if(d("head")==="halohelm"||d("ar
   if(d("head")==="welder"||d("armor")==="scrapvest") return "Raider"; if(["hardsuit","suit"].includes(d("armor"))) return "Spacer"; if(!d("armor")&&!d("head")) return "Scavenger"; return "Mercenary"; }
 function ivCell(it,src,o={}){ const sel=invSel===src, gun=it&&o.wide&&Items.slotOf(it)==="gun";
   return `<div class="iv-cell${o.wide?" wide":""}${sel?" sel":""}${o.locked?" locked":""}${!it?" empty":""}" ${it&&!o.fixed?`data-drag="${src}"`:""} ${o.drop?`data-drop="${o.drop}"`:""} ${it?`data-pick="${src}"`:""} title="${it?esc(Items.name(it)):o.label||""}" ${o.area?`style="grid-area:${o.area}"`:""}>
-    ${it?`<img alt="" src="${gun?gunURL(it.d):iconFor(it)}">`:o.label?`<span class="iv-lbl">${o.label}</span>`:""}${o.badge!=null&&o.badge!==""?`<span class="iv-n">${o.badge}</span>`:""}${it?`<i class="iv-bar" style="background:${rc(it)}"></i>`:""}${it&&it.iss?`<span class="iv-iss">issued</span>`:""}</div>`; }
+    ${it?`<img alt="" src="${gun?gunURL(it.d):iconFor(it)}">`:o.label?`<span class="iv-lbl">${o.label}</span>`:""}${o.badge!=null&&o.badge!==""?`<span class="iv-n">${o.badge}</span>`:""}${it?`<i class="iv-bar" style="background:${rc(it)}"></i>`:""}${it&&it.iss?`<span class="iv-iss">issued</span>`:""}${it&&it.sec?`<span class="iv-iss sec">secured</span>`:""}</div>`; }
 function ivData(){ const raid=S&&S.mode==="raid";
   if(raid){ const p=me(); return {raid,p,eq:Object.fromEntries(KIT_SLOTS.map(k=>[k,p[k]])),pack:p.inv,cap:p.cap,ammo:p.ammo||{},mats:p.mats||{},starter:false}; }
   const r=kitResolved(); return {raid,r,eq:Object.fromEntries(KIT_SLOTS.map(k=>[k,r[k]])),pack:r.inv,cap:r.cap,ammo:r.ammo,mats:profile.mats,starter:r.free}; }
@@ -463,6 +475,7 @@ function viewInventory(){
   if(it){ const [k,key]=invSel.split(":"), kind=Items.kind(it), btns=[];
     if(D.raid){ const p=D.p;
       if(k==="inv"){ if(kind==="throw") btns.push(`<button class="plain" data-act="ithrow:${key}">Throw</button>`); else if(Items.slotOf(it)) btns.push(`<button class="plain" data-act="iequip:${key}">Equip</button>`); else if(kind==="med"||kind==="food") btns.push(`<button class="plain" data-act="iuse:${key}">${kind==="food"?((Items.def(it.d).water||0)>(Items.def(it.d).food||0)?"Drink":"Eat"):"Use"}</button>`);
+        btns.push(`<button class="plain" data-act="isec:${key}">${it.sec?"Unsecure":"Secure"}</button>`);
         btns.push(`<button class="plain" data-act="idrop:${key}">Drop</button>`);
         for(const q of S.ents) if(q.kind==="player"&&q.id!==PID&&q.alive&&Math.abs(q.x-p.x)+Math.abs(q.y-p.y)<=1) btns.push(`<button class="plain" data-act="igive:${key}:${q.id}">Give to ${esc(typeof nameOf==="function"?nameOf(q.id):"crew")}</button>`); }
       if(k==="eq"){ btns.push(`<button class="plain" data-act="iunequip:${key}">Stow in pack</button>`); if(key==="light") btns.push(`<button class="plain" data-act="ilight">${p.lightOff?"Turn on":"Turn off"}</button>`); if((key==="w1"||key==="w2")&&p.w1&&p.w2) btns.push(`<button class="plain" data-act="iswap">Make active</button>`); } }
@@ -478,7 +491,7 @@ function viewInventory(){
   return `<section class="iv">
     <div class="iv-head"><span>Inventory</span><span class="risk">${D.raid?"in the field":D.starter?"scav kit · free":`kit at risk: ${kitRisk(D.r)} cr`}</span></div>
     <div class="iv-main">
-      <div class="iv-body">${sil}<div class="iv-id"><span>${esc(tag)}</span><b>${esc(callsign)}</b><em>${roleOf(eq)}</em></div><div class="iv-eq">${eqHTML}</div><div class="iv-load">Load ${used}/${D.cap}</div></div>
+      <div class="iv-body">${sil}<div class="iv-id"><span>${esc(tag)}</span><b>${esc(callsign)}</b><em>${roleOf(eq)}</em></div><div class="iv-eq">${eqHTML}</div><div class="iv-load">Load ${used}/${D.cap}${D.raid?` · Secure ${D.pack.filter(i=>i.sec).length}/${D.p.secCap|0}`:""}</div></div>
       <div class="iv-right"><div class="iv-grid" data-drop="inv">${cells.join("")}</div><div class="iv-pouches">${pouch}</div>${D.raid?"":ammoNote(D)}${cond}</div>
     </div>${det}${stash}</section>`;
 }
@@ -563,6 +576,13 @@ function viewDeploy(L){
   const r=kitResolved(), risk=kitRisk(r), cid=World.siteContract(ship(),L.id), C=cid&&World.CONTRACTS[cid], m=L.site.mods;
   const KN={relay:"Comms relay",mining:"Mining barge",hospital:"Hospital ship",fortress:"Reaver fortress",hive:"Choir hive",outpost:"Marshal outpost"};
   const tags=[KN[L.site.kind]||"",`Threat ${"▲".repeat(L.site.tier||1)}`,m.power===false?"No power":"Power on",m.fires?`${m.fires} fires`:"",m.huskAdd?"Extra husks":"",m.huskDrop?"Fewer husks":"",m.loot>1?`Salvage ×${m.loot}`:"",L.id==="ks9"?"Fire in cargo":""].filter(Boolean);
+  siteSeed(L); const rm=profile.remains&&profile.remains.site===L.id&&(ship().day|0)-(profile.remains.day|0)<=6?profile.remains:null;
+  const notes=[rm?`<p class="risk good">Your body is still aboard: ${rm.items.length} item${rm.items.length>1?"s":""}, ${(ship().day|0)-(rm.day|0)} day${(ship().day|0)-(rm.day|0)===1?"":"s"} old. Scavengers pick at it every day.</p>`:"",
+    profile.insure?`<p class="risk good">Your kit is insured with the Vanta Combine for this raid.</p>`:"", profile.hire?`<p class="risk good">A ${Sim.FACTIONS[profile.hire.fac].short} escort is coming with you.</p>`:""].join("");
+  let intel=""; if(upLvl("scanner")){ const I=scanSite(L); if(I){ const HN={husk:"husk",stalker:"stalker",spitter:"spitter",brute:"brute",matriarch:"Matriarch"};
+    intel=`<div class="h-eyebrow" style="margin-top:8px">Scanner sweep</div><p class="risk">${I.power?"Power on":"No power"} · ${Object.entries(I.husks).filter(([k])=>k!=="matriarch").map(([k,n])=>`${n} ${HN[k]}${n===1?"":"s"}`).join(", ")||"no life signs"}${I.boss?` · <b style="color:var(--blood2)">a Matriarch</b>`:""}${I.turrets?` · ${I.turrets} turret${I.turrets>1?"s":""}`:""}${I.drones?` · ${I.drones} drone${I.drones>1?"s":""}`:""}${I.fires?` · ${I.fires} fires`:""}</p>
+      ${I.crews.length?`<p class="risk">Crews aboard: ${I.crews.map(c=>{ const F=Sim.FACTIONS[c.fac]; return `<span style="color:${F.col}">${F.name}</span> ×${c.n} (${c.att})`; }).join(" · ")}</p>`:`<p class="risk">No other crews aboard.</p>`}`; } }
+  else intel=`<p class="risk">Install a scanner array at the fabricator to see what's aboard before you board.</p>`;
   let squadHTML, btn;
   if(!inSquad()){ squadHTML=`<p>Going in solo.</p><p class="risk">Use the Crew button to open a squad. Up to four contractors share this ship, its contracts and its raids.</p>`;
     btn=`<button class="deploy-btn" data-act="deploy">Board ${L.name}</button>`; }
@@ -573,10 +593,10 @@ function viewDeploy(L){
       :`<button class="deploy-btn" data-act="ready">${Net.ready?"Stand down":"Ready up"}</button><p class="risk">${Net.ready?"Ready. The squad leader launches the raid.":"Pick your kit, then ready up."}</p>`; }
   return `<section class="h-grid">
     <div class="panel h-card span7"><div class="h-eyebrow">Target</div><h3>${L.name}</h3><p>${L.desc}</p><div class="h-tags">${tags.map(t=>`<span class="${/fire|husk|power/i.test(t)?"hot":""}">${t}</span>`).join("")}</div>
-      <div class="facts"><span>Contract</span><span>${C?`${C.title} · ${C.reward} cr`:"None · salvage run"}</span><span>Objective</span><span>${C?"Black box from the vault":"Anything worth carrying"}</span><span>Extraction</span><span>Your shuttle pad, docking bay</span></div></div>
+      <div class="facts"><span>Contract</span><span>${C?`${C.title} · ${C.reward} cr`:"None · salvage run"}</span><span>Objective</span><span>${C?"Black box from the vault":"Anything worth carrying"}</span><span>Extraction</span><span>Your shuttle pad, docking bay</span></div>${notes}${intel}</div>
     <div class="panel h-card span5"><div class="h-eyebrow">${inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew"}</div>${squadHTML}</div>
     <div class="panel h-card span12"><div class="bar-row"><div class="h-eyebrow grow">Loadout · ${r.free?"Starter kit":"Custom kit"}</div><button class="plain" data-act="open:rack">Loadout rack</button></div>
-      ${kitSummaryHTML(r)}<p class="risk ${r.free?"good":"bad"}">${r.free?"Free kit. Nothing from your stash is at risk.":`If you die you lose this kit: about ${risk} cr.`}${!r.w1&&!r.w2?" You are going in without a gun.":""}</p>
+      ${kitSummaryHTML(r)}<p class="risk ${r.free?"good":"bad"}">${r.free?"Free kit. Nothing from your stash is at risk.":profile.insure?`Insured: if you die, this kit comes back to your stash.`:`If you die you lose this kit (about ${risk} cr), except what you seal in your secure pouch (${2+upLvl("pouch")} slots). Insure it on the bridge hologram with the Vanta Combine.`}${!r.w1&&!r.w2?" You are going in without a gun.":""}</p>
       ${btn}</div></section>`;
 }
 function viewCrew(){
@@ -607,6 +627,10 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
       ${Lr.ammo&&Object.keys(Lr.ammo).length?`<div class="h-eyebrow">Ammo recovered</div>${ammoChips(Lr.ammo)}`:""}${Lr.mats&&MAT_T.some(t=>Lr.mats[t])?`<div class="h-eyebrow" style="margin-top:6px">Materials</div>${matChips(Lr.mats)}`:""}`
       :`<p>${Lr.cause||"You did not come back."} ${Lr.kit==="custom"?"Your custom kit is gone.":"You went in on the starter kit, so your stash is untouched."}</p>`}
     ${Lr.xp?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
+    ${Lr.secured&&Lr.secured.length?`<p class="risk good">Secure pouch: ${Lr.secured.map(x=>`<b style="color:${x.c}">${esc(x.n)}</b>`).join(", ")} came home with you.</p>`:""}
+    ${Lr.insured&&Lr.insured.length?`<p class="risk good">Vanta insurance returned ${Lr.insured.length} item${Lr.insured.length>1?"s":""} to your stash.</p>`:""}
+    ${Lr.remains?`<p class="risk">Your body is still aboard with ${Lr.remains} item${Lr.remains>1?"s":""}. Go back within 6 days to recover them, before scavengers do.</p>`:""}
+    ${Lr.prisoners&&Lr.prisoners.length?`<p class="risk good">${Lr.prisoners.map(q=>`${esc(q.name)} handed to the ${esc(q.to)} for ${q.pay} cr`).join(". ")}.</p>`:""}
     ${Lr.treated?`<p class="risk good">The medbay patched up your injuries.</p>`:""}
     ${Lr.bounty?`<p class="risk good">Concord bounty: ${Lr.bounty.n} raider${Lr.bounty.n>1?"s":""} put down. ${Lr.bounty.pay} cr paid.</p>`:""}
     ${Lr.standing&&Lr.standing.length?`<div class="h-eyebrow">Standing</div><div class="chips">${Lr.standing.map(x=>{ const F=Sim.FACTIONS[x.f]; return F?`<span class="chip" style="border-color:${F.col};color:${x.n>0?"var(--bile)":"var(--blood2)"}">${esc(F.name)} ${x.n>0?"+":""}${x.n}</span>`:""; }).join("")}</div>`:""}
@@ -674,6 +698,8 @@ $("p-body").addEventListener("click",e=>{
     case "ilight": send({type:"light"}); break;
     case "iunequip": invSel=null; send({type:"unequip",slot:x}); break;
     case "unslot": { const k=profile.kit; if(k.type==="custom"){ k[x]=null; save(); refreshLook(); } invSel=null; break; }
+    case "shipup": { const U=SHIPUP[x], n=upLvl(x), c=U&&U.cost[n]; if(!c||!canPay(c)||(inSquad()&&!Net.host)) break; pay(c); profile.ship.up={...(profile.ship.up||{}),[x]:n+1}; if(x==="tanks") profile.ship.fuelMax=(profile.ship.fuelMax|0)+2;
+      toast(`${U.name} installed.`); if(typeof Snd!=="undefined") Snd.play("levelup"); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "fabup": { const lv=fabLvl(), up=Items.FAB_UP[lv]; if(!up||!canPay(up)||(inSquad()&&!Net.host)) break; pay(up); profile.ship.fab=lv+1; toast(`Fabricator upgraded to Mk ${lv+1}: ${Items.FAB_NAME[lv+1]}.`); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "bareat": { const b=Items.BAR.find(q=>q.id===x); if(!b||profile.credits<b.price) break; profile.credits-=b.price; eatDrink(b.food,b.water); toast(b.water>(b.food||0)?`You drink the ${b.name.toLowerCase()}.`:`You eat the ${b.name.toLowerCase()}.`); if(inSquad()) emit({t:"chat",m:`grabs a ${b.name.toLowerCase()} at the galley`}); save(); break; }
     case "bartogo": { const row=Items.BAR_TOGO[+x]; if(!row||profile.credits<row[1]) break; profile.credits-=row[1]; World.grant(profile,{d:row[0],r:0}); toast(`Bought ${Items.name({d:row[0],r:0})}.`); save(); break; }
@@ -687,6 +713,7 @@ $("p-body").addEventListener("click",e=>{
     case "iswap": send({type:"swap"}); break;
     case "iequip": invSel=null; send({type:"equip",index:+x}); break;
     case "iuse": invSel=null; send({type:"use",index:+x}); break;
+    case "isec": send({type:"secure",index:+x}); break;
     case "idrop": invSel=null; send({type:"drop",index:+x}); break;
     case "igive": invSel=null; send({type:"give",index:+x,to:y}); break;
     case "ithrow": closePanel(); useSlot(+x); return;
@@ -712,8 +739,10 @@ function boardShip(){
   boardShipCrew([{id:"p1",name:"You",loadout:{}}]);
 }
 // the loadout that travels to the station (compact: no uids)
-function loadoutFromKit(r){ const lo={ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
+function remainsHere(){ const R0=profile.remains; if(!R0) return null; if((ship().day|0)-(R0.day|0)>6){ profile.remains=null; save(); return null; } return R0.site===ship().loc?{items:R0.items.slice(0,14),ammo:R0.ammo||{},days:(ship().day|0)-(R0.day|0)}:null; }
+function loadoutFromKit(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
 function consumeKit(lo){
+  profile.insured=null; if(profile.insure&&!lo.starter){ profile.insured=[...KIT_SLOTS.map(s=>lo[s]),...(lo.inv||[])].filter(it=>it&&!it.iss).map(it=>({...it})); } profile.insure=false;
   profile.stats.raids++; profile.active={kit:lo.starter?"starter":"custom",site:ship().loc,at:Date.now()};
   if(!lo.starter){ const r=kitResolved(), gone=new Set([...KIT_SLOTS.map(s=>r[s]&&!r[s].iss&&r[s].uid),...r.inv.map(i=>i.uid)].filter(Boolean));
     profile.stash=profile.stash.filter(q=>!gone.has(q.uid));
@@ -721,6 +750,14 @@ function consumeKit(lo){
     profile.kit={...profile.kit,inv:[],ammo:{}}; for(const s of KIT_SLOTS) profile.kit[s]=null; }
   save();
 }
+// each visit to a derelict has a fixed layout, so the scanner can read it before you board
+function siteSeed(L){ const sh=profile.ship; sh.seeds=sh.seeds||{}; if(!sh.seeds[L.id]){ sh.seeds[L.id]=(Math.random()*2**32)>>>0; save(); } return sh.seeds[L.id]; }
+function useSeed(L){ const sd=siteSeed(L); delete profile.ship.seeds[L.id]; save(); return sd; }
+let scanCache={};
+function scanSite(L){ const sd=(ship().seeds||{})[L.id]; if(!sd) return null; const key=L.id+sd; if(scanCache[key]) return scanCache[key];
+  const g=Sim.newGame(sd,null,raidOpts(L)), H={}; for(const e of g.ents) if(e.kind==="husk"&&e.alive) H[e.type||"husk"]=(H[e.type||"husk"]||0)+1;
+  const crews=Object.values(g.crews||{}).filter(C=>!C.hired).map(C=>({fac:C.fac,att:C.att,n:g.ents.filter(e=>e.crew===C.id).length}));
+  return scanCache[key]={power:g.power,husks:H,boss:!!g.boss,turrets:g.ents.filter(e=>e.kind==="bot"&&e.type==="turret").length,drones:g.ents.filter(e=>e.kind==="bot"&&e.type==="drone").length,crews,fires:Object.keys(g.fire).length}; }
 function raidOpts(L,fx){ return {gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:L.site.kind||""},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
 // what the station's crews know about you: your standing, and a merc you've paid for (used once)
 function factionSetup(by){ return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null}; }
@@ -728,7 +765,7 @@ function deploy(){
   const L=here(); if(L.type!=="derelict") return;
   if(inSquad()){ if(Net.host){ Net.ready=true; Net.readyLo=loadoutFromKit(kitResolved()); squadPresence(); hostLaunch(); } else setReady(!Net.ready); return; }
   const lo=loadoutFromKit(kitResolved()); consumeKit(lo); closePanel(); PID="p1"; Net.settled=false;
-  S=Sim.newGame((Math.random()*2**32)>>>0,lo,raidOpts(L)); if(profile.hire){ profile.hire=null; save(); }
+  S=Sim.newGame(useSeed(L),lo,raidOpts(L)); if(profile.hire){ profile.hire=null; save(); }
   const C=World.siteContract(ship(),L.id); $("r-site").textContent=(C?"Contract · ":"Salvage · ")+L.name;
   rp={}; parts=[]; camInit=false; staticKey=""; target=null; stopTravel(); spectating=false; resize(); afterChange();
 }
@@ -744,6 +781,19 @@ function settlePersonal(){
     let it=null; for(let n=0;n<8&&(!it||Items.rarOf(it)<1||!Items.slotOf(it));n++) it=Items.roll(Math.random,(L.site.tier||1)+1,["weapon","armor","weapon","pack"][n%4]);
     if(it){ World.grant(profile,it); rep.contract.bonus={n:Items.name(it),c:rc(it)}; } }
   if(isHost()) World.settleRaid(profile.ship,[],{status:bbHome?"extracted":"lost",blackbox:bbHome},L.id);
+  // prisoners you got out alive: Marshals pay bounties on outlaws, everyone else pays to get their people back
+  rep.prisoners=[]; for(const q of (S.prisoners||[]).filter(q=>q.by===p.id)){ const outlaw=["reaver","blacksun","choir"].includes(q.fac)&&(profile.rep.marshal|0)>=0, pay=outlaw?260:190;
+    profile.credits+=pay; profile.rep[outlaw?"marshal":q.fac]=Math.max(-100,Math.min(100,(profile.rep[outlaw?"marshal":q.fac]|0)+(outlaw?4:6))); rep.prisoners.push({name:q.name,fac:q.fac,pay,to:outlaw?"Concord Marshals":Sim.FACTIONS[q.fac].name}); }
+  // your old body: anything you didn't take back is still there
+  const oldR=S.ents.find(e=>e.kind==="remains"&&e.owner===p.id); if(oldR&&profile.remains&&profile.remains.site===L.id){ profile.remains=oldR.inv.length?{...profile.remains,items:oldR.inv.map(strip)}:null; }
+  if(!win&&!p.flags.abandoned){
+    const secured=p.inv.filter(it=>it.sec), ins=(profile.insured||[]).slice(); for(const it of secured){ const k=ins.findIndex(q=>q.d===it.d&&(q.r|0)===(it.r|0)); if(k>=0) ins.splice(k,1); } rep.secured=secured.map(it=>({n:Items.name(it),c:rc(it)})); for(const it of secured) World.grant(profile,strip(it));
+    rep.insured=ins.map(it=>({n:Items.name(it),c:rc(it)})); for(const it of ins) World.grant(profile,it);
+    const left=[...KIT_SLOTS.map(s=>p[s]),...p.inv.filter(it=>!it.sec)].filter(it=>it&&!it.iss).map(strip), pool=ins.slice();
+    const lost=left.filter(it=>{ const k=pool.findIndex(q=>q.d===it.d&&(q.r|0)===(it.r|0)); if(k>=0){ pool.splice(k,1); return false; } return true; });
+    const prev=profile.remains&&profile.remains.site===L.id?profile.remains.items:[];
+    profile.remains=lost.length||prev.length?{site:L.id,siteName:L.name,day:ship().day|0,items:[...lost,...prev].slice(0,14),ammo:{...(p.ammo||{})}}:null; rep.remains=profile.remains?profile.remains.items.length:0; }
+  profile.insured=null;
   if(win){
     const bring=it=>{ if(!it||it.iss) return; World.grant(profile,it); rep.items.push({n:Items.name(it),c:rc(it)}); rep.value+=Math.round(Items.value(it)*.5); };
     for(const s of KIT_SLOTS) bring(p[s]); for(const it of p.inv) bring(it);

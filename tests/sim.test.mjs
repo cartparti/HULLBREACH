@@ -290,4 +290,21 @@ test("factions: nine outfits, synths spark, standing shifts who shoots first, hi
   for (let i = 0; i < 20; i++) Sim.act(s, "p1", { type: "wait" }); assert.ok(Math.abs(h.x - p.x) + Math.abs(h.y - p.y) <= 3, "escort stays close");
 });
 
+test("death and its consolations: secure pouch, your old body, prisoners; skills and injuries", () => {
+  const lo = { w1: { d: "pistol", r: 0 }, melee: { d: "knife", r: 0 }, ammo: { pistol: 30 }, inv: [{ d: "val3", r: 0 }, { d: "medkit", r: 0 }, { d: "splint", r: 0 }], secCap: 1, brig: true, perks: { tough: 2, mule: 1 }, injury: { frac: { rarm: 1 }, inf: 0 } };
+  const s = Sim.newGame(321, lo, { gen: { tier: 1 }, mods: { raiders: 1 } }), p = playerOf(s);
+  assert.ok(p.max.torso > 60 && p.cap === 11 && p.frac.rarm, "perks and injuries load");
+  assert.ok(Sim.act(s, "p1", { type: "secure", index: 0 }) && p.inv[0].sec); assert.ok(!Sim.act(s, "p1", { type: "secure", index: 1 }), "pouch has one slot");
+  assert.ok(Sim.act(s, "p1", { type: "use", index: 2 }) && !p.frac.rarm, "splint sets the arm");
+  // your old body turns up on a return visit
+  const s2 = Sim.newGame(322, { ...lo, remains: { items: [{ d: "carbine", r: 1 }, { d: "flak", r: 0 }], ammo: { rifle: 9 }, days: 0 } }, { gen: { tier: 1 } }), rm = s2.ents.find((e) => e.kind === "remains");
+  assert.ok(rm && rm.inv.length === 2); const q = playerOf(s2); const sp = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [rm.x + a, rm.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s2, x, y)) && !Sim.entAt(s2, x, y)); q.x = sp[0]; q.y = sp[1];
+  assert.ok(Sim.act(s2, "p1", { type: "loot", id: rm.id, all: true })); assert.ok(q.inv.some((i) => i.d === "carbine") && q.ammo.rifle >= 9);
+  // a prisoner follows you onto the shuttle
+  const r = s.ents.find((e) => e.kind === "raider"); for (const e of s.ents) if (e.kind === "husk" || e.kind === "bot" || (e.kind === "raider" && e !== r)) e.alive = false;
+  const pad = s.tiles.findIndex((t) => t.t === "extract"); p.x = pad % s.W; p.y = (pad / s.W) | 0; const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y));
+  r.x = nb[0]; r.y = nb[1]; r.surr = true; assert.ok(Sim.act(s, "p1", { type: "loot", id: r.id, src: "bind" }) && r.prisoner === "p1");
+  assert.ok(Sim.act(s, "p1", { type: "extract" })); assert.equal(s.prisoners.length, 1);
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

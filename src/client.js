@@ -3,7 +3,7 @@
 // per-tile lightmap (multiply) + additive glow, then scaled up crisp.
 let PID="p1", spectating=false; const TS=24;
 const CREW_COL=["#9bc06a","#76c2c4","#e8b048","#d07ad0"];
-const isHum=e=>e&&(e.kind==="player"||e.kind==="raider");
+const isHum=e=>e&&(e.kind==="player"||e.kind==="raider"||e.kind==="remains");
 const ATT_COL={hostile:"#e0482f",wary:"#e8b048",friendly:"#7cc46a"};
 const attOf=e=>e&&e.kind==="raider"&&S.crews&&S.crews[e.crew]?S.crews[e.crew].att:null;
 function viewEnt(){ const m=me(); if(!S||S.mode!=="raid"||!m||m.alive||!spectating) return m; return S.ents.find(e=>e.kind==="player"&&e.alive)||m; }
