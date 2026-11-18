@@ -263,7 +263,7 @@ function viewComms(){
         <blockquote class="cm-line">“${esc(line)}”</blockquote><p class="risk">${esc(F.desc)}</p>
         ${acts.map(a=>`<div class="cm-row"><div class="cm-t"><b>${esc(a.label)}</b><span>${esc(a.desc)}</span></div><button class="plain" data-act="cmdo:${a.id}" ${a.off?"disabled":""}>${a.cost?a.cost+" cr":a.mats?Object.entries(a.mats).map(([m,n])=>n+" "+Items.MATS[m].toLowerCase()).join(", "):"Go"}</button></div>`).join("")}
         ${v>-15?(()=>{ const jobs=World.jobsFor(ship(),f,Sim.FACTIONS), act=ship().jobs||[], lead=!inSquad()||Net.host; return `<div class="h-eyebrow" style="margin-top:8px">Work · ${act.length}/3 taken</div>${jobs.map(j=>{ const L2=World.loc(j.site), have=act.some(q=>q.id===j.id);
-          return `<div class="cm-row"><div class="cm-t"><b>${esc(j.title)}</b><span>${esc(j.brief)} · ${L2.name} · threat ${"▲".repeat(j.tier)} · ${j.reward} cr, +${j.rep} standing</span></div>${have?`<span class="risk good">Taken</span>`:lead?`<button class="plain" data-act="job:${j.id}" ${act.length>=3?"disabled":""}>Take it</button>`:`<span class="risk">Leader takes jobs</span>`}</div>`; }).join("")}`; })():""}
+          const failed=(ship().failedJobs||[]).includes(j.id); return `<div class="cm-row"><div class="cm-t"><b>${esc(j.title)}</b><span>${esc(j.brief)} · ${L2.name} · threat ${"▲".repeat(j.tier)} · ${j.reward} cr, +${j.rep} standing</span></div>${failed?`<span class="risk bad">You failed this one</span>`:have?`<span class="risk good">Taken</span>`:lead?`<button class="plain" data-act="job:${j.id}" ${act.length>=3?"disabled":""}>Take it</button>`:`<span class="risk">Leader takes jobs</span>`}</div>`; }).join("")}`; })():""}
         ${stock.length?`<div class="h-eyebrow" style="margin-top:8px">Today's stock</div>${stock.map(([d,r,min],i)=>{ const it={d,r}, locked=v<min; return `<div class="cm-row">${slotHTML(it)}<div class="cm-t">${nmHTML(it)}<span>${esc(Items.statLine(it))}${locked?` · needs standing ${min>0?"+":""}${min}`:""}</span></div><button class="plain" data-act="cmbuy:${i}" ${locked?"disabled":""}>${priceOf(f,d,r)} cr</button></div>`; }).join("")}`:""}
         ${v<=-50&&!acts.length?`<p class="risk bad">They won't deal with you. Raise your standing in the field: truces, trades, and not shooting their people.</p>`:""}
       </div></div></section>`;
@@ -302,7 +302,7 @@ const TUT=[
   {id:"talk",t:"Say something out loud",k:"Enter or Talk. Raiders will answer",ok:()=>S.log.some(l=>l.kind==="chat"&&l.from===PID)},
   {id:"out",t:"Get out alive",k:"Back to the shuttle pad, then Q (Extract)",ok:p=>!!p.extracted},
 ];
-function tutTick(){ const el=$("tut"); if(!el||!profile||!S) return; profile.tut=profile.tut||{got:[],done:false,ship:false};
+function tutTick(){ const el=$("tut"); if(!el||!profile||!S) return; if(!$("panel").hidden){ el.hidden=true; return; } profile.tut=profile.tut||{got:[],done:false,ship:false};
   const T=profile.tut;
   if(S.mode==="ship"){ if(T.ship||profile.stats.raids>0||!$("menu").hidden){ el.hidden=true; return; } $("tut-title").textContent="Aboard the Lark"; el.hidden=false;
     const html=`<ol><li class="now">Walk to the <b>airlock</b> (bottom middle) to board a derelict. Relay KS-9 is a good first target.</li><li>The <b>bridge</b> (right) has the star map and the hologram: call factions for work, gear and hired guns.</li><li>The <b>fabricator</b> crafts gear, fits attachments and installs ship systems.</li><li>Your <b>stash</b> and <b>loadout rack</b> build the kit you take in.</li></ol>`; if($("tut-body")._h!==html){ $("tut-body").innerHTML=html; $("tut-body")._h=html; } return; }
@@ -317,8 +317,8 @@ function onTerminal(kind){ if(warp) return; openPanel(kind==="navtable"?"helm":k
 function onSit(kind){ const name={pilot:"pilot's seat",copilot:"co-pilot's seat",nav:"navigator's seat",eng:"engineer's seat"}[kind]||"seat";
   toast(`You take the ${name}.${kind==="pilot"&&!isHost()?" The squad leader still has the controls.":""} Press ${mode==="pc"?"F":"USE"} for the star map.`);
   if(typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>2000){ flavorCD=Date.now(); emit({t:"chat",m:`takes the ${name}`}); } }
-function openPanel(kind,sub){ if(kind==="inventory") tutSawKit=true; if(typeof Snd!=="undefined"&&kind!==panelKind) Snd.play(kind==="comms"?"holo":"open"); if(kind==="inventory"&&panelKind==="inventory"){ closePanel(); return; } panelKind=kind; panelSub=sub||null; invSel=null; stopTravel(); throwMode=null; $("panel").hidden=false; renderPanel(); }
-function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S.mode==="ship") renderShipHud(); }
+function openPanel(kind,sub){ if(kind==="inventory") tutSawKit=true; $("tut").hidden=true; if(typeof Snd!=="undefined"&&kind!==panelKind) Snd.play(kind==="comms"?"holo":"open"); if(kind==="inventory"&&panelKind==="inventory"){ closePanel(); return; } panelKind=kind; panelSub=sub||null; invSel=null; stopTravel(); throwMode=null; $("panel").hidden=false; renderPanel(); }
+function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; setTimeout(()=>{ if(typeof tutTick==="function") tutTick(); },0); if(S&&S.mode==="ship") renderShipHud(); }
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
   $("panel").dataset.kind=panelKind; $("p-body").innerHTML=P.view(); renderSync(); if(panelKind==="comms") holoTick();
@@ -597,7 +597,8 @@ function viewNpc(L,id){
   const N=World.NPCS[id], sh=ship(), back=`<button class="plain" data-act="back">← ${L.name}</button>`;
   const head=`<div class="panel npc span12"><img alt="" src="${portrait(N.look)}"><div><div class="role">${N.role}</div><b>${N.name}</b><q>${N.line}</q>${back}</div></div>`;
   if(N.contracts){ const offers=N.contracts.map(cid=>{ const done=sh.done.includes(cid), have=sh.contracts.includes(cid);
-      return contractRow(cid,done?`<span class="risk good">Completed</span>`:have?`<span class="risk good">Accepted</span>`:`<button class="plain" data-act="accept:${cid}" ${sh.contracts.length>=3?"disabled":""}>Accept</button>`); }).join("");
+      const fb=(sh.failed||{})[cid], wait=fb&&fb>(sh.day|0)?fb-(sh.day|0):0;
+      return contractRow(cid,done?`<span class="risk good">Completed</span>`:have?`<span class="risk good">Accepted</span>`:wait?`<span class="risk bad">Failed · back in ${wait} day${wait>1?"s":""}</span>`:`<button class="plain" data-act="accept:${cid}" ${sh.contracts.length>=3?"disabled":""}>Accept</button>`); }).join("");
     return `<section class="h-grid">${head}<div class="panel h-card span12"><div class="h-eyebrow">Work on offer</div>${offers}</div></section>`; }
   const stock=N.shop.stock.map(([spec,price],i)=>{ const it={r:0,...spec};
       return `<div class="panel shop-row">${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${esc(Items.statLine(it)||Items.def(it.d).desc||"")} · ${ownedOf(it)} owned</span></div><span class="price">${price} cr</span><button class="plain" data-act="buy:${id}:${i}" ${profile.credits<price?"disabled":""}>Buy</button></div>`; }).join("");
@@ -613,6 +614,8 @@ function viewDeploy(L){
   siteSeed(L); const rm=profile.remains&&profile.remains.site===L.id&&(ship().day|0)-(profile.remains.day|0)<=6?profile.remains:null;
   const notes=[rm?`<p class="risk good">Your body is still aboard: ${rm.items.length} item${rm.items.length>1?"s":""}, ${(ship().day|0)-(rm.day|0)} day${(ship().day|0)-(rm.day|0)===1?"":"s"} old. Scavengers pick at it every day.</p>`:"",
     profile.insure?`<p class="risk good">Your kit is insured with the Vanta Combine for this raid.</p>`:"", profile.hire?`<p class="risk good">A ${Sim.FACTIONS[profile.hire.fac].short} escort is coming with you.</p>`:""].join("");
+  const atStake=[...(cid?[C.title]:[]),...(ship().jobs||[]).filter(j=>j.site===L.id).map(j=>j.title)];
+  const stakeHTML=atStake.length?`<p class="risk bad">On the line: ${atStake.map(esc).join(", ")}. If ${inSquad()?"the whole crew dies":"you die"}, ${atStake.length>1?"they fail":"it fails"}: contracts are pulled with a 10% fee, jobs cost standing.</p>`:"";
   let intel=""; if(upLvl("scanner")){ const I=scanSite(L); if(I){ const HN={husk:"husk",stalker:"stalker",spitter:"spitter",brute:"brute",matriarch:"Matriarch"};
     intel=`<div class="h-eyebrow" style="margin-top:8px">Scanner sweep</div><p class="risk">${I.power?"Power on":"No power"} · ${Object.entries(I.husks).filter(([k])=>k!=="matriarch").map(([k,n])=>`${n} ${HN[k]}${n===1?"":"s"}`).join(", ")||"no life signs"}${I.boss?` · <b style="color:var(--blood2)">a Matriarch</b>`:""}${I.turrets?` · ${I.turrets} turret${I.turrets>1?"s":""}`:""}${I.drones?` · ${I.drones} drone${I.drones>1?"s":""}`:""}${I.fires?` · ${I.fires} fires`:""}</p>
       ${I.crews.length?`<p class="risk">Crews aboard: ${I.crews.map(c=>{ const F=Sim.FACTIONS[c.fac]; return `<span style="color:${F.col}">${F.name}</span> ×${c.n} (${c.att})`; }).join(" · ")}</p>`:`<p class="risk">No other crews aboard.</p>`}`; } }
@@ -627,7 +630,7 @@ function viewDeploy(L){
       :`<button class="deploy-btn" data-act="ready">${Net.ready?"Stand down":"Ready up"}</button><p class="risk">${Net.ready?"Ready. The squad leader launches the raid.":"Pick your kit, then ready up."}</p>`; }
   return `<section class="h-grid">
     <div class="panel h-card span7"><div class="h-eyebrow">Target</div><h3>${L.name}</h3><p>${L.desc}</p><div class="h-tags">${tags.map(t=>`<span class="${/fire|husk|power/i.test(t)?"hot":""}">${t}</span>`).join("")}</div>
-      <div class="facts"><span>Contract</span><span>${C?`${C.title} · ${C.reward} cr`:"None · salvage run"}</span><span>Objective</span><span>${[C?"Black box from the vault":"",...(ship().jobs||[]).filter(j=>j.site===L.id).map(j=>j.title)].filter(Boolean).join(" · ")||"Anything worth carrying"}</span>${World.controlOf(ship(),L.id)?`<span>Held by</span><span style="color:${Sim.FACTIONS[World.controlOf(ship(),L.id)].col}">${Sim.FACTIONS[World.controlOf(ship(),L.id)].name}</span>`:""}<span>Extraction</span><span>Your shuttle pad, docking bay</span></div>${notes}${intel}</div>
+      <div class="facts"><span>Contract</span><span>${C?`${C.title} · ${C.reward} cr`:"None · salvage run"}</span><span>Objective</span><span>${[C?"Black box from the vault":"",...(ship().jobs||[]).filter(j=>j.site===L.id).map(j=>j.title)].filter(Boolean).join(" · ")||"Anything worth carrying"}</span>${World.controlOf(ship(),L.id)?`<span>Held by</span><span style="color:${Sim.FACTIONS[World.controlOf(ship(),L.id)].col}">${Sim.FACTIONS[World.controlOf(ship(),L.id)].name}</span>`:""}<span>Extraction</span><span>Your shuttle pad, docking bay</span></div>${stakeHTML}${notes}${intel}</div>
     <div class="panel h-card span5"><div class="h-eyebrow">${inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew"}</div>${squadHTML}</div>
     <div class="panel h-card span12"><div class="bar-row"><div class="h-eyebrow grow">Loadout · ${r.free?"Starter kit":"Custom kit"}</div><button class="plain" data-act="open:rack">Loadout rack</button></div>
       ${kitSummaryHTML(r)}<p class="risk ${r.free?"good":"bad"}">${r.free?"Free kit. Nothing from your stash is at risk.":profile.insure?`Insured: if you die, this kit comes back to your stash.`:`If you die you lose this kit (about ${risk} cr), except what you seal in your secure pouch (${2+upLvl("pouch")} slots). Insure it on the bridge hologram with the Vanta Combine.`}${!r.w1&&!r.w2?" You are going in without a gun.":""}</p>
@@ -661,6 +664,7 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
       ${Lr.ammo&&Object.keys(Lr.ammo).length?`<div class="h-eyebrow">Ammo recovered</div>${ammoChips(Lr.ammo)}`:""}${Lr.mats&&MAT_T.some(t=>Lr.mats[t])?`<div class="h-eyebrow" style="margin-top:6px">Materials</div>${matChips(Lr.mats)}`:""}`
       :`<p>${Lr.cause||"You did not come back."} ${Lr.kit==="custom"?"Your custom kit is gone.":"You went in on the starter kit, so your stash is untouched."}</p>`}
     ${Lr.xp?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
+    ${Lr.failed&&Lr.failed.length?`<div class="h-eyebrow" style="color:var(--blood2)">Failed</div>${Lr.failed.map(f=>`<p class="risk bad">${esc(f.title)}: ${esc(f.who)} ${f.rep?`pulled the job. Standing ${f.rep}.`:`pulled the contract and kept a ${f.fee} cr cancellation fee. They won't offer it again for ${f.days} days.`}</p>`).join("")}`:""}
     ${Lr.jobs&&Lr.jobs.length?`<p class="risk good">${Lr.jobs.map(j=>`Job done: ${esc(j.title)} · ${j.reward} cr from the ${esc(Sim.FACTIONS[j.fac].name)}`).join(". ")}.</p>`:""}
     ${Lr.secured&&Lr.secured.length?`<p class="risk good">Secure pouch: ${Lr.secured.map(x=>`<b style="color:${x.c}">${esc(x.n)}</b>`).join(", ")} came home with you.</p>`:""}
     ${Lr.insured&&Lr.insured.length?`<p class="risk good">Vanta insurance returned ${Lr.insured.length} item${Lr.insured.length>1?"s":""} to your stash.</p>`:""}
@@ -714,7 +718,7 @@ $("p-body").addEventListener("click",e=>{
     // stash + workbench
     case "scrap": { const it=byUid(x); if(!it) break; if(!arm("scrap:"+x)) break; const yv=scrapYield(it); profile.stash=profile.stash.filter(q=>q.uid!==x); stashSel=null;
       for(const m in yv) profile.mats[m]=(profile.mats[m]|0)+yv[m]; toast(`Broke down ${Items.name(it)}: ${MAT_T.filter(m=>yv[m]).map(m=>yv[m]+" "+Items.MATS[m].toLowerCase()).join(", ")}.`); save(); refreshLook(); break; }
-    case "job": { if(inSquad()&&!Net.host) break; const sh=profile.ship; sh.jobs=sh.jobs||[]; if(sh.jobs.length>=3||sh.jobs.some(q=>q.id===x)) break; const j=World.jobsFor(sh,commsFac,Sim.FACTIONS).find(q=>q.id===x); if(!j) break; sh.jobs.push(j); commsMsg="Good. Don't come back without it done."; toast(`Job taken: ${j.title}.`); save(); if(inSquad()) hostBroadcastShip(false); break; }
+    case "job": { if(inSquad()&&!Net.host) break; const sh=profile.ship; sh.jobs=sh.jobs||[]; if(sh.jobs.length>=3||sh.jobs.some(q=>q.id===x)||(sh.failedJobs||[]).includes(x)) break; const j=World.jobsFor(sh,commsFac,Sim.FACTIONS).find(q=>q.id===x); if(!j) break; sh.jobs.push(j); commsMsg="Good. Don't come back without it done."; toast(`Job taken: ${j.title}.`); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "dropjob": { if(inSquad()&&!Net.host) break; profile.ship.jobs=(profile.ship.jobs||[]).filter(q=>q.id!==x); toast("Job dropped."); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "perk": if(perkPoints()>0&&PERKS[x]&&(profile.perks[x]|0)<PERKS[x].max){ profile.perks[x]=(profile.perks[x]|0)+1; save(); toast(`${PERKS[x].name} rank ${profile.perks[x]}.`); } break;
     case "treat": { const i=profile.stash.findIndex(q=>q.d===x); if(i<0) break; const I=profile.injury; if(x==="splint"){ const l=Object.keys(I.frac||{})[0]; if(!l) break; delete I.frac[l]; toast(`Splinted your ${Sim.LNAME[l]}.`); } else { if(!I.inf) break; I.inf=0; toast("Infection treated."); } profile.stash.splice(i,1); save(); break; }
@@ -820,6 +824,15 @@ function settlePersonal(){
     let it=null; for(let n=0;n<8&&(!it||Items.rarOf(it)<1||!Items.slotOf(it));n++) it=Items.roll(Math.random,(L.site.tier||1)+1,["weapon","armor","weapon","pack"][n%4]);
     if(it){ World.grant(profile,it); rep.contract.bonus={n:Items.name(it),c:rc(it)}; } }
   if(isHost()) World.settleRaid(profile.ship,[],{status:bbHome?"extracted":"lost",blackbox:bbHome},L.id);
+  // dying costs you the work: if nobody got out, every contract and job aimed at this station fails
+  rep.failed=[]; if(!crew.some(q=>q.extracted)){ const sh=ship();
+    for(const cid of sh.contracts.filter(c=>World.CONTRACTS[c].site===L.id)){ const C=World.CONTRACTS[cid], fee=Math.min(profile.credits,Math.round(C.reward*.1)); profile.credits-=fee; rep.failed.push({title:C.title,who:World.NPCS[C.giver].name,fee,days:5}); }
+    for(const j of (sh.jobs||[]).filter(q=>q.site===L.id)){ profile.rep[j.fac]=Math.max(-100,(profile.rep[j.fac]|0)-6); rep.failed.push({title:j.title,who:Sim.FACTIONS[j.fac].name,rep:-6}); }
+    if(isHost()){ const P=profile.ship; P.failed=P.failed||{}; P.failedJobs=P.failedJobs||[];
+      for(const cid of P.contracts.filter(c=>World.CONTRACTS[c].site===L.id)) P.failed[cid]=(P.day|0)+5;
+      P.contracts=P.contracts.filter(c=>World.CONTRACTS[c].site!==L.id);
+      for(const j of (P.jobs||[]).filter(q=>q.site===L.id)) P.failedJobs.push(j.id); P.failedJobs=P.failedJobs.slice(-30);
+      P.jobs=(P.jobs||[]).filter(q=>q.site!==L.id); } }
   // faction jobs: paid when they're done and someone got out
   rep.jobs=[]; { const out=crew.some(q=>q.extracted); for(const J of S.jobs||[]){ const j=(ship().jobs||[]).find(q=>q.id===J.id); if(!j||!J.done||!out) continue; profile.credits+=j.reward; profile.rep[j.fac]=Math.max(-100,Math.min(100,(profile.rep[j.fac]|0)+j.rep)); if(j.target) profile.rep[j.target.fac]=Math.max(-100,(profile.rep[j.target.fac]|0)-10); rep.jobs.push({title:j.title,reward:j.reward,fac:j.fac}); p.xp=(p.xp|0)+60;
     if(isHost()){ const sh=profile.ship; sh.jobs=(sh.jobs||[]).filter(q=>q.id!==j.id); const F=Sim.FACTIONS[j.fac];

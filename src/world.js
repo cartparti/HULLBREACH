@@ -108,6 +108,7 @@ const World = (() => {
         const n=Math.min(need,Math.floor(P.credits/L.fuel)); if(!n) return {ok:false,msg:"You can't afford any fuel."};
         P.credits-=n*L.fuel; ship.fuel+=n; return {ok:true,msg:`Bought ${n} fuel for ${n*L.fuel} cr.`}; }
       case "accept": { const C=CONTRACTS[a.id]; if(!C||ship.done.includes(a.id)||ship.contracts.includes(a.id)) return {ok:false,msg:"Not available."};
+        const fb=(ship.failed||{})[a.id]; if(fb&&fb>(ship.day|0)) return {ok:false,msg:`After your last failure, ${NPCS[C.giver].name} won't offer this for ${fb-(ship.day|0)} more day${fb-(ship.day|0)>1?"s":""}.`};
         if(!L.npcs||!L.npcs.includes(C.giver)) return {ok:false,msg:"Talk to the giver in person."};
         if(ship.contracts.length>=3) return {ok:false,msg:"Your crew can hold three contracts at once."};
         ship.contracts.push(a.id); return {ok:true,msg:`Contract accepted: ${C.title}.`}; }
