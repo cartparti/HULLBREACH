@@ -97,7 +97,8 @@ function hostLaunch(){
   const crew=Net.roster.map(r=>({id:r.key,name:"",loadout:r.key===Net.myKey?Net.readyLo:r.lo})).filter(c=>c.loadout).sort((a,b)=>a.id<b.id?-1:1);
   if(crew.length!==Net.roster.length){ toast("Everyone needs to ready up first."); return; }
   Net.ep++; Net.n=0; Net.log=[];
-  Net.setup={t:"state",ep:Net.ep,scene:"raid",hostKey:Net.myKey,seed:(Math.random()*2**32)>>>0,site:L.id,crew,ship:profile.ship};
+  Net.setup={t:"state",ep:Net.ep,scene:"raid",hostKey:Net.myKey,seed:(Math.random()*2**32)>>>0,site:L.id,crew,ship:profile.ship,fx:factionSetup(Net.myKey)};
+  if(profile.hire){ profile.hire=null; save(); }
   const json=JSON.stringify(Net.setup); if(json.length>3900){ toast("Loadouts are too large to send. Carry fewer supplies."); return; }
   emit(Net.setup); buildFromSetup();
 }
@@ -164,7 +165,7 @@ function buildFromSetup(){
   const mine=d.crew.find(c=>c.id===Net.myKey);
   if(!Net.inRaidEp||Net.inRaidEp!==d.ep){ Net.inRaidEp=d.ep; Net.settled=false; consumeKit(mine.loadout); }
   const L=World.loc(d.site);
-  S=Sim.newGame(d.seed,null,{...raidOpts(L),crew:d.crew}); Net.applied=0;
+  S=Sim.newGame(d.seed,null,{...raidOpts(L,d.fx||{rep:{},hire:null}),crew:d.crew}); Net.applied=0;
   const C=World.siteContract(ship(),L.id); $("r-site").textContent=(C?"Contract · ":"Salvage · ")+L.name;
   closePanel(); rp={}; parts=[]; camInit=false; staticKey=""; target=null; stopTravel(); spectating=false; resize(); afterChange(); lobbyPresence();
 }

@@ -283,7 +283,7 @@ function poly(g,pts,c){ g.fillStyle=c; let y0=1e9,y1=-1e9; for(const p of pts){ 
     xs.sort((p,q)=>p-q); for(let i=0;i+1<xs.length;i+=2){ const a=snap(xs[i]), b=snap(xs[i+1]); if(b>a) g.fillRect(a,y,b-a,.5); } } }
 function drawHuman(g,{step=0,b=0,view="f"},L){
   const ST=Items.STYLE, pick=(arr,i,d)=>arr[i]!=null?arr[i]:arr[d];
-  const sk=pick(ST.skin,L.s,1), skS=shade(sk,.8), skD=shade(sk,.66), skH=shade(sk,1.1), hc=pick(ST.hairCol,L.hc,1), hcH=shade(hc,1.45), hcD=shade(hc,.62), eye=pick(ST.eyes,L.e,0);
+  const SYN=!!L.syn, sk=SYN?["#8e989f","#c9cdcc","#34383e"][(L.s|0)%3]:pick(ST.skin,L.s,1), skS=shade(sk,.8), skD=shade(sk,.66), skH=shade(sk,1.1), hc=pick(ST.hairCol,L.hc,1), hcH=shade(hc,1.45), hcD=shade(hc,.62), eye=pick(ST.eyes,L.e,0);
   const tc=pick(ST.cloth,L.tc,0), tcH=shade(tc,1.3), tcS=shade(tc,.7), bc=pick(ST.cloth,L.bc,4), bt=pick(ST.cloth,L.bt,4), btD=shade(bt,.55), btH=shade(bt,.95);
   const top=STY_NM(ST.top,L.t,"coverall"), bot=STY_NM(ST.bottom,L.b,"fatigues"), boots=STY_NM(ST.boots,L.bs,"workboots"), hair=STY_NM(ST.hair,L.h,"short"), face=STY_NM(ST.face,L.f,"clean");
   const fem=STY_NM(ST.body,L.g,"male")==="female";
@@ -419,7 +419,13 @@ function drawHuman(g,{step=0,b=0,view="f"},L){
       if(FH==="fullbeard"||FH==="shortbeard") ell(q,14.6,12+b,3.2,FH==="fullbeard"?2.8:2.1,hl); else if(FH==="goatee") ell(q,16,13.1+b,1,1.1,hl); else if(FH==="moustache"||FH==="chops") ell(q,16.3,11.5+b,1.3,.5,hl);
       if(FH==="chops") limb(q,11.6,8+b,13,12+b,.7,.9,hl); if(FH==="stubble") for(let k=0;k<10;k++) hp(q,12.6+k*.5,10.8+(k%3)*.6+b,"rgba(30,22,16,.45)");
       if(FM==="scar") for(let k=0;k<6;k++) hp(q,15-k*.2,6.4+k*.75+b,"#c06a5a"); else if(FM==="freckles") for(let k=0;k<6;k++) hp(q,14.4+k*.5,10.2+(k%2)*.5+b,shade(sk,.72)); else if(FM==="warpaint") F(12.6,7.8,5.4,1.6,"rgba(20,10,10,.75)"); }
-    g.drawImage(fc,0,0); }
+    g.drawImage(fc,0,0);
+    if(SYN){ const glow=["#5ad0ff","#ff4a30","#7cff7a","#f2b648","#c070ff"][(L.e|0)%5], seam=shade(sk,.55), hi=shade(sk,1.25);
+      if(f){ R(g,7.2,10.6+b,9.6,.4,seam); R(g,11.8,3.6+b,.4,3,seam); R(g,7.6,6.4+b,8.8,.35,hi); for(const ex of [9.85,14.15]){ ell(g,ex,8.7+b,1.25,.55,"#05080a"); ell(g,ex,8.7+b,.9,.32,glow); hp(g,ex-.3,8.55+b,"#ffffff"); }
+        for(let k=0;k<4;k++) R(g,10.4+k*.9,12+b,.45,1,seam); hp(g,7.4,9+b,hi); hp(g,16.6,9+b,hi); }
+      else if(sd){ R(g,12,10.6+b,5.4,.4,seam); ell(g,15,8.7+b,1,.5,"#05080a"); ell(g,15.2,8.7+b,.7,.3,glow); R(g,11.4,7.6+b,.4,3.2,seam); disc(g,11.6,9+b,.9,shade(sk,.7)); for(let k=0;k<3;k++) R(g,15+k*.8,12+b,.4,.9,seam); }
+      else { R(g,11.8,3.6+b,.4,8,seam); R(g,8,9.6+b,8,.4,seam); disc(g,12,7+b,.8,glow); } }
+    }
   // ---- hair on top: hairline, fringe, styles
   if(hasHair&&!bk){ const hc2=cvs(24,32), h=hc2.getContext("2d"), H=hl, P2=(x,y,rx,ry,c)=>ell(h,x,y+b,rx,ry,c);
     const fxo=sd?-1.2:0, cx=12+fxo;
@@ -514,7 +520,7 @@ const HUSK_BOX={f:{head:[7,4,10,11],torso:[7.5,13,9,8.5],rarm:[3.5,12,4,16],larm
 function buildViews(fn){ const fr=buildChar((g,o)=>fn(g,{...o,view:"f"})); fr.back=buildChar((g,o)=>fn(g,{...o,view:"b"})); fr.side=buildChar((g,o)=>fn(g,{...o,view:"s"})); return fr; }
 const HUSKF={}; function huskFrames(dm){ dm=dm||"000000"; return HUSKF[dm]||(HUSKF[dm]=buildViews((g,o)=>{ if(o.view==="s"){ drawHusk(g,o); damageHusk(g,o,dm); } else { drawHuskFB(g,o); damageBody(g,o.b||0,dm,HUSK_BOX[o.view],null,21); } })); }
 const CH={husk:huskFrames("000000")}, CHP={};
-function playerFrames(L){ L=L||{}; const k=["dm","hd","a","lg","ac","li","pk","bs","w","c","v","k","s","h","hc","f","e","t","tc","b","bc","bt","g","fh","fm","ey","br","mo","no"].map(f=>L[f]==null?"":L[f]).join("|"); return CHP[k]||(CHP[k]=buildViews((g,o)=>drawPlayer(g,o,L))); }
+function playerFrames(L){ L=L||{}; const k=["dm","hd","a","lg","ac","li","pk","bs","w","c","v","k","s","h","hc","f","e","t","tc","b","bc","bt","g","fh","fm","ey","br","mo","no"].map(f=>L[f]==null?"":L[f]).join("|"); return CHP[k+"|"+(L.syn?1:0)]||(CHP[k+"|"+(L.syn?1:0)]=buildViews((g,o)=>drawPlayer(g,o,L))); }
 const CORPSE={
   husk:outlined(24,16,g=>{ R(g,4,6,13,4,"#a69679"); R(g,4,6,13,1,"#c7b899"); for(let k=0;k<3;k++) R(g,7+k*3,7,1,3,"#d6cbb0"); R(g,7,9,8,1,"#6e2620"); R(g,17,4,5,5,"#a69679"); R(g,19,6,2,2,"#4a3d30"); R(g,2,10,5,2,"#76654f"); R(g,10,2,2,4,"#76654f"); R(g,11,1,3,1,"#d6cbb0"); R(g,6,10,6,2,"#2b3533"); }),
   player:outlined(24,16,g=>{ R(g,3,7,4,4,"#5e1a12"); R(g,6,5,11,6,"#525849"); R(g,6,5,11,1,"#7a816d"); R(g,17,5,5,5,"#3b3f38"); R(g,19,7,2,1,"#6a5020"); R(g,8,11,9,2,"#1b1a17"); R(g,9,3,10,2,"#20201b"); }),
@@ -673,7 +679,9 @@ TERM.navtable=outlined(48,26,g=>{ R(g,20,20,8,6,"#141a1c"); R(g,4,9,40,12,"#1e26
 const SEAT=outlined(24,24,g=>{ R(g,8,16,8,6,"#1a1e20"); R(g,5,10,14,7,"#3a3f42"); R(g,5,10,14,1,"#5a6266"); R(g,6,11,12,5,"#2a2f32"); });
 const SEAT_BACK={}; for(const [k,c] of Object.entries({pilot:"#7a2416",copilot:"#2a5a5a",nav:"#2a5a5a",eng:"#5a4a20"})) SEAT_BACK[k]=outlined(24,14,g=>{ R(g,5,1,14,11,"#2e3336"); R(g,5,1,14,2,c); R(g,7,4,10,6,"#3a3f42"); R(g,3,6,3,7,"#1e2224"); R(g,18,6,3,7,"#1e2224"); });
 const SEAT_NAME={pilot:"Pilot's seat",copilot:"Co-pilot's seat",nav:"Navigator's seat",eng:"Engineer's seat"};
-const TERM_NAME={workbench:"Fabricator",bar:"Galley bar",wardrobe:"Wardrobe",navtable:"Star map table",helm:"Helm",rack:"Loadout rack",stash:"Stash locker",records:"Records terminal",board:"Contract board",airlock:"Airlock control"};
+TERM.comms=outlined(24,18,g=>{ ell(g,12,12,10,4.5,"#22262a"); ell(g,12,11,10,4,"#3a4046"); ell(g,12,10.6,8.4,3.2,"#14181c"); ell(g,12,10.4,5,1.8,"#5ad0d0"); ell(g,12,10.4,3,1,"#c8ffff");
+  for(let k=0;k<6;k++){ const a=k*1.047; hp(g,12+Math.cos(a)*8.6,11+Math.sin(a)*3.4,"#7a8288"); } R(g,3,13,2,3,"#2a2e32"); R(g,19,13,2,3,"#2a2e32"); });
+const TERM_NAME={comms:"Hologram comms",workbench:"Fabricator",bar:"Galley bar",wardrobe:"Wardrobe",navtable:"Star map table",helm:"Helm",rack:"Loadout rack",stash:"Stash locker",records:"Records terminal",board:"Contract board",airlock:"Airlock control"};
 
 // ---------- space backdrop (ship view) ----------
 const BD={};
@@ -1071,7 +1079,7 @@ function buildStatic(){
     R(g,ox+10,oy+4,14,16,"#2a2e32"); R(g,ox+10,oy+4,14,1.5,"#5a6268"); R(g,ox+4,oy+2,8,20,"#3a3e42"); R(g,ox+4,oy+2,8,1,"#6a7278"); R(g,ox+2,oy+1,3,22,"#22262a"); R(g,ox+2,oy+1,1,22,"#4a5056");
     for(let k=0;k<4;k++) R(g,ox+12+k*3,oy+4.5,.5,15,"#1a1d20"); R(g,ox+1,oy+5,1.5,14,"#0a1a2a"); EMIT.push({type:"exhaust",x,y,bx:ox+1,by:oy+12}); }
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const t=S.tiles[Sim.idx(S,x,y)]; if(t.t!=="terminal") continue;
-    const L={navtable:[.3,.85,1,3.8],helm:[.3,.9,.9,3.2],board:[1,.7,.35,2.6],records:[1,.7,.3,2.2],airlock:[1,.2,.1,2.4],stash:[.3,1,.4,1.8],rack:[1,.75,.4,2],workbench:[1,.55,.2,3],wardrobe:[.9,.75,.5,1.6],bar:[1,.7,.4,3]}[t.kind];
+    const L={comms:[.35,.9,1,3],navtable:[.3,.85,1,3.8],helm:[.3,.9,.9,3.2],board:[1,.7,.35,2.6],records:[1,.7,.3,2.2],airlock:[1,.2,.1,2.4],stash:[.3,1,.4,1.8],rack:[1,.75,.4,2],workbench:[1,.55,.2,3],wardrobe:[.9,.75,.5,1.6],bar:[1,.7,.4,3]}[t.kind];
     if(L) SOURCES.push({kind:"term",x,y,bx:x*TS+12,by:y*TS+4,r:L[3],i:.7,col:[L[0],L[1],L[2]],tk:t.kind}); }
   for(let y=0;y<S.H;y++)for(let x=0;x<S.W;x++){ const i=Sim.idx(S,x,y), t=S.tiles[i]; let c=null;
     if(t.t!=="wall"&&t.t!=="window"&&t.t!=="space") c=AMBC[Sim.roomName(x,y)]||AMBC._;
@@ -1171,7 +1179,8 @@ function processFx(){
         if(f.what==="flesh") spawn(16,x1,y1,{col:["#5a0e0a","#8a1a12","#3a0806"],speed:60,life:.55,dir:a,spread:1.6,size:2});
         if(f.what==="glass") spawn(14,x1,y1,{col:["#cfe8ee","#7ab0bc","#ffffff"],speed:70,life:.5});
         if(f.x0===p.x&&f.y0===p.y) shake=Math.max(shake,1.5); break; }
-      case "hurt": { flashT[f.id]=now; if(f.id===PID){ hurtFlash=1; shake=Math.max(shake,5); } if(vis()){ const n=Math.min(10,2+((f.dmg|0)>>2)); splat(cpx(f.x)+(Math.random()-.5)*6,cpx(f.y)+8,n);
+      case "hurt": if(f.syn){ flashT[f.id]=now; if(vis()){ spawn(14,cpx(f.x),cpx(f.y)-4,{col:["#fff2b0","#7ad0ff","#ffffff","#3a3e42"],speed:90,life:.35,emit:true}); spawn(4,cpx(f.x),cpx(f.y),{col:["rgba(30,34,40,.6)"],speed:14,life:1,size:2}); } break; }
+      { flashT[f.id]=now; if(f.id===PID){ hurtFlash=1; shake=Math.max(shake,5); } if(vis()){ const n=Math.min(10,2+((f.dmg|0)>>2)); splat(cpx(f.x)+(Math.random()-.5)*6,cpx(f.y)+8,n);
           spawn(4+n,cpx(f.x),cpx(f.y)-6,{col:["#7a1410","#a01e14","#3e0806"],speed:55,life:.4,size:1,dir:-Math.PI/2,spread:2.6}); } break; }
       case "sever": { const e=S.ents.find(q=>q.id===f.id); if(!e) break; const spr=limbSprite(e,f.limb), a=Math.random()*6.283, d=10+Math.random()*12, px=cpx(f.x), py=cpx(f.y)+6;
           addGore({type:"limb",spr,x:px,y:py,tx:px+Math.cos(a)*d,ty:py+Math.sin(a)*d*.6,rot:Math.random()*6.283,t0:now});
@@ -1420,6 +1429,9 @@ function render(now){
       const hx=ox+24, hy=oy-6; glow(hx,hy+8,30,"rgba(80,220,255,.16)"); g.fillStyle="rgba(90,208,208,.12)"; g.beginPath(); g.moveTo(ox+6,oy+9); g.lineTo(ox+42,oy+9); g.lineTo(ox+34,oy-16); g.lineTo(ox+14,oy-16); g.fill();
       const a0=now/2400; World.LOCS.forEach((l,i)=>{ const a=a0+i*0.698, rx=14+(i%3)*2, px=hx+Math.cos(a)*rx, py=hy-2+Math.sin(a)*rx*.35-(i%3)*3; const col=l.type==="station"?"#76c2c4":l.type==="outpost"?"#c79a4a":"#e0482f"; R(g,Math.round(px),Math.round(py),2,2,col); });
       R(g,hx-1,hy-3,3,3,"#e8f8ff"); }
+    else if(Lp.kind==="term"&&Lp.tk==="comms"){ const ox=Lp.x*TS-cx+12, oy=Lp.y*TS-cy+16, Fs=Object.values(Sim.FACTIONS), F=Fs[((now/3000)|0)%Fs.length], a=.5+.2*Math.sin(now/170);
+      glow(ox,oy-10,22,"rgba(80,220,255,.14)"); g.fillStyle="rgba(90,208,208,.10)"; g.beginPath(); g.moveTo(ox-7,oy); g.lineTo(ox+7,oy); g.lineTo(ox+11,oy-26); g.lineTo(ox-11,oy-26); g.fill();
+      g.save(); g.globalAlpha=a*(Math.random()<.05?.3:1); g.translate(ox,oy-15); g.scale(Math.cos(now/700),1); drawEmblemF(g,F.emblem,0,0,7,F.col); g.restore(); }
     else if(Lp.kind==="term") glow(bx,by,12,`rgba(${Lp.col[0]*255|0},${Lp.col[1]*255|0},${Lp.col[2]*255|0},.22)`); }
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=Sim.idx(S,x,y), t=S.tiles[i]; if(!VIS[i]) continue; const ox=x*TS-cx, oy=y*TS-cy;
     if(t.t==="console") glow(ox+12,oy+13,12,S.power?"rgba(60,200,90,.25)":"rgba(220,40,20,.3)");

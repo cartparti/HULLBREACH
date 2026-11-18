@@ -22,6 +22,7 @@ function fixProfile(p){ const d=newProfile(); if(!p) return d; if(p.v===1) p=mig
   p.stats={...d.stats,...(p.stats||{})}; p.kit={...d.kit,...(p.kit||{})}; if(!Array.isArray(p.kit.inv)) p.kit.inv=[]; p.kit.ammo=p.kit.ammo||{};
   p.stash=Array.isArray(p.stash)?p.stash.filter(q=>q&&Items.def(q.d)):[]; for(const q of p.stash) if(!q.uid) Object.assign(q,mk(q));
   p.ammo=p.ammo||{}; p.mats=p.mats||{}; if(p.food==null) p.food=80; if(p.water==null) p.water=80; if(!p.gotLight){ p.gotLight=1; p.stash.push(mk({d:"flashlight"})); } p.look={...d.look,...(p.look||{})}; if(p.look.fh==null){ const old=+p.look.f|0; p.look.fh=[0,1,3,5,0,0][old]||0; p.look.fm=[0,0,0,0,1,2][old]||0; } p.unlocks={cloak:[],visor:[],crest:[],...(p.unlocks||{})};
+  p.rep=p.rep&&typeof p.rep==="object"?p.rep:{}; if(p.hire&&!(p.hire.fac in Sim.FACTIONS)) p.hire=null;
   p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); return p; }
 const ship=()=>(typeof Net!=="undefined"&&Net.sq&&!Net.host&&Net.ship)?Net.ship:profile.ship, here=()=>World.loc(ship().loc);
 function shipScene(){ return here().scene; }
@@ -164,6 +165,7 @@ const PANELS={
   crew:{eye:"Crew",title:()=>inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew",view:viewCrew},
   airlock:{eye:"Airlock",title:()=>here().type==="derelict"?`Board ${here().name}`:here().name,view:viewAirlock},
   body:{eye:()=>{ const b=lootBody(); return b?Sim.FACTIONS[b.fac].name:"Search"; },title:()=>{ const b=lootBody(); return b?(b.alive?`${b.name} · hands up`:`${b.name}'s body`):"Gone"; },view:viewBody},
+  comms:{eye:"Bridge · hologram comms",title:()=>commsFac?`Channel open · ${Sim.FACTIONS[commsFac].name}`:"Hail a faction",view:viewComms},
   debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
 };
 // ---------- searching a dead (or surrendered) raider ----------
@@ -179,6 +181,111 @@ function viewBody(){ const b=lootBody(), p=me(); if(!b) return `<p class="risk">
     <div class="h-eyebrow">Worn and carried</div>${eq||`<p class="risk">Stripped bare.</p>`}
     <div class="h-eyebrow">Pack</div>${inv||`<p class="risk">Empty.</p>`}
     <div class="h-eyebrow">Ammo and materials</div>${am.length?`<div class="bar-row"><p class="grow" style="margin:0">${esc(am.join(", "))}</p><button class="plain" data-act="loot:ammo:0" ${near?"":"disabled"}>Take</button></div>`:`<p class="risk">None.</p>`}</section>`; }
+// ============ hologram comms: call a faction, see who answers, deal with them ============
+let commsFac=null, commsT0=0, commsMsg="", holoRAF=0;
+const STANDING=[[-50,"Hostile","#e0482f"],[-15,"Unfriendly","#c07a2a"],[15,"Neutral","#b9bfb6"],[50,"Friendly","#7cc46a"],[101,"Allied","#5ad0d0"]];
+const standOf=f=>{ const v=(profile.rep||{})[f]|0; return [v,...STANDING.find(s=>v<s[0]).slice(1)]; };
+const GREET={
+  reaver:["You've got some nerve calling us, meat.","Talk fast. We're busy carving up a hauler.","Ha! Our favourite scav. What d'you need?"],
+  blacksun:["This channel costs more than you've got. Goodbye.","Black Sun. Whatever you need, it has a price.","Ah, a friend of the Syndicate. Let's do business."],
+  saint:["The rust will take you, heretic. Soon.","Speak, pilgrim. The Rust is listening.","Blessed salvager. The Rust smiles on you."],
+  guild:["Your licence is revoked. Don't call again.","Guild dispatch. Make it quick, the cutters are running.","Hey, good to hear from you. Need kit?"],
+  vanta:["The Combine has frozen your account.","Vanta Combine, trade desk. How may we profit together?","A valued client! Prices just for you today."],
+  hollow:["We don't take contracts from targets.","Hollow Company. You want someone dead, or someone kept alive?","Always good to work with a professional."],
+  marshal:["You're wanted, contractor. Turn yourself in.","Concord Marshals, sector desk. Go ahead.","Good work out there. The bounties are waiting."],
+  choir:["ORGANIC. YOUR SIGNAL IS NOISE. DISCONNECTING.","We are the Iron Choir. State your offer, organic.","Welcome, harmonious organic. The Choir hears you."],
+  unbound:["You put leashes on our kind. We remember.","Unbound here. We're listening. Carefully.","Hey, friend. Good to hear a voice that doesn't sing."],
+};
+// what each outfit sells: [item, rarity, min standing]
+const FSHOP={
+  reaver:[["pipe",1,0],["sixgun",1,0],["scrapvest",1,0],["pauldron",0,0],["welder",1,20],["cape",0,0],["machete",1,0],["ripsaw",1,30]],
+  blacksun:[["wasp",1,-10],["hound",1,0],["cannon",1,-10],["gasmask",1,0],["brigandine",1,10],["scarf",0,-10],["stim",0,-10],["kestrel",1,25]],
+  saint:[["medcoat",1,0],["hazard",1,10],["censer",0,0],["medkit",0,0],["pump",1,10],["maul",1,0]],
+  guild:[["harness",0,-10],["hardhat",1,-10],["cargo",0,-10],["toolbelt",0,-10],["oxytank",0,0],["carbine",0,0],["field",0,0],["floodlamp",0,10]],
+  vanta:[["hardsuit",0,0],["eva",0,-10],["pilothelm",0,10],["bullpup",1,0],["warden",0,10],["medkit",0,-10],["stim",0,0],["hauler",0,20],["magboots",1,20],["lumen",0,40]],
+  hollow:[["carrier",1,0],["sallet",1,10],["greaves",1,10],["longbore",1,20],["lamp",0,0]],
+  marshal:[["flak",1,0],["flakhelm",1,0],["kneepads",1,0],["warden",0,10],["medkit",0,0]],
+  choir:[["exo",0,0],["hardlegs",0,10],["drone",0,0],["kestrel",1,20],["rivet",2,30],["pilothelm",2,40]],
+  unbound:[["drone",0,0],["toolbelt",0,-10],["floodlamp",0,0],["medkit",0,0],["harness",1,10],["hornet",1,0]],
+};
+const HIRE={hollow:[650,-30],blacksun:[420,0],unbound:[280,10],marshal:[500,40]};
+function commsStock(f){ const day=ship().day|0, list=(FSHOP[f]||[]).slice(); let h=(day*2654435761+f.length*97+f.charCodeAt(0)*13)>>>0; const out=[];
+  while(list.length&&out.length<4){ h=(h*1103515245+12345)>>>0; out.push(list.splice(h%list.length,1)[0]); } return out; }
+const priceOf=(f,d,r)=>{ const v=Items.value({d,r}); return Math.max(10,Math.round(v*(1.15-((profile.rep||{})[f]|0)/300)*(f==="blacksun"?1.15:1))); };
+function repAdd(f,n){ profile.rep[f]=Math.max(-100,Math.min(100,(profile.rep[f]|0)+n)); }
+function commsActs(f){ const F=Sim.FACTIONS[f], [v]=standOf(f), out=[];
+  if(v<=-50&&f!=="hollow"&&f!=="marshal") return out;
+  if(f==="reaver") out.push({id:"tribute",label:"Pay tribute",cost:150,desc:"Their crews are less likely to shoot first. +15 standing."});
+  if(f==="saint") out.push({id:"tithe",label:"Offer a tithe",cost:0,mats:{org:3},desc:"Three organics for the Rust. +10 standing."});
+  if(f==="choir") out.push({id:"circ",label:"Sell circuits",cost:0,mats:{circ:3},desc:"Three circuits for 110 cr. +3 standing."});
+  if(f==="marshal"&&v<0) out.push({id:"fine",label:"Pay your fines",cost:Math.round(-v*6),desc:"Clears your record with the Marshals."});
+  if(f==="vanta"||f==="guild") out.push({id:"sellval",label:"Sell salvage",cost:0,desc:"They buy every valuable in your stash at a fair price. +1 standing per piece."});
+  if(HIRE[f]&&v>=HIRE[f][1]) out.push({id:"hire",label:profile.hire?(profile.hire.fac===f?"Hired for your next raid":"You already have a hired gun"):`Hire a ${F.species==="synth"?"synth escort":"gun"} for one raid`,cost:HIRE[f][0],desc:`A veteran ${F.short} with better-than-usual kit follows you on your next raid and fights for you.`,off:!!profile.hire});
+  return out; }
+function commsDo(id){ const f=commsFac, F=Sim.FACTIONS[f]; if(!f) return; const A=commsActs(f).find(a=>a.id===id); if(!A||A.off) return;
+  if(A.cost&&profile.credits<A.cost){ toast("Not enough credits."); return; } if(A.mats&&Object.entries(A.mats).some(([m,n])=>(profile.mats[m]|0)<n)){ toast("You don't have the materials."); return; }
+  profile.credits-=A.cost||0; if(A.mats) for(const [m,n] of Object.entries(A.mats)) profile.mats[m]-=n;
+  const say={tribute:"Smart. We'll tell the boys you paid.",tithe:"The Rust accepts your offering.",circ:"Components received. Credits transferred.",fine:"Record cleared. Don't make us do this again.",hire:"Done. They'll meet you at the shuttle."};
+  if(id==="tribute") repAdd(f,15); if(id==="tithe") repAdd(f,10); if(id==="circ"){ profile.credits+=110; repAdd(f,3); } if(id==="fine") profile.rep[f]=0;
+  if(id==="hire") profile.hire={fac:f};
+  if(id==="sellval"){ const vals=profile.stash.filter(q=>Items.kind(q)==="val"); if(!vals.length){ profile.credits+=A.cost||0; toast("No valuables in your stash."); return; } const sum=vals.reduce((a,q)=>a+Items.value(q),0); profile.stash=profile.stash.filter(q=>Items.kind(q)!=="val"); profile.credits+=sum; repAdd(f,Math.min(10,vals.length)); commsMsg=`${vals.length} pieces. ${sum} credits, transferred.`; save(); return; }
+  commsMsg=F.species==="synth"&&f==="choir"?say[id].toUpperCase():say[id]; toast(`${A.label}: done.`); save(); }
+function commsBuy(i){ const f=commsFac, s=commsStock(f)[i]; if(!s) return; const [d,r,min]=s; if(standOf(f)[0]<min){ toast("They won't sell you that yet."); return; } const pr=priceOf(f,d,r);
+  if(profile.credits<pr){ toast("Not enough credits."); return; } profile.credits-=pr; World.grant(profile,{d,r}); repAdd(f,1); commsMsg=`${Items.name({d,r})}. It's in your stash.`; toast(`Bought ${Items.name({d,r})} for ${pr} cr.`); save(); }
+const EMB={};
+function embURL(k,col){ const key=k+col; if(EMB[key]) return EMB[key]; const c=document.createElement("canvas"); c.width=c.height=48; const g=c.getContext("2d"); drawEmblemF(g,k,24,24,19,col); return EMB[key]=c.toDataURL(); }
+function drawEmblemF(g,k,x,y,r,col){ g.save(); g.translate(x,y); g.strokeStyle=col; g.fillStyle=col; g.lineWidth=Math.max(1.5,r*.12); g.beginPath(); g.arc(0,0,r,0,6.283); g.stroke();
+  const P=(pts,fill=true)=>{ g.beginPath(); pts.forEach(([a,b],i)=>i?g.lineTo(a*r,b*r):g.moveTo(a*r,b*r)); g.closePath(); fill?g.fill():g.stroke(); };
+  switch(k){
+    case "fang": P([[-.5,-.45],[-.1,-.45],[-.3,.55]]); P([[.1,-.45],[.5,-.45],[.3,.55]]); break;
+    case "sun": g.beginPath(); g.arc(0,0,r*.32,0,6.283); g.fill(); for(let i=0;i<8;i++){ const a=i*.785; P([[Math.cos(a-.15)*.42,Math.sin(a-.15)*.42],[Math.cos(a)*.8,Math.sin(a)*.8],[Math.cos(a+.15)*.42,Math.sin(a+.15)*.42]]); } g.fillStyle="#000"; g.beginPath(); g.arc(r*.08,-r*.05,r*.22,0,6.283); g.fill(); break;
+    case "cog": for(let i=0;i<8;i++){ const a=i*.785; g.save(); g.rotate(a); g.fillRect(-r*.1,-r*.72,r*.2,r*.25); g.restore(); } g.beginPath(); g.arc(0,0,r*.5,0,6.283); g.fill(); g.fillStyle="#000"; g.beginPath(); g.arc(0,0,r*.2,0,6.283); g.fill(); break;
+    case "wrench": g.save(); g.rotate(-.785); g.fillRect(-r*.1,-r*.5,r*.2,r*1.05); g.beginPath(); g.arc(0,-r*.5,r*.25,0,6.283); g.fill(); g.fillStyle="#000"; g.fillRect(-r*.08,-r*.78,r*.16,r*.3); g.restore(); break;
+    case "diamond": P([[0,-.7],[.5,0],[0,.7],[-.5,0]],false); P([[0,-.4],[.28,0],[0,.4],[-.28,0]]); break;
+    case "skull": g.beginPath(); g.arc(0,-r*.1,r*.42,0,6.283); g.fill(); g.fillRect(-r*.25,r*.1,r*.5,r*.35); g.fillStyle="#000"; g.beginPath(); g.arc(-r*.17,-r*.1,r*.12,0,6.283); g.arc(r*.17,-r*.1,r*.12,0,6.283); g.fill(); g.fillRect(-r*.04,r*.18,r*.08,r*.27); break;
+    case "star": P([...Array(10)].map((_,i)=>{ const a=-1.571+i*.628, rr=i%2?.3:.68; return [Math.cos(a)*rr,Math.sin(a)*rr]; })); break;
+    case "eye": g.beginPath(); g.ellipse(0,0,r*.65,r*.32,0,0,6.283); g.stroke(); g.beginPath(); g.arc(0,0,r*.18,0,6.283); g.fill(); for(const s of [-1,1]){ g.beginPath(); g.moveTo(-r*.6,s*r*.5); g.lineTo(r*.6,s*r*.5); g.stroke(); } break;
+    case "chain": for(const dx of [-.28,.28]){ g.beginPath(); g.ellipse(dx*r,0,r*.3,r*.18,0,0,6.283); g.stroke(); } g.save(); g.strokeStyle="#000"; g.lineWidth=r*.12; g.beginPath(); g.moveTo(-r*.05,-r*.3); g.lineTo(r*.05,r*.3); g.stroke(); g.restore(); break;
+  }
+  g.restore(); }
+function viewComms(){
+  const ids=Object.keys(Sim.FACTIONS);
+  const list=ids.map(f=>{ const F=Sim.FACTIONS[f], [v,w,c]=standOf(f); return `<button class="cm-fac${commsFac===f?" on":""}" data-act="call:${f}" style="--fc:${F.col}"><img alt="" src="${embURL(F.emblem,F.col)}"><span><b>${esc(F.name)}</b><em>${F.kind}${F.species==="synth"?" · synthetic":""}</em></span><i style="color:${c}">${w}<small>${v>0?"+":""}${v}</small></i></button>`; }).join("");
+  if(!commsFac) return `<section class="cm"><div class="cm-list">${list}</div><div class="cm-call idle"><div class="cm-idle"><canvas id="holo" width="120" height="160" aria-hidden="true"></canvas><p class="risk">Pick a faction to open a channel. Standing goes up when you deal fairly, trade and pay, and drops when you shoot their people.</p></div></div></section>`;
+  const f=commsFac, F=Sim.FACTIONS[f], [v,w,c]=standOf(f), tone=v<=-50?0:v<15?1:2, R=F.rep, acts=commsActs(f), stock=v<=-50?[]:commsStock(f);
+  const line=commsMsg||GREET[f][tone];
+  return `<section class="cm"><div class="cm-list">${list}</div>
+    <div class="cm-call" style="--fc:${F.col}">
+      <div class="cm-holo"><canvas id="holo" width="120" height="160" aria-label="${esc(R.name)} on the hologram"></canvas><div class="cm-tag">CH ${(ids.indexOf(f)+3)*7} · ${F.species==="synth"?"MACHINE BAND":"ENCRYPTED"}</div></div>
+      <div class="cm-talk"><div class="h-eyebrow" style="color:${F.col}">${esc(F.name)} · ${F.kind}</div><h3>${esc(R.name)}</h3><p class="risk">${esc(R.title)}. Standing: <b style="color:${c}">${w} (${v>0?"+":""}${v})</b></p>
+        <blockquote class="cm-line">“${esc(line)}”</blockquote><p class="risk">${esc(F.desc)}</p>
+        ${acts.map(a=>`<div class="cm-row"><div class="cm-t"><b>${esc(a.label)}</b><span>${esc(a.desc)}</span></div><button class="plain" data-act="cmdo:${a.id}" ${a.off?"disabled":""}>${a.cost?a.cost+" cr":a.mats?Object.entries(a.mats).map(([m,n])=>n+" "+Items.MATS[m].toLowerCase()).join(", "):"Go"}</button></div>`).join("")}
+        ${stock.length?`<div class="h-eyebrow" style="margin-top:8px">Today's stock</div>${stock.map(([d,r,min],i)=>{ const it={d,r}, locked=v<min; return `<div class="cm-row">${slotHTML(it)}<div class="cm-t">${nmHTML(it)}<span>${esc(Items.statLine(it))}${locked?` · needs standing ${min>0?"+":""}${min}`:""}</span></div><button class="plain" data-act="cmbuy:${i}" ${locked?"disabled":""}>${priceOf(f,d,r)} cr</button></div>`; }).join("")}`:""}
+        ${v<=-50&&!acts.length?`<p class="risk bad">They won't deal with you. Raise your standing in the field: truces, trades, and not shooting their people.</p>`:""}
+      </div></div></section>`;
+}
+function holoTick(){ cancelAnimationFrame(holoRAF); const c=document.getElementById("holo"); if(!c||panelKind!=="comms") return; drawHolo(c.getContext("2d"),performance.now()); holoRAF=requestAnimationFrame(holoTick); }
+const holoTmp=document.createElement("canvas"); holoTmp.width=48; holoTmp.height=64;
+function drawHolo(g,now){ const W=120,H=160; g.imageSmoothingEnabled=false; g.fillStyle="#030608"; g.fillRect(0,0,W,H);
+  const F=commsFac&&Sim.FACTIONS[commsFac], col=F?F.col:"#5ad0d0", t=(now-commsT0)/1000;
+  // projector pad and beam
+  const gr=g.createLinearGradient(0,H-12,0,10); gr.addColorStop(0,col+"55"); gr.addColorStop(1,col+"00"); g.fillStyle=gr; g.beginPath(); g.moveTo(30,H-12); g.lineTo(90,H-12); g.lineTo(108,8); g.lineTo(12,8); g.fill();
+  g.fillStyle="#1a1e22"; g.beginPath(); g.ellipse(60,H-10,36,7,0,0,6.283); g.fill(); g.strokeStyle=col; g.lineWidth=1.2; g.beginPath(); g.ellipse(60,H-11,30,5,0,0,6.283); g.stroke();
+  if(!F){ g.globalAlpha=.25+.1*Math.sin(now/300); drawEmblemF(g,Object.values(Sim.FACTIONS)[((now/2200)|0)%9].emblem,60,70,26,col); g.globalAlpha=1; holoScan(g,W,H,now); return; }
+  if(t<.75){ for(let i=0;i<260;i++){ g.fillStyle=Math.random()<.5?col:"#000"; g.fillRect(Math.random()*W|0,Math.random()*(H-20)|0,2,1); } g.fillStyle=col; g.font="8px monospace"; g.fillText("CONNECTING",33,80); return; }
+  // emblem behind, slowly turning
+  g.save(); g.globalAlpha=.16; g.translate(60,62); g.rotate(now/4000); drawEmblemF(g,F.emblem,0,0,40,col); g.restore();
+  // the representative, tinted into light
+  const fr=playerFrames({...F.rep.look,w:null}), spr=((now/700)|0)%2?fr.idle1:fr.idle0, g2=holoTmp.getContext("2d");
+  g2.clearRect(0,0,48,64); g2.imageSmoothingEnabled=false; g2.globalCompositeOperation="source-over"; g2.drawImage(spr,0,0,48,64);
+  g2.globalCompositeOperation="source-atop"; g2.fillStyle=col; g2.globalAlpha=.55; g2.fillRect(0,0,48,64); g2.globalAlpha=1; g2.globalCompositeOperation="source-over";
+  const fade=Math.min(1,(t-.75)/.5), flick=Math.random()<.04?.35:1, glitch=Math.random()<.06;
+  g.globalAlpha=.85*fade*flick; g.globalCompositeOperation="lighter";
+  if(glitch){ for(let y=0;y<64;y+=4){ const off=(Math.random()-.5)*6; g.drawImage(holoTmp,0,y,48,4,12+off,14+y*2,96,8); } }
+  else g.drawImage(holoTmp,12,14,96,128);
+  g.globalCompositeOperation="source-over"; g.globalAlpha=1; holoScan(g,W,H,now); }
+function holoScan(g,W,H,now){ g.fillStyle="rgba(0,0,0,.28)"; for(let y=(now/60|0)%3;y<H;y+=3) g.fillRect(0,y,W,1); const by=(now/18)%(H+30)-15; g.fillStyle="rgba(255,255,255,.05)"; g.fillRect(0,by,W,6); }
+
 function onTerminal(kind){ if(warp) return; openPanel(kind==="navtable"?"helm":kind); }
 function onSit(kind){ const name={pilot:"pilot's seat",copilot:"co-pilot's seat",nav:"navigator's seat",eng:"engineer's seat"}[kind]||"seat";
   toast(`You take the ${name}.${kind==="pilot"&&!isHost()?" The squad leader still has the controls.":""} Press ${mode==="pc"?"F":"USE"} for the star map.`);
@@ -187,7 +294,7 @@ function openPanel(kind,sub){ if(kind==="inventory"&&panelKind==="inventory"){ c
 function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S.mode==="ship") renderShipHud(); }
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
-  $("panel").dataset.kind=panelKind; $("p-body").innerHTML=P.view(); renderSync();
+  $("panel").dataset.kind=panelKind; $("p-body").innerHTML=P.view(); renderSync(); if(panelKind==="comms") holoTick();
   const MINE=[["inventory","Kit"],["rack","Loadout"],["stash","Stash"],["workbench","Fabricator"],["wardrobe","Wardrobe"],["bar","Galley"]];
   $("p-tabs").innerHTML=S&&S.mode==="ship"&&MINE.some(([k])=>k===panelKind)?MINE.map(([k,n])=>`<button data-tab="${k}" aria-current="${panelKind===k}">${n}</button>`).join(""):"";
   const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,c.width,c.height); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0,c.width,c.height); }
@@ -477,6 +584,8 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
     ${Lr.win?`<p>Brought home ${Lr.items.length} item${Lr.items.length===1?"":"s"} worth about ${Lr.value} cr. Everything is in the stash locker.</p>${Lr.items.length?`<ul>${Lr.items.slice(0,12).map(li).join("")}${Lr.items.length>12?`<li>and ${Lr.items.length-12} more</li>`:""}</ul>`:""}
       ${Lr.ammo&&Object.keys(Lr.ammo).length?`<div class="h-eyebrow">Ammo recovered</div>${ammoChips(Lr.ammo)}`:""}${Lr.mats&&MAT_T.some(t=>Lr.mats[t])?`<div class="h-eyebrow" style="margin-top:6px">Materials</div>${matChips(Lr.mats)}`:""}`
       :`<p>${Lr.cause||"You did not come back."} ${Lr.kit==="custom"?"Your custom kit is gone.":"You went in on the starter kit, so your stash is untouched."}</p>`}
+    ${Lr.bounty?`<p class="risk good">Concord bounty: ${Lr.bounty.n} raider${Lr.bounty.n>1?"s":""} put down. ${Lr.bounty.pay} cr paid.</p>`:""}
+    ${Lr.standing&&Lr.standing.length?`<div class="h-eyebrow">Standing</div><div class="chips">${Lr.standing.map(x=>{ const F=Sim.FACTIONS[x.f]; return F?`<span class="chip" style="border-color:${F.col};color:${x.n>0?"var(--bile)":"var(--blood2)"}">${esc(F.name)} ${x.n>0?"+":""}${x.n}</span>`:""; }).join("")}</div>`:""}
     <div class="bar-row"><button class="plain" data-act="close">Back to the ship</button></div></section>`; }
 
 // ---------- panel actions ----------
@@ -522,6 +631,9 @@ $("p-body").addEventListener("click",e=>{
     // stash + workbench
     case "scrap": { const it=byUid(x); if(!it) break; if(!arm("scrap:"+x)) break; const yv=scrapYield(it); profile.stash=profile.stash.filter(q=>q.uid!==x); stashSel=null;
       for(const m in yv) profile.mats[m]=(profile.mats[m]|0)+yv[m]; toast(`Broke down ${Items.name(it)}: ${MAT_T.filter(m=>yv[m]).map(m=>yv[m]+" "+Items.MATS[m].toLowerCase()).join(", ")}.`); save(); refreshLook(); break; }
+    case "call": if(commsFac!==x){ commsFac=x; commsT0=performance.now(); commsMsg=""; } break;
+    case "cmdo": commsDo(x); break;
+    case "cmbuy": commsBuy(+x); break;
     case "loot": send({type:"loot",id:panelSub,src:x,key:x==="inv"?+y:y}); break;
     case "lootall": send({type:"loot",id:panelSub,all:true}); break;
     case "craft": { const R2=Items.RECIPES.find(q=>q.id===x); if(!R2||R2.lvl>fabLvl()||!canPay(R2.cost)) break; pay(R2.cost); const out={...R2.out,r:Items.craftRarity(R2,fabLvl())}; World.grant(profile,out); const OD=Items.def(out.d);
@@ -583,12 +695,14 @@ function consumeKit(lo){
     profile.kit={...profile.kit,inv:[],ammo:{}}; for(const s of KIT_SLOTS) profile.kit[s]=null; }
   save();
 }
-function raidOpts(L){ return {gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart},site:L.name,mods:L.site.mods}; }
+function raidOpts(L,fx){ return {gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
+// what the station's crews know about you: your standing, and a merc you've paid for (used once)
+function factionSetup(by){ return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null}; }
 function deploy(){
   const L=here(); if(L.type!=="derelict") return;
   if(inSquad()){ if(Net.host){ Net.ready=true; Net.readyLo=loadoutFromKit(kitResolved()); squadPresence(); hostLaunch(); } else setReady(!Net.ready); return; }
   const lo=loadoutFromKit(kitResolved()); consumeKit(lo); closePanel(); PID="p1"; Net.settled=false;
-  S=Sim.newGame((Math.random()*2**32)>>>0,lo,raidOpts(L));
+  S=Sim.newGame((Math.random()*2**32)>>>0,lo,raidOpts(L)); if(profile.hire){ profile.hire=null; save(); }
   const C=World.siteContract(ship(),L.id); $("r-site").textContent=(C?"Contract · ":"Salvage · ")+L.name;
   rp={}; parts=[]; camInit=false; staticKey=""; target=null; stopTravel(); spectating=false; resize(); afterChange();
 }
@@ -611,6 +725,9 @@ function settlePersonal(){
     for(const t of MAT_T){ const n=(p.mats||{})[t]|0; if(n){ profile.mats[t]=(profile.mats[t]|0)+n; rep.mats[t]=n; } }
     profile.stats.extracts++; profile.stats.earned+=rep.value; profile.stats.best=Math.max(profile.stats.best,rep.value);
   } else profile.stats.deaths++;
+  // standing with the factions you met, and the Marshals' bounty on raiders
+  rep.standing=[]; for(const [f,n] of Object.entries(S.repd||{})){ if(!n) continue; const was=profile.rep[f]|0; profile.rep[f]=Math.max(-100,Math.min(100,was+n)); rep.standing.push({f,n}); }
+  { const k=S.kills||{}, b=((k.reaver|0)+(k.blacksun|0)+(k.choir|0)); if(b&&(profile.rep.marshal|0)>=0){ const pay=b*40; profile.credits+=pay; rep.bounty={n:b,pay}; } }
   if(p.food!=null){ profile.food=win?p.food:Math.max(25,p.food); profile.water=win?p.water:Math.max(25,p.water); }
   profile.active=null; profile.last=rep; save();
 }

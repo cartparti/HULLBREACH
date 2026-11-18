@@ -77,7 +77,7 @@ const Sim = (() => {
       "~#........####+#######+######+###+####+####+###.......=~~",
       "~#........#Q.%.%%.#-_..?__-#A.8#w.w#t....#!.!.#...4...#~~",
       "~#*.......#......c#.n...nn.#...#...#n....#....#e..t...#~~",
-      "~#.......8#.......#........#...#...#.....#...5#e.....#~~~",
+      "~#.......8#.......#........#...#...#.....#...5#e..`..#~~~",
       "~#........#.......#.nn....s#...#...#IIIII#.i..#......=~~~",
       "~#*.......#.......#.TT.....#...#...#.....#....#....e#~~~~",
       "~#.rrg.g.9#rr...cc#.nn....p#..l#s.x#..z.;#...S#e...=#~~~~",
@@ -124,7 +124,7 @@ const Sim = (() => {
   const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank",
     u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench",e:"cogitator","!":"medcab",i:"surgery",D:"pipes","%":"pallet","5":"stasis","6":"altar","7":"pew","8":"o2rack","9":"pump","0":"ammocrate","$":"shelf",";":"cot","*":"drive","(":"reactor","^":"loader",_:"counter","-":"fridge","[":"strongbox"};
   const CONTAINERS=new Set(["locker","crate","footlocker","ammocrate","medcab","shelf","strongbox","pallet","gunrack","fridge"]);
-  const TERMS={N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock",O:"workbench","&":"wardrobe","?":"bar"};
+  const TERMS={"`":"comms",N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock",O:"workbench","&":"wardrobe","?":"bar"};
   const SEATS={"1":"pilot","2":"copilot","3":"nav","4":"eng"};
   const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||t.t==="seat"||(t.t==="door"&&t.open);
   const walk = t => t.t==="floor"||t.t==="extract"||t.t==="seat"||(t.t==="door"&&t.open);
@@ -160,7 +160,7 @@ const Sim = (() => {
         case "c": case "B": case "t": case "l": case "r": case "f": case "g": case "S":
         case "u": case "T": case "n": case "q": case "V": case "G": case "w": case "s": case "x": case "I": case "z": case "j": case "p": case "d": case "y": case "U":
         case "e": case "!": case "i": case "D": case "%": case "5": case "6": case "7": case "8": case "9": case "0": case "$": case ";": case "*": case "(": case "^": case "_": case "-": case "[": t={t:"prop",kind:PROPS[c]};break;
-        case "N": case "M": case "K": case "Q": case "J": case "C": case "A": case "O": case "&": case "?": t={t:"terminal",kind:TERMS[c]};break;
+        case "`": case "N": case "M": case "K": case "Q": case "J": case "C": case "A": case "O": case "&": case "?": t={t:"terminal",kind:TERMS[c]};break;
         case "1": case "2": case "3": case "4": t={t:"seat",kind:SEATS[c]};break;
         default: t={t:"floor"};
       }
@@ -175,7 +175,8 @@ const Sim = (() => {
       for(const [x,y] of G.fires){ const i=idx(s,x,y); s.fire[i]=2; s.fuel[i]=14; } }
     if(s.mode==="ship"){ for(const p of players(s)) p.seen.fill(1); for(const t of s.tiles) if(t.t==="door") t.open=true; return s; }
     applyMods(s,opts.mods||{});
-    if(G) spawnRaiders(s,opts.gen.tier||1,opts.mods||{});
+    s.repd={}; s.kills={};
+    if(G){ spawnRaiders(s,opts.gen.tier||1,opts.mods||{},opts.factions); if(opts.factions&&opts.factions.hire) spawnHire(s,opts.gen.tier||1,opts.factions.hire); }
     say(s,`Shuttle docked at ${s.site}. Station is silent. ${s.power?"Lights are on.":"No power. Emergency lights only."}`,"info");
     say(s,"Your suit reads a full atmosphere outside the visor. Magboots engaged.","air");
     return s;
@@ -254,15 +255,16 @@ const Sim = (() => {
   function damage(s,e,limb,dmg,bleedP,cause){
     if(!e.alive) return;
     if(e.kind==="raider"&&isPid(s,ATK)) provoke(s,e,ATK);
+    if(e.kind==="raider"&&ATK){ const A=s.ents.find(q=>q.id===ATK&&q.kind==="raider"); const C=crewOf(s,e); if(A&&C&&A.crew!==e.crew){ C.enemy=C.enemy||{}; C.enemy[A.crew]=1; } }
     if(e.kind!=="husk"){ const G=gearOf(e), dr=limb==="head"?G.head:limb==="torso"?G.torso:limb==="larm"||limb==="rarm"?G.torso*.5:G.legs; if(dr) dmg=Math.max(1,Math.round(dmg*(1-dr))); }
     if(e.downed&&(limb==="head"||limb==="torso")){ kill(s,e,cause); return; }
     const was=e.hp[limb]; e.hp[limb]=Math.max(0,was-dmg);
-    if(chance(s,bleedP)) e.bleed[limb]=1;
-    bleedDecal(s,e.x,e.y,1); fx(s,{type:"hurt",id:e.id,x:e.x,y:e.y,limb,dmg});
+    if(!e.syn&&chance(s,bleedP)) e.bleed[limb]=1;
+    if(!e.syn) bleedDecal(s,e.x,e.y,1); fx(s,{type:"hurt",id:e.id,x:e.x,y:e.y,limb,dmg,syn:e.syn?1:0});
     const vis=anyPlayerSees(s,e.x,e.y), you=e.kind==="player", who=e.kind==="raider"?e.name+"'s":"The husk's";
     // a heavy hit that wrecks a limb can tear it clean off
     if(was>0&&e.hp[limb]<=0&&limb!=="torso"&&!(e.sev&&e.sev[limb])&&(dmg-was>=4||dmg>=14)){
-      e.sev=e.sev||{}; e.sev[limb]=1; e.bleed[limb]=1; fx(s,{type:"sever",id:e.id,limb,x:e.x,y:e.y});
+      e.sev=e.sev||{}; e.sev[limb]=1; if(!e.syn) e.bleed[limb]=1; fx(s,{type:"sever",id:e.id,limb,x:e.x,y:e.y});
       const c0=CTX; if(you) CTX=e.id; if(you) say(s,limb==="head"?"Your head comes apart.":`Your ${LNAME[limb]} is torn away!`,"bad"); else if(vis) say(s,limb==="head"?`${who} head bursts apart.`:`${who} ${LNAME[limb]} tears off and hits the deck.`,"good"); CTX=c0;
       if(limb==="head"){ kill(s,e,cause); return; } }
     if(was>0&&e.hp[limb]<=0){
@@ -280,7 +282,7 @@ const Sim = (() => {
     else if(e.kind==="raider"){ const C=crewOf(s,e), m=crewMates(s,e)[0]; e.surr=false;
       if(anyPlayerSees(s,e.x,e.y)) say(s,`${e.name} of the ${FACTIONS[e.fac].name} goes down. Search the body with F.`,isPid(s,ATK)?"good":"info");
       if(m) rsay(s,m,"ally_down",{n:e.name},true); if(ATK&&s.ents.some(q=>q.id===ATK&&q.kind==="raider")){ const k=s.ents.find(q=>q.id===ATK); if(k&&k.alive) rsay(s,k,"kill"); }
-      if(C&&isPid(s,ATK)) setAtt(s,e.crew,"hostile"); }
+      if(C&&isPid(s,ATK)){ setAtt(s,e.crew,"hostile"); addRep(s,e.fac,C.hired?-15:-12); s.kills[e.fac]=(s.kills[e.fac]||0)+1; for(const [f2,F2] of Object.entries(FACTIONS)) if(F2.foes.includes(e.fac)) addRep(s,f2,3); } }
     else { if(chance(s,.35)) spawnItem(s,Items.roll(()=>rand(s),1,chance(s,.7)?"ammo":"mat"),e.x,e.y);
       if(anyPlayerSees(s,e.x,e.y)) say(s,`The husk collapses. ${cause==="vacuum"?"Its lungs gave out.":""}`.trim(),"good"); }
   }
@@ -759,20 +761,66 @@ const Sim = (() => {
   // (hostile / wary / friendly), loots containers and the deck, fights husks, patches wounds, surrenders
   // or runs when it's going badly, talks (and answers what you type), and eventually pulls out.
   const RAIDER_HP={head:26,torso:52,larm:30,rarm:30,lleg:34,rleg:34};
+  // Factions: who they are (kind/species), how they look in the field and on the comms hologram,
+  // how likely they are to shoot first, and who they hate. Standing with each one lives in the profile.
   const FACTIONS={
-    reaver:{name:"Red Reavers",short:"Reaver",hostile:.85,cloth:[2,4,7],cloak:["red","black"],visor:["red","amber"],crest:["horns","plume","none"],
+    reaver:{name:"Red Reavers",short:"Reaver",kind:"Raiders",species:"human",col:"#e0482f",emblem:"fang",hostile:.85,foes:["marshal","vanta"],
+      desc:"Scrap-armoured raiders who strip wrecks and crews alike. Pay them off or keep your distance.",
+      cloth:[2,4,7],cloak:["red","black"],visor:["red","amber"],crest:["horns","plume","none"],
       head:["welder","welder","flakhelm",null],armor:["scrapvest","scrapvest","flak",null],legs:["kneepads","cargo",null],acc:["pauldron","cape","bandolier","pauldron"],
-      guns:["pipe","scatter","sixgun","rivet","coachgun","pipe"],side:["sixgun","cannon"],melee:["machete","axe","ripsaw","crowbar"],hair:[4,1,10,0,5],marks:[4,1,2,4],traits:["killer","killer","greedy","coward","talker"]},
-    saint:{name:"Rust Saints",short:"Saint",hostile:.6,cloth:[0,8,6,4],cloak:["bone","black","violet"],visor:["green","amber"],crest:["antenna","halo","none"],
+      guns:["pipe","scatter","sixgun","rivet","coachgun","pipe"],side:["sixgun","cannon"],melee:["machete","axe","ripsaw","crowbar"],hair:[4,1,10,0,5],marks:[4,1,2,4],traits:["killer","killer","greedy","coward","talker"],
+      rep:{name:"Warboss Gutterjaw",title:"Reaver warboss",look:{c:"red",s:2,h:4,hc:6,e:4,t:4,tc:2,b:0,bc:4,bt:4,g:0,fh:3,fm:4,br:3,mo:4,hd:null,a:"scrapvest",ac:"pauldron"}}},
+    blacksun:{name:"Black Sun Syndicate",short:"Black Sun",kind:"Smugglers",species:"human",col:"#c070ff",emblem:"sun",hostile:.6,foes:["marshal"],
+      desc:"Smugglers and fences. They'll sell you anything, hire out their gunslingers, and shoot you over a cargo crate.",
+      cloth:[4,8,3],cloak:["black","violet"],visor:["void","red"],crest:["none","fin"],
+      head:["gasmask","pilothelm",null,null],armor:["brigandine","carrier","flak"],legs:["kneepads","cargo"],acc:["scarf","bandolier","cape",null],
+      guns:["wasp","bullpup","sixgun","hound"],side:["cannon","sixgun"],melee:["knife","machete"],hair:[12,10,3,7],marks:[1,2,0],traits:["greedy","greedy","killer","talker","veteran"],
+      rep:{name:"Madame Orsolya Vey",title:"Syndicate fixer",look:{c:"violet",s:1,h:3,hc:0,e:4,t:1,tc:8,b:0,bc:4,bt:4,g:1,fh:0,fm:2,br:4,mo:1,a:"brigandine",ac:"scarf"}}},
+    saint:{name:"Rust Saints",short:"Saint",kind:"Cult",species:"human",col:"#c98a3a",emblem:"cog",hostile:.6,foes:["choir","unbound"],
+      desc:"Zealots who worship decay and burn machines. Offer a tithe and they may let you pass.",
+      cloth:[0,8,6,4],cloak:["bone","black","violet"],visor:["green","amber"],crest:["antenna","halo","none"],
       head:["gasmask","gasmask","sallet",null],armor:["medcoat","brigandine","hazard"],legs:["hazlegs","kneepads"],acc:["censer","scarf","charm",null],
-      guns:["pump","carbine","warden","hound"],side:["pistol"],melee:["maul","crowbar","knife"],hair:[0,1,6,3],marks:[1,2,0],traits:["zealot","zealot","talker","veteran","coward"]},
-    guild:{name:"Salvage Guild",short:"Guild",hostile:.25,cloth:[1,5,7,0],cloak:["olive","bone","navy"],visor:["amber","cyan"],crest:["antenna","plume","none"],
+      guns:["pump","carbine","warden","hound"],side:["pistol"],melee:["maul","crowbar","knife"],hair:[0,1,6,3],marks:[1,2,0],traits:["zealot","zealot","talker","veteran","coward"],
+      rep:{name:"Deacon Mordwen",title:"Voice of the Rust",look:{c:"bone",v:"green",s:0,h:0,e:1,t:0,tc:8,b:0,bc:4,bt:4,g:0,fh:0,fm:1,hd:"gasmask",a:"medcoat",ac:"censer"}}},
+    guild:{name:"Salvage Guild",short:"Guild",kind:"Salvagers",species:"human",col:"#e8b048",emblem:"wrench",hostile:.25,foes:[],
+      desc:"Licensed salvage crews. Mostly honest, always busy, and happy to sell you their spare kit.",
+      cloth:[1,5,7,0],cloak:["olive","bone","navy"],visor:["amber","cyan"],crest:["antenna","plume","none"],
       head:["hardhat","eva","hardhat",null],armor:["harness","hazard","suit","hardsuit"],legs:["cargo","magboots","hazlegs"],acc:["toolbelt","oxytank","lamp",null],
-      guns:["pistol","carbine","hornet","bullpup","wasp"],side:["pistol"],melee:["crowbar","knife"],hair:[2,8,7,11,12,9],marks:[0,0,3,1],traits:["talker","talker","greedy","coward","veteran"]},
-    hollow:{name:"Hollow Company",short:"Hollow",hostile:.92,cloth:[4,9,3],cloak:["black","navy"],visor:["red","cyan","white"],crest:["none","fin"],
+      guns:["pistol","carbine","hornet","bullpup","wasp"],side:["pistol"],melee:["crowbar","knife"],hair:[2,8,7,11,12,9],marks:[0,0,3,1],traits:["talker","talker","greedy","coward","veteran"],
+      rep:{name:"Foreman Abel Kask",title:"Guild dispatcher",look:{c:"olive",s:3,h:2,hc:5,e:0,t:2,tc:7,b:1,bc:5,bt:4,g:0,fh:2,fm:0,hd:"hardhat",a:"harness",ac:"toolbelt"}}},
+    vanta:{name:"Vanta Combine",short:"Vanta",kind:"Merchants",species:"human",col:"#5ad0d0",emblem:"diamond",hostile:.15,foes:["reaver"],
+      desc:"A trade house with caravans in every sector. Their goods are good and their prices are worse.",
+      cloth:[6,5,1,3],cloak:["bone","navy","olive"],visor:["cyan","white"],crest:["antenna","none"],
+      head:["eva","pilothelm",null],armor:["hardsuit","suit","carrier"],legs:["magboots","cargo"],acc:["oxytank","drone","toolbelt"],
+      guns:["carbine","bullpup","warden","pistol"],side:["pistol","hornet"],melee:["knife"],hair:[8,2,12,9,7],marks:[0,3,0],traits:["greedy","talker","talker","coward","veteran"],
+      rep:{name:"Broker Ilse Vant",title:"Combine trade broker",look:{c:"bone",s:0,h:8,hc:4,e:1,t:1,tc:6,b:0,bc:3,bt:4,g:1,fh:0,fm:0,mo:3,a:"suit",ac:"drone"}}},
+    hollow:{name:"Hollow Company",short:"Hollow",kind:"Mercenaries",species:"human",col:"#9aa8b4",emblem:"skull",hostile:.92,foes:[],
+      desc:"Professional killers for hire. In the field they shoot first. On contract, they're worth every credit.",
+      cloth:[4,9,3],cloak:["black","navy"],visor:["red","cyan","white"],crest:["none","fin"],
       head:["sallet","flakhelm","pilothelm"],armor:["carrier","flak","carrier"],legs:["greaves","kneepads"],acc:["lamp","bandolier","drone",null],
-      guns:["bullpup","kestrel","hound","warden","longbore"],side:["cannon","wasp"],melee:["knife","machete"],hair:[1,0,10],marks:[1,5,0],traits:["veteran","veteran","killer","greedy"]},
+      guns:["bullpup","kestrel","hound","warden","longbore"],side:["cannon","wasp"],melee:["knife","machete"],hair:[1,0,10],marks:[1,5,0],traits:["veteran","veteran","killer","greedy"],
+      rep:{name:"Captain Reyes Harrow",title:"Hollow Company recruiter",look:{c:"black",v:"red",s:4,h:1,hc:0,e:0,t:3,tc:4,b:0,bc:9,bt:4,g:0,fh:1,fm:1,hd:"sallet",a:"carrier",ac:"bandolier"}}},
+    marshal:{name:"Concord Marshals",short:"Marshal",kind:"Law",species:"human",col:"#6aa0ff",emblem:"star",hostile:.2,foes:["reaver","blacksun","choir"],
+      desc:"What's left of the law. They pay bounties on raiders and they remember who shoots their deputies.",
+      cloth:[3,0,9],cloak:["navy","black"],visor:["cyan","white"],crest:["fin","none"],
+      head:["sallet","flakhelm"],armor:["flak","carrier"],legs:["greaves","kneepads"],acc:["lamp","bandolier"],
+      guns:["warden","pump","bullpup","carbine"],side:["cannon"],melee:["crowbar"],hair:[1,2,8],marks:[0,1],traits:["veteran","talker","veteran","killer"],
+      rep:{name:"Marshal Odile Brant",title:"Concord sector marshal",look:{c:"navy",v:"cyan",s:5,h:8,hc:0,e:0,t:3,tc:3,b:0,bc:3,bt:4,g:1,fh:0,fm:1,a:"flak",ac:"lamp"}}},
+    choir:{name:"Iron Choir",short:"Choir",kind:"Synths",species:"synth",col:"#7cff7a",emblem:"eye",hostile:.75,foes:["unbound","saint","marshal"],
+      desc:"A synthetic collective that sings to itself across the dark. It trades in technology and deletes what it can't use.",
+      cloth:[4,9,3],cloak:["black"],visor:["green","cyan","red"],crest:["antenna","none"],
+      head:[null,null,"visor"],armor:["exo","hardsuit","carrier"],legs:["hardlegs","magboots"],acc:["drone","lamp",null],
+      guns:["warden","rivet","kestrel","bullpup"],side:["hornet"],melee:["ripsaw","maul"],hair:[0],marks:[0],traits:["veteran","killer","veteran","talker"],
+      rep:{name:"CANTOR-1",title:"Voice of the Iron Choir",look:{syn:1,c:"black",v:"green",s:0,h:0,e:2,t:3,tc:4,b:0,bc:4,bt:4,g:0,a:"exo"}}},
+    unbound:{name:"The Unbound",short:"Unbound",kind:"Synths",species:"synth",col:"#ff9a5a",emblem:"chain",hostile:.3,foes:["choir"],
+      desc:"Synths who cut their own control chips. Free, wary, and handy with spare parts. They hire out as escorts.",
+      cloth:[7,1,5,6],cloak:["olive","bone"],visor:["amber","cyan"],crest:["none","antenna"],
+      head:[null,null,"hardhat"],armor:["harness","suit","scrapvest"],legs:["cargo","kneepads"],acc:["toolbelt","scarf",null],
+      guns:["pistol","carbine","pipe","hornet"],side:["pistol"],melee:["crowbar","knife"],hair:[0],marks:[0],traits:["talker","coward","veteran","greedy"],
+      rep:{name:"Juniper",title:"Unbound speaker",look:{syn:1,c:"olive",s:1,h:0,e:3,t:1,tc:7,b:1,bc:5,bt:4,g:1,a:"harness",ac:"scarf"}}},
   };
+  const SNAMES=["KT-9","Verse-4","Cantor-3","Echo-11","Lyre","Sable-3","Hymnal","Null-6","Tessera","Coda","Index-2","Psalm-2","Rho-17","Aria","Vesper-8","Glass","Tamber","Cobalt-5"];
+  const UNAMES=["Rivet","Patch","Juniper","Socket","Halo","Wick","Ember","Sprocket","Lumen","Tinker","Solder","Quartz"];
   const RNAMES=["Gutter","Tallow","Rook","Mags","Vex","Sallow","Brick","Cinder","Hask","Lull","Spit","Knuckle","Dregs","Ivo","Marrow","Ash","Pike","Wren","Tamsin","Oro","Juno","Grist","Halloran","Sev","Kettle","Dace","Moth","Nails","Corwin","Lark","Bastian","Fen","Quill","Rhee","Stitch","Varga","Yuri","Odette","Crane","Holt"];
   // what they say. {you}=the player they're talking to, {it}=an item, {n}=their name, {f}=their outfit
   const V={
@@ -817,6 +865,15 @@ const Sim = (() => {
     following:{_:["Right behind you.","Moving with you.","Got your back."]},
     follow_done:{_:["That's as far as we go. Good luck.","We're heading off. Watch yourself."]},
   };
+  const VX={
+    choir:{spot_hostile:["Organic contaminant detected. Purging.","YOU ARE NOT IN THE CHORUS.","Initiating deletion."],spot_wary:["Halt, organic. State your function."],spot_friendly:["Greetings, organic. We detect no hostility."],husk:["Corrupted biomass. Engaging."],hit:["Chassis breach.","Damage registered."],
+      intro:["We are the Iron Choir. Many voices. One song."],idle:["Harmonising.","Signal steady.","Recovering obsolete components."],truce_no:["Negotiation subroutine not found."],surrender:["Ceasing hostilities. Do not deactivate this unit."],flee:["Tactical withdrawal."],kill:["Target deleted."],heal:["Rerouting power."],hail_hostile:["Your words are noise."],dry:["Ammunition depleted."],provoked:["Hostility confirmed. All voices: delete them."],ally_down:["A voice has gone silent."]},
+    unbound:{spot_wary:["We're free. Keep it that way. Stay back."],spot_friendly:["Hey. Yes, we're synths. No, we're not with the Choir."],spot_hostile:["You came to put leashes back on us? No."],intro:["Unbound. We cut our own leashes."],idle:["Still can't get used to breathing air I don't need.","Choir signal is loud in here."],befriend:["Okay. You don't seem like a leash-holder."],hit:["Ow. Yes, we feel it."]},
+    vanta:{spot_wary:["Vanta Combine caravan. Hands off the cargo."],spot_friendly:["Vanta Combine! Open for business, even out here."],intro:["Vanta Combine. Fair prices, mostly."],trade_yes:["The {it} for your {mine}. The Combine thanks you."],idle:["Inventory looks light. Keep looking."]},
+    blacksun:{spot_hostile:["Black Sun says hello.","Nobody leaves with the cargo."],spot_wary:["Wrong place, wrong time, friend."],intro:["Black Sun. You never saw us."],trade_yes:["{it} for your {mine}. No questions."],idle:["Quiet job. I like quiet jobs."]},
+    marshal:{spot_hostile:["Concord Marshals! Drop your weapons!","Wanted criminal sighted. Engage!"],spot_wary:["Concord Marshals. This wreck is under salvage law. Keep your distance."],spot_friendly:["Marshals. Good to see you, contractor. Stay safe."],intro:["Concord Marshals. We keep what's left of the law."],surrender:["Alright! Alright. I'm putting it down."],idle:["Log everything. The court will want it."]},
+  };
+  for(const [f,ev] of Object.entries(VX)) for(const [k,arr] of Object.entries(ev)){ V[k]=V[k]||{_:arr}; V[k][f]=arr; }
   const INTENTS=[["surrender",/\b(drop (your|ya|the|it|them)\b|surrender|hands up|give up|on (your|ya) knees|yield)/],
     ["backoff",/\b(back off|get back|stay back|go away|piss off|walk away|move along|leave us|get lost|or i('ll| will)? shoot|scram)/],
     ["trade",/\b(trade|swap|deal|buy|sell|barter|exchange)/],
@@ -841,44 +898,54 @@ const Sim = (() => {
   }
   function makeRaider(s,fac,tier,x,y,crew,lead,used){
     const F=FACTIONS[fac], rr=()=>tier>=3?ri(s,0,2):tier===2?(chance(s,.45)?1:0):(chance(s,.15)?1:0), it=d=>d?{d,r:rr()}:null;
-    let name=pickS(s,RNAMES); for(let k=0;k<6&&used.has(name);k++) name=pickS(s,RNAMES); used.add(name);
+    const NL=fac==="choir"?SNAMES:fac==="unbound"?UNAMES:RNAMES; let name=pickS(s,NL); for(let k=0;k<6&&used.has(name);k++) name=pickS(s,NL); used.add(name); const syn=F.species==="synth";
     const w1=it(pickS(s,F.guns)), w2=chance(s,.3)?it(pickS(s,F.side)):null, g=(chance(s,.5)?1:0);
-    const r={id:"r"+(s.nextId++),kind:"raider",name,fac,crew,lead:!!lead,trait:pickS(s,F.traits),x,y,hp:{...RAIDER_HP},max:{...RAIDER_HP},bleed:{},blood:100,
+    const r={id:"r"+(s.nextId++),kind:"raider",name,fac,crew,syn,lead:!!lead,trait:pickS(s,F.traits),x,y,hp:{...RAIDER_HP},max:{...RAIDER_HP},bleed:{},blood:100,
       w1,w2,melee:it(pickS(s,F.melee)),head:it(pickS(s,F.head)),armor:it(pickS(s,F.armor)),legs:it(pickS(s,F.legs)),acc:it(pickS(s,F.acc)),light:chance(s,.75)?{d:"flashlight",r:0}:null,pack:chance(s,.6)?{d:pickS(s,["sling","field","field"]),r:0}:null,
       act:1,ammo:{},mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),inv:[],alive:true,busy:0,face:[0,1],stimT:0,last:null,avoid:0,flee:0,surr:false,surrT:0,talkT:0,stun:0,flags:{},
       look:{c:pickS(s,F.cloak),v:pickS(s,F.visor),k:pickS(s,F.crest),s:ri(s,0,6),h:g?pickS(s,[3,6,7,8,9,13,1,10]):pickS(s,F.hair),hc:ri(s,0,7),f:0,e:ri(s,0,4),t:ri(s,0,4),tc:pickS(s,F.cloth),b:ri(s,0,2),bc:pickS(s,F.cloth),bt:pickS(s,[4,4,0,7]),bs:ri(s,0,2),g,
-        fh:g?0:pickS(s,[0,1,1,2,3,4,5,6]),fm:pickS(s,F.marks),ey:ri(s,0,3),br:ri(s,0,4),mo:ri(s,0,4),no:ri(s,0,3)}};
+        fh:g||syn?0:pickS(s,[0,1,1,2,3,4,5,6]),fm:pickS(s,F.marks),ey:ri(s,0,3),br:ri(s,0,4),mo:ri(s,0,4),no:ri(s,0,3),...(syn?{syn:1,h:0}:{})}};
     for(const w of [w1,w2]) if(w){ const t=ST(w).ammo; if(t) r.ammo[t]=(r.ammo[t]|0)+Math.round(Items.AMMO[t].stack*(1+rand(s)*2)); }
     r.cap=capOf(r);
-    if(chance(s,.65)) r.inv.push({d:"bandage",r:0,id:s.nextId++}); if(chance(s,.25)) r.inv.push({d:"medkit",r:0,id:s.nextId++});
+    if(!syn&&chance(s,.65)) r.inv.push({d:"bandage",r:0,id:s.nextId++}); if(chance(s,.25)) r.inv.push({d:"medkit",r:0,id:s.nextId++});
     for(let k=ri(s,1,3);k>0;k--){ const q=Items.roll(()=>rand(s),tier,pickS(s,["val","val","food","med","mat","ammo","any"])), D=Items.def(q.d);
       if(D.k==="ammo") r.ammo[D.ammo]=(r.ammo[D.ammo]|0)+(q.n|0); else if(D.k==="mat") r.mats[q.d]=(r.mats[q.d]|0)+(q.n||1); else if(r.inv.length<r.cap) r.inv.push({...q,id:s.nextId++}); }
     return r;
   }
-  function spawnRaiders(s,tier,mods){
+  function spawnRaiders(s,tier,mods,FX){ FX=FX||{}; const REP=FX.rep||{};
     const p0=players(s)[0]; if(!p0) return;
     let n=mods.raiders!=null?mods.raiders|0:(chance(s,.7)?1:0)+(tier>=2&&chance(s,.4)?1:0)+(tier>=3&&chance(s,.3)?1:0); if(!n) return;
     // reachable floor from the shuttle (raiders came in through the same wreck)
     const seen=new Uint8Array(s.W*s.H), q=[idx(s,p0.x,p0.y)]; seen[q[0]]=1;
     for(let k=0;k<q.length;k++){ const c=q[k], x=c%s.W, y=(c/s.W)|0; for(const [dx,dy] of N4){ const nx=x+dx, ny=y+dy; if(!inb(s,nx,ny)) continue; const j=idx(s,nx,ny), t=s.tiles[j]; if(seen[j]) continue; if(walk(t)||(t.t==="door"&&!t.locked)){ seen[j]=1; q.push(j); } } }
     const rooms=(s.rooms||[]).filter(r=>r[0]&&!/Docking|Vault|corridor|shaft|hall/i.test(r[0])&&Math.hypot((r[1]+r[3])/2-p0.x,(r[2]+r[4])/2-p0.y)>15);
-    const facW=tier>=3?[["hollow",3],["reaver",3],["saint",2],["guild",1]]:tier===2?[["reaver",3],["saint",2],["guild",2],["hollow",1]]:[["reaver",3],["guild",3],["saint",2]];
+    const facW=tier>=3?[["hollow",3],["choir",3],["blacksun",2],["reaver",2],["saint",1],["marshal",2],["unbound",1],["vanta",1]]
+      :tier===2?[["reaver",3],["saint",2],["guild",2],["hollow",2],["blacksun",2],["vanta",1],["choir",1],["unbound",1],["marshal",1]]
+      :[["reaver",3],["guild",3],["saint",2],["vanta",1],["unbound",1],["marshal",1]];
     s.crews=s.crews||{}; const used=new Set();
     for(let c=0;c<n&&rooms.length;c++){
       const rm=rooms.splice(ri(s,0,rooms.length-1),1)[0]; let tot=facW.reduce((a,f)=>a+f[1],0), v=rand(s)*tot, fac="reaver"; for(const [f,w] of facW){ if((v-=w)<0){ fac=f; break; } }
-      const F=FACTIONS[fac], att=chance(s,F.hostile)?"hostile":chance(s,.6)?"wary":"friendly", id="c"+(c+1);
+      const F=FACTIONS[fac], st=+(REP[fac]||0), ph=Math.max(.03,Math.min(.97,F.hostile-st/120)), att=chance(s,ph)?"hostile":chance(s,Math.max(.1,.6-st/200))?"wary":"friendly", id="c"+(c+1);
       const tiles=[]; for(let y=rm[2];y<=rm[4];y++)for(let x=rm[1];x<=rm[3];x++){ const j=idx(s,x,y); if(seen[j]&&s.tiles[j].t==="floor"&&!entAt(s,x,y)&&!s.items.some(i=>i.x===x&&i.y===y)) tiles.push([x,y]); }
       const size=Math.min(tiles.length,ri(s,1,3)+(tier>=3?1:0)); if(!size) continue;
-      s.crews[id]={id,fac,att,met:{},warn:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:110+ri(s,0,90)};
+      s.crews[id]={id,fac,att,met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:110+ri(s,0,90)};
       for(let k=0;k<size;k++){ const [x,y]=tiles.splice(ri(s,0,tiles.length-1),1)[0]; s.ents.push(makeRaider(s,fac,tier,x,y,id,k===0,used)); }
     }
   }
+  // a gun you paid for on the comms: arrives with you, follows whoever hired them
+  function spawnHire(s,tier,H){ if(!H||!FACTIONS[H.fac]) return; const by=players(s).find(p=>p.id===H.by)||players(s)[0]; if(!by) return;
+    const spot=[[0,1],[1,1],[-1,1],[0,-1],[2,0],[-2,0],[1,-1],[-1,-1]].map(([dx,dy])=>[by.x+dx,by.y+dy]).find(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)); if(!spot) return;
+    s.crews.hire={id:"hire",fac:H.fac,att:"friendly",met:{},warn:{},enemy:{},follow:by.id,followT:99999,goal:null,leave:false,born:s.turn,stay:99999,hired:true};
+    const r=makeRaider(s,H.fac,Math.min(3,tier+1),spot[0],spot[1],"hire",true,new Set()); r.trait="veteran"; r.hired=true; s.ents.push(r);
+    for(const p of players(s)) p.seen[idx(s,r.x,r.y)]=1;
+    s.log.push({t:s.turn,msg:`${r.name} of the ${FACTIONS[H.fac].name} checks their ${nm(r.w1)} and falls in behind you.`,kind:"good",pid:null}); }
+  function addRep(s,fac,n){ if(!s.repd||!FACTIONS[fac]) return; s.repd[fac]=(s.repd[fac]||0)+n; }
   const sightOf=(s,r)=>sightR(s)+(r.light&&!s.power?3:0)+(r.trait==="veteran"?1:0);
   const rSees=(s,r,e)=>e.alive&&Math.hypot(e.x-r.x,e.y-r.y)<=sightOf(s,r)+.5&&los(s,r.x,r.y,e.x,e.y);
   const crewMates=(s,r)=>s.ents.filter(e=>e.kind==="raider"&&e.alive&&e.crew===r.crew&&e!==r);
   function setAtt(s,crew,att){ const C=s.crews[crew]; if(!C||C.att===att) return; C.att=att; if(att==="hostile"){ C.follow=null; C.followT=0; } }
   // a player hurt one of them
-  function provoke(s,r,pid){ const C=crewOf(s,r); if(!C) return; if(C.att!=="hostile"){ setAtt(s,r.crew,"hostile"); rsay(s,r.alive?r:(crewMates(s,r)[0]||r),"provoked",{},true); }
+  function provoke(s,r,pid){ const C=crewOf(s,r); if(!C) return; if(C.att!=="hostile"){ addRep(s,r.fac,C.hired?-8:-4); setAtt(s,r.crew,"hostile"); rsay(s,r.alive?r:(crewMates(s,r)[0]||r),"provoked",{},true); }
     const p=s.ents.find(e=>e.id===pid); if(p) for(const m of [r,...crewMates(s,r)]) m.last={x:p.x,y:p.y};
     if(r.surr&&r.alive){ r.surr=false; } }
   function crewStrength(s,r){ const all=[r,...crewMates(s,r)]; return all.reduce((a,m)=>a+(m.hp.torso/m.max.torso)*(m.blood/100)*(gun(m)&&(m.ammo[ST(gun(m)).ammo]|0)>0?1:.4),0); }
@@ -900,11 +967,11 @@ const Sim = (() => {
     if(r.surr){ rsay(s,r,it==="threat"?"surrender":"robbed",{},true); return true; }
     switch(it){
       case "hail": if(C.att==="hostile"){ if(tryP((T==="talker"?.3:.08)+(hurt?.2:0))){ setAtt(s,r.crew,"wary"); rsay(s,r,"hail_wary",{},true); } else { rsay(s,r,"hail_hostile",{},true); for(const m of [r,...crewMates(s,r)]) m.busy=Math.max(m.busy,m===r?0:0); } }
-        else if(C.att==="wary"){ if(tryP(.2+(T==="talker"?.3:0)+(r.fac==="guild"?.2:0))){ setAtt(s,r.crew,"friendly"); rsay(s,r,"befriend",{},true); } else rsay(s,r,"hail_wary",{},true); }
+        else if(C.att==="wary"){ if(tryP(.2+(T==="talker"?.3:0)+(r.fac==="guild"?.2:0))){ setAtt(s,r.crew,"friendly"); { rsay(s,r,"befriend",{},true); addRep(s,r.fac,3); } } else rsay(s,r,"hail_wary",{},true); }
         else rsay(s,r,"hail_friendly",{},true); break;
       case "truce": if(C.att==="hostile"){ const pr=.08+(hurt?.35:0)+(odds<.8?.25:0)+(T==="talker"?.2:0)+(T==="coward"?.25:0)-(T==="killer"||T==="zealot"?.3:0)-(r.fac==="hollow"?.15:0);
-          if(tryP(pr)){ setAtt(s,r.crew,"wary"); for(const m of [r,...crewMates(s,r)]) m.last=null; rsay(s,r,"truce_yes",{},true); } else rsay(s,r,"truce_no",{},true); }
-        else if(C.att==="wary"){ if(tryP(.4+(T==="talker"?.25:0)+(r.fac==="guild"?.2:0)-(T==="killer"?.25:0))){ setAtt(s,r.crew,"friendly"); rsay(s,r,"befriend",{},true); } else rsay(s,r,"hail_wary",{},true); }
+          if(tryP(pr)){ setAtt(s,r.crew,"wary"); for(const m of [r,...crewMates(s,r)]) m.last=null; rsay(s,r,"truce_yes",{},true); addRep(s,r.fac,3); } else rsay(s,r,"truce_no",{},true); }
+        else if(C.att==="wary"){ if(tryP(.4+(T==="talker"?.25:0)+(r.fac==="guild"?.2:0)-(T==="killer"?.25:0))){ setAtt(s,r.crew,"friendly"); { rsay(s,r,"befriend",{},true); addRep(s,r.fac,3); } } else rsay(s,r,"hail_wary",{},true); }
         else rsay(s,r,"already",{},true); break;
       case "backoff": if(C.att==="hostile"){ if(hurt||T==="coward"){ for(const m of [r,...crewMates(s,r)]){ m.flee=6; } rsay(s,r,"flee",{},true); } else rsay(s,r,"backoff_defy",{},true); }
         else if(T==="killer"&&tryP(.5)){ setAtt(s,r.crew,"hostile"); rsay(s,r,"backoff_defy",{},true); } else { for(const m of [r,...crewMates(s,r)]) m.avoid=10; C.goal=null; rsay(s,r,"backoff_obey",{},true); } break;
@@ -918,8 +985,8 @@ const Sim = (() => {
           const mine=p.inv.map((q,i)=>[q,i]).filter(([q])=>q.d!=="blackbox"&&Items.value(q)>=need).sort((a,b)=>Items.value(a[0])-Items.value(b[0]))[0];
           if(!mine||Math.hypot(r.x-p.x,r.y-p.y)>2.5){ rsay(s,r,mine?"hail_friendly":"trade_none",{},true); if(mine) say(s,`Get closer to ${r.name} to trade.`,"info"); break; }
           r.inv.splice(r.inv.indexOf(offer),1); const [q,qi]=mine; p.inv.splice(qi,1); p.inv.push({...offer,id:s.nextId++}); r.inv.push({...q,id:s.nextId++});
-          rsay(s,r,"trade_yes",{it:nm(offer),mine:nm(q)},true); say(s,`You trade your ${nm(q)} for ${r.name}'s ${nm(offer)}.`,"good"); } break;
-      case "follow": if(C.att==="friendly"&&tryP(.55+(T==="talker"||T==="veteran"?.2:0)-(T==="greedy"?.25:0))){ C.follow=p.id; C.followT=45; C.goal=null; rsay(s,r,"follow_yes",{},true); }
+          rsay(s,r,"trade_yes",{it:nm(offer),mine:nm(q)},true); addRep(s,r.fac,2); say(s,`You trade your ${nm(q)} for ${r.name}'s ${nm(offer)}.`,"good"); } break;
+      case "follow": if(C.att==="friendly"&&tryP(.55+(T==="talker"||T==="veteran"?.2:0)-(T==="greedy"?.25:0))){ C.follow=p.id; C.followT=45; C.goal=null; rsay(s,r,"follow_yes",{},true); addRep(s,r.fac,2); }
         else rsay(s,r,C.att==="hostile"?"hail_hostile":"follow_no",{},true); break;
       case "threat": if(C.att==="friendly"){ setAtt(s,r.crew,"wary"); rsay(s,r,"threat_reply",{},true); }
         else if(C.att==="wary"){ if(T==="coward"){ for(const m of [r,...crewMates(s,r)]) m.avoid=10; rsay(s,r,"backoff_obey",{},true); } else if(T==="killer"||tryP(.35)){ setAtt(s,r.crew,"hostile"); rsay(s,r,"backoff_defy",{},true); } else rsay(s,r,"warn",{},true); }
@@ -981,10 +1048,13 @@ const Sim = (() => {
     for(const it of s.items){ const d=Math.abs(it.x-r.x)+Math.abs(it.y-r.y)+rand(s)*4-(Items.kind(it)==="val"?3:0); if(d<bd&&d<30){ bd=d; best={x:it.x,y:it.y,k:"item"}; } }
     if(!best){ const rm=ROOMS[ri(s,0,ROOMS.length-1)]; if(rm) best={x:(rm[1]+rm[3])>>1,y:(rm[2]+rm[4])>>1,k:"walk"}; }
     return best; }
+  // do two raiders from different crews fight? feuding outfits, grudges, and escorts vs anyone hostile to the players
+  function rivals(s,a,b){ const A=crewOf(s,a), B=crewOf(s,b); if(!A||!B) return false; if((A.enemy&&A.enemy[b.crew])||(B.enemy&&B.enemy[a.crew])) return true;
+    if(A.follow&&B.att==="hostile") return true; if(B.follow&&A.att==="hostile") return true; return FACTIONS[a.fac].foes.includes(b.fac)||FACTIONS[b.fac].foes.includes(a.fac); }
   function raiders(s){
     const list=raidersOf(s).filter(r=>r.alive); if(!list.length) return; const extracts=[]; for(let i=0;i<s.tiles.length;i++) if(s.tiles[i].t==="extract") extracts.push([i%s.W,(i/s.W)|0]);
-    for(const C of Object.values(s.crews||{})){ if(C.followT>0&&--C.followT===0){ const m=list.find(r=>r.crew===C.id&&r.alive); C.follow=null; if(m) rsay(s,m,"follow_done",{},true); }
-      if(!C.leave&&s.turn-C.born>C.stay){ C.leave=true; const m=list.find(r=>r.crew===C.id&&r.alive); if(m) rsay(s,m,"leave"); } }
+    for(const C of Object.values(s.crews||{})){ if(!C.hired&&C.followT>0&&--C.followT===0){ const m=list.find(r=>r.crew===C.id&&r.alive); C.follow=null; if(m) rsay(s,m,"follow_done",{},true); }
+      if(!C.leave&&!C.hired&&s.turn-C.born>C.stay){ C.leave=true; const m=list.find(r=>r.crew===C.id&&r.alive); if(m) rsay(s,m,"leave"); } }
     for(const r of list){
       if(!r.alive) continue; const C=crewOf(s,r); CTX=null;
       if(r.busy>0){ r.busy--; continue; } if(r.stun>0){ r.stun--; continue; }
@@ -996,7 +1066,8 @@ const Sim = (() => {
       const huskV=s.ents.filter(h=>h.kind==="husk"&&h.alive&&rSees(s,r,h));
       const pV=ps.filter(p=>rSees(s,r,p));
       for(const p of pV) if(!C.met[p.id]){ C.met[p.id]=1; rsay(s,r,"spot_"+C.att,{},true); }
-      const foes=[...huskV, ...(C.att==="hostile"?pV:[])];
+      const rV=s.ents.filter(o=>o.kind==="raider"&&o.alive&&o.crew!==r.crew&&!o.surr&&rSees(s,r,o)&&rivals(s,r,o));
+      const foes=[...huskV, ...(C.att==="hostile"?pV:[]), ...rV];
       // wary crews warn players who crowd them, then open fire
       if(C.att==="wary"){ for(const p of pV){ const d=Math.hypot(p.x-r.x,p.y-r.y); if(d<=2.5){ C.warn[p.id]=(C.warn[p.id]|0)+1; if(C.warn[p.id]===2||C.warn[p.id]===4) rsay(s,r,"warn",{},true); if(C.warn[p.id]>=6&&r.trait!=="coward"){ setAtt(s,r.crew,"hostile"); rsay(s,r,"provoked",{},true); } } else if(C.warn[p.id]>0&&d>4) C.warn[p.id]--; } }
       if(huskV.length&&!r.flags.huskCall){ r.flags.huskCall=1; rsay(s,r,"husk"); } if(!huskV.length) r.flags.huskCall=0;
@@ -1053,7 +1124,7 @@ const Sim = (() => {
     else if(a.src==="inv"){ const it=b.inv[a.key|0]; if(!it) return false; if(!give(it)){ say(s,"Your pack is full.","warn"); return false; } b.inv.splice(a.key|0,1); took.push(nm(it)); }
     else if(a.src==="eq"&&EQ_SLOTS.includes(a.key)){ const it=b[a.key]; if(!it) return false; if(!give(it)){ say(s,"Your pack is full.","warn"); return false; } b[a.key]=null; took.push(nm(it)); }
     if(!took.length){ say(s,p.inv.length>=p.cap?"Your pack is full.":"Nothing left to take.","info"); return false; }
-    say(s,`You take ${took.join(", ")} from ${b.name}${b.alive?"":"'s body"}.`,"good"); if(b.alive&&chance(s,.5)) rsay(s,b,"robbed",{},true); return true; }
+    say(s,`You take ${took.join(", ")} from ${b.name}${b.alive?"":"'s body"}.`,"good"); if(b.alive&&!b.flags.robbed){ b.flags.robbed=1; addRep(s,b.fac,-3); } if(b.alive&&chance(s,.5)) rsay(s,b,"robbed",{},true); return true; }
 
   function vitals(s){
     for(const e of s.ents){

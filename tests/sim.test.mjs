@@ -59,7 +59,7 @@ test("shooting a fuel drum chain-detonates its neighbours", () => {
 
 test("ship interior: terminals and free movement", () => {
   const s = Sim.newGame(1, null, { map: "ship", mode: "ship" });
-  assert.deepEqual([...new Set(s.tiles.filter((t) => t.t === "terminal").map((t) => t.kind))].sort(), ["airlock", "bar", "board", "helm", "navtable", "rack", "records", "stash", "wardrobe", "workbench"]);
+  assert.deepEqual([...new Set(s.tiles.filter((t) => t.t === "terminal").map((t) => t.kind))].sort(), ["airlock", "bar", "board", "comms", "helm", "navtable", "rack", "records", "stash", "wardrobe", "workbench"]);
   assert.equal(s.tiles.filter((t) => t.t === "seat").length, 4, "cockpit seats one squad of four");
   const p = playerOf(s), W = s.W, at = (k) => { const i = s.tiles.findIndex((t) => t.kind === k); return [i % W, Math.floor(i / W)]; };
   const x0 = p.x; for (let i = 0; i < 3; i++) Sim.act(s, "p1", { type: "move", dx: 1, dy: 0 });
@@ -273,6 +273,21 @@ test("raiders: crews spawn kitted out, loot, fight, talk back, and can be search
   // long unattended runs never throw and stay serialisable
   for (let k = 0; k < 12; k++) { const g = Sim.newGame(9000 + k, null, { gen: { tier: 3 }, mods: { raiders: 3 } }); const q = playerOf(g); q.hp.torso = q.max.torso = 9999;
     for (let i = 0; i < 300 && g.status === "playing"; i++) Sim.act(g, "p1", { type: "wait" }); JSON.parse(JSON.stringify(g)); }
+});
+
+test("factions: nine outfits, synths spark, standing shifts who shoots first, hired guns follow you", () => {
+  const F = Sim.FACTIONS; assert.ok(Object.keys(F).length >= 9); assert.ok(Object.values(F).some((f) => f.species === "synth"));
+  for (const [k, f] of Object.entries(F)) { assert.ok(f.name && f.kind && f.rep && f.rep.look && f.emblem, k); for (const g of f.guns) assert.ok(Items.def(g), k + " gun " + g); for (const sl of ["head", "armor", "legs", "acc"]) for (const d of f[sl]) if (d) assert.ok(Items.def(d), k + " " + d); }
+  const hostileShare = (rep) => { let h = 0, n = 0; for (let k = 0; k < 40; k++) { const s = Sim.newGame(700 + k, null, { gen: { tier: 2 }, mods: { raiders: 2 }, factions: { rep } }); for (const C of Object.values(s.crews)) { n++; if (C.att === "hostile") h++; } } return h / n; };
+  const all = (v) => Object.fromEntries(Object.keys(F).map((k) => [k, v]));
+  assert.ok(hostileShare(all(80)) < hostileShare(all(-80)) - .3, "good standing means fewer crews shoot first");
+  // synths don't bleed
+  let syn = null; for (let k = 0; k < 80 && !syn; k++) { const s = Sim.newGame(1200 + k, null, { gen: { tier: 3 }, mods: { raiders: 3 } }); const r = s.ents.find((e) => e.syn); if (r) syn = { s, r }; }
+  assert.ok(syn, "synth crews spawn"); assert.ok(syn.r.look.syn);
+  // hired escort
+  const s = Sim.newGame(42, null, { gen: { tier: 2 }, factions: { rep: {}, hire: { fac: "unbound", by: "p1" } } }), h = s.ents.find((e) => e.hired), p = playerOf(s);
+  assert.ok(h && h.fac === "unbound" && s.crews.hire.follow === "p1");
+  for (let i = 0; i < 20; i++) Sim.act(s, "p1", { type: "wait" }); assert.ok(Math.abs(h.x - p.x) + Math.abs(h.y - p.y) <= 3, "escort stays close");
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);
