@@ -1752,16 +1752,16 @@ function objectives0(){ if(!S||S.mode!=="raid") return []; const p=me(), out=[],
   // the contract's black box
   const cid=sh&&World.siteContract(sh,Lid), C=cid&&World.CONTRACTS[cid];
   if(C){ const has=carried("blackbox"), at=has?null:find(i=>i.d==="blackbox"), vault=(S.rooms||[]).find(r=>r[0]==="Vault"), key=carried("keycard");
-    out.push({k:"contract",title:C.title,done:has,item:"Black box",hint:has?"You have it. Get it to the shuttle pad.":`Locked in ${roomOf(at)||"the vault"}. ${S.power?(key?"Your keycard opens the vault while the power is on.":"Find the captain's keycard, or cut the power and force the vault door."):"The power is off: the vault door can be forced."}`,to:at||(vault?{x:(vault[1]+vault[3])>>1,y:(vault[2]+vault[4])>>1}:null)});
-    if(!has&&!key&&S.power){ const kp=find(i=>i.d==="keycard"); if(kp) out.push({k:"key",title:"Optional: captain's keycard",item:"Keycard",hint:`Somewhere in ${roomOf(kp)}. Opens the vault while power is on.`,to:kp,opt:true}); } }
+    out.push({k:"contract",title:C.title,done:has,item:"Black box",hint:has?"You have it. Get it to the shuttle pad.":`Stations keep their black box in the vault. ${S.power?(key?"Your keycard opens the vault while the power is on.":"A captain's keycard opens it while the power is on, or cut the power and force the door."):"The power is off: the vault door can be forced."}`,to:null});
+    if(!has&&!key&&S.power){ const kp=find(i=>i.d==="keycard"); if(kp) out.push({k:"key",title:"Optional: captain's keycard",item:"Keycard",hint:"Captains and security chiefs usually keep one. Opens the vault while power is on.",to:null,opt:true}); } }
   // faction jobs on this station
   for(const J of S.jobs||[]){ const j=(sh&&sh.jobs||[]).find(q=>q.id===J.id)||{}, F=Sim.FACTIONS[J.fac]||{name:""}, o={k:J.type,title:J.title,done:J.done,fac:F.name,col:F.col};
-    if(J.type==="kill"){ const t=S.ents.find(e=>e.jobTarget===J.id&&e.alive); o.hint=J.done?"Target down. Get out alive to collect.":t?`${t.name} is tagged by the bounty beacon: last seen in ${RN(Sim.roomName(t.x,t.y))}, with bodyguards.`:"Target down."; o.to=t&&!J.done?{x:t.x,y:t.y}:null; }
+    if(J.type==="kill"){ const t=S.ents.find(e=>e.jobTarget===J.id&&e.alive); o.hint=J.done?"Target down. Get out alive to collect.":t?`${t.name} is somewhere aboard with bodyguards. Hunt them down.`:"Target down."; o.to=null; }
     if(J.type==="recover"){ const mine=crew.some(q=>q.inv&&q.inv.some(i=>i.job===J.id)), at=mine?null:find(i=>i.job===J.id); o.item=j.item||"Contract cargo"; o.done=mine||J.done;
-      o.hint=mine?"You have it. Carry it out through the shuttle pad.":at?`Locked ${at.box?`in a ${at.box==="strongbox"?"strongbox":at.box} `:""}in ${roomOf(at)}.`:"Somewhere aboard."; o.to=at; }
+      o.hint=mine?"You have it. Carry it out through the shuttle pad.":"Cargo like this is usually locked in the vault or a strongbox. Search them."; o.to=null; }
     if(J.type==="purge"){ o.prog=[J.prog,J.n]; o.hint=J.done?"Purge done. Get out alive to collect.":`Kill the dead aboard: ${J.prog} of ${J.n}.`; }
-    if(J.type==="rescue"){ const r=S.ents.find(e=>e.rescue===J.id); o.hint=J.done?"Rescued.":!r||!r.alive?"They didn't make it.":r.stranded?`Stranded in ${RN(Sim.roomName(r.x,r.y))}. Find them and press F beside them.`:`${r.name} is following you. Get them to the shuttle pad alive.`; o.to=r&&r.alive&&!J.done?{x:r.x,y:r.y}:null; o.item=r?r.name:null; }
-    if(J.type==="sabotage"){ let c=null; for(let i=0;i<S.tiles.length;i++) if(S.tiles[i].t==="console"){ c={x:i%S.W,y:(i/S.W)|0}; break; } o.hint=J.done?"Worm uploaded. Get out.":`Upload the worm at the main power relay in ${roomOf(c)||"engineering"}. Press F beside it.`; o.to=J.done?null:c; }
+    if(J.type==="rescue"){ const r=S.ents.find(e=>e.rescue===J.id); o.hint=J.done?"Rescued.":!r||!r.alive?"They didn't make it.":r.stranded?"Stranded somewhere aboard. Find them and press F beside them.":`${r.name} is following you. Get them to the shuttle pad alive.`; o.to=null; o.item=r?r.name:null; }
+    if(J.type==="sabotage"){ let c=null; for(let i=0;i<S.tiles.length;i++) if(S.tiles[i].t==="console"){ c={x:i%S.W,y:(i/S.W)|0}; break; } o.hint=J.done?"Worm uploaded. Get out.":"Find the station's main power relay and press F beside it to upload the worm."; o.to=null; }
     out.push(o); }
   // getting out
   const pads=[]; for(let i=0;i<S.tiles.length;i++) if(S.tiles[i].t==="extract") pads.push({x:i%S.W,y:(i/S.W)|0});
