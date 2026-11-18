@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
-const MODULES = ["items","gen","sim", "world", "client", "base", "transport", "net", "squadui", "boot"];
+const MODULES = ["items","gen","sim", "world", "audio", "client", "base", "transport", "net", "squadui", "boot"];
 
 const body = read("src/head.html");
 const js = MODULES.map((m) => `// ---- src/${m}.js ----\n${read(`src/${m}.js`)}`).join("\n");

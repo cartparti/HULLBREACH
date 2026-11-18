@@ -71,7 +71,7 @@ function kitRisk(r){ if(r.free) return 0; let v=0; for(const s of KIT_SLOTS) if(
 function lookOfKit(r){ r=r||kitResolved(); const g=r.w1||r.w2, d=k=>r[k]?r[k].d:null; return {...profile.look,hd:d("head"),a:d("armor"),lg:d("legs"),ac:d("acc"),li:r.light?1:0,pk:d("pack"),w:g?g.d:null}; }
 function slotHTML(it,title,n){ if(!it) return `<div class="slot" title="${title||"Empty"}"></div>`;
   return `<div class="slot" title="${esc(title||Items.name(it))}" style="border-color:${rc(it)}"><img alt="${esc(Items.name(it))}" src="${iconFor(it)}">${n>1?`<span class="n">×${n}</span>`:""}</div>`; }
-function toast(msg){ const t=$("h-toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3000); }
+function toast(msg){ if(typeof Snd!=="undefined") Snd.play("toast"); const t=$("h-toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3000); }
 function ammoChips(am,hl){ const ks=AMMO_T.filter(t=>am[t]); return ks.length?`<div class="ammo-row">${ks.map(t=>`<span style="border-color:${t===hl?"var(--bile)":Items.AMMO[t].col}">${Items.AMMO[t].short} ${am[t]}</span>`).join("")}</div>`:`<span class="risk">No ammo</span>`; }
 function matChips(m){ return `<div class="ammo-row">${MAT_T.map(t=>`<span>${Items.MATS[t]} ${m[t]|0}</span>`).join("")}</div>`; }
 function kitSummaryHTML(r){
@@ -290,7 +290,7 @@ function onTerminal(kind){ if(warp) return; openPanel(kind==="navtable"?"helm":k
 function onSit(kind){ const name={pilot:"pilot's seat",copilot:"co-pilot's seat",nav:"navigator's seat",eng:"engineer's seat"}[kind]||"seat";
   toast(`You take the ${name}.${kind==="pilot"&&!isHost()?" The squad leader still has the controls.":""} Press ${mode==="pc"?"F":"USE"} for the star map.`);
   if(typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>2000){ flavorCD=Date.now(); emit({t:"chat",m:`takes the ${name}`}); } }
-function openPanel(kind,sub){ if(kind==="inventory"&&panelKind==="inventory"){ closePanel(); return; } panelKind=kind; panelSub=sub||null; invSel=null; stopTravel(); throwMode=null; $("panel").hidden=false; renderPanel(); }
+function openPanel(kind,sub){ if(typeof Snd!=="undefined"&&kind!==panelKind) Snd.play(kind==="comms"?"holo":"open"); if(kind==="inventory"&&panelKind==="inventory"){ closePanel(); return; } panelKind=kind; panelSub=sub||null; invSel=null; stopTravel(); throwMode=null; $("panel").hidden=false; renderPanel(); }
 function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S.mode==="ship") renderShipHud(); }
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
@@ -749,11 +749,14 @@ $("dr-new").textContent="Abandon run";
 // ---------- main menu ----------
 function showMenu(){ const m=$("menu"); $("menu-art").src=emblemURL(); paintMenuStars($("menu-stars")); $("m-ship").textContent=(ship().name||"Lark").replace(/^Ninefold /,"");
   const st=profile.stats; $("m-stats").textContent=`${st.raids} raids · ${st.extracts} extracted · ${st.deaths} lost · ${profile.credits} cr`; $("m-save").textContent=Store.mode==="cloud"?"Saved to your account":"Saved on this device";
-  $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; m.hidden=false; }
+  $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; $("m-sound").textContent=sndLabel(); $("m-music").textContent=Snd.cfg().music>0?"Music: on":"Music: off"; m.hidden=false; }
 function hideMenu(){ $("menu").hidden=true; }
 $("m-play").onclick=()=>{ hideMenu(); if(!profile.welcomed){ profile.welcomed=true; save(); } toast(`Aboard. Walk to a terminal and press ${mode==="pc"?"F":"USE"}. ${mode==="pc"?"I or Tab":"The Inventory button"} opens your kit.`); };
 $("m-crew").onclick=()=>{ hideMenu(); openPanel("crew"); };
 $("m-ward").onclick=()=>{ hideMenu(); openPanel("wardrobe"); };
+const sndLabel=()=>{ const c=Snd.cfg(); return c.on?`Sound: ${Math.round(c.vol*100)}%`:"Sound: off"; };
+$("m-sound").onclick=()=>{ Snd.unlock(); const c=Snd.cfg(), steps=[0,.35,.65,1], i=c.on?steps.findIndex(v=>v>=c.vol-.01):0; Snd.setVol(steps[(i+1)%steps.length]); $("m-sound").textContent=sndLabel(); Snd.play("click"); };
+$("m-music").onclick=()=>{ Snd.unlock(); const c=Snd.cfg(); Snd.setMusic(c.music>0?0:.5); $("m-music").textContent=Snd.cfg().music>0?"Music: on":"Music: off"; };
 $("m-mode").onclick=()=>{ setMode(mode==="pc"?"touch":"pc"); $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; };
 $("s-menu").onclick=()=>{ closePanel(); showMenu(); };
 
@@ -775,3 +778,4 @@ function start(data){
   Store.init();
 }
 
+document.addEventListener("click",e=>{ if(typeof Snd!=="undefined"&&e.target.closest&&e.target.closest("button")) Snd.play("click"); },true);

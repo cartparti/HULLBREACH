@@ -17,6 +17,7 @@ let fireContrib=[], rings=[], arcs=[], throwMode=null, bursts=[], GORE=[], goreS
 let EMIT=[], LUMV=null, staticKey="", SOURCES=[], srcContrib=[], FLASH=null, AMB=null, view={dpr:1,scale:3,fw:0,fh:0};
 let camX=0,camY=0,camInit=false, rp={}, flashT={}, atkT={}, dirH={}, parts=[], tracers=[], slashes=[], lightsT=[];
 let shake=0, hurtFlash=0, powerFlicker=0, hover=null, mouse=null, target=null, travel=null, lastT=performance.now();
+let sndT=0;
 let vignette=null, grain=null, scan=null, conduit=null, conduitPat=null;
 const me=()=>S.ents.find(e=>e.id===PID);
 
@@ -1160,8 +1161,38 @@ function flavorFx(kind,x,y,local){
   if(kind==="bars"||kind==="captive"){ flavorT.captive=now; if(local) shake=Math.max(shake,1.5); spawn(6,cpx(x),cpx(y),{col:["#8a8a80","#c9c0a8"],speed:30,life:.3,emit:true}); }
   if(kind==="arcade") spawn(8,cpx(x),y*TS-6,{col:["#e04030","#62cfe0","#e8b048"],speed:30,life:.4,emit:true});
 }
+// what each simulated event sounds like, placed in the world
+function soundFx(f){ if(typeof Snd==="undefined") return; const at=(x,y,r,v)=>({x,y,r,v});
+  switch(f.type){
+    case "shot": { const e=S.ents.find(q=>q.alive&&q.x===f.x0&&q.y===f.y0), g=e&&e.kind!=="bot"&&Sim.gun(e), c=e&&e.kind==="bot"?"turret":g?Items.stats(g).cls:"pistol";
+      Snd.play({smg:"smg",rifle:"rifle",shotgun:"shotgun",sniper:"sniper",launcher:"launcher",turret:"turret"}[c]||"pistol",at(f.x0,f.y0,28)); break; }
+    case "explode": Snd.play("explode",at(f.x,f.y,34)); break;
+    case "hurt": Snd.play(f.syn?"spark":"hurt",at(f.x,f.y,12,f.id===PID?1:.55)); break;
+    case "die": Snd.play("die",at(f.x,f.y,14)); break;
+    case "claw": Snd.play("claw",at(f.x,f.y)); break;
+    case "melee": Snd.play("melee",at(f.x,f.y)); break;
+    case "shriek": Snd.play("shriek",at(f.x,f.y,26)); break;
+    case "door": Snd.play("door",at(f.x,f.y,12)); break;
+    case "bash": Snd.play("bash",at(f.x,f.y,22)); break;
+    case "glass": Snd.play("glass",at(f.x,f.y)); break;
+    case "breach": Snd.play("glass",at(f.x,f.y)); Snd.play("breach",at(f.x,f.y,30)); break;
+    case "search": Snd.play("search",at(f.x,f.y,10)); break;
+    case "power": Snd.play(S.power?"powerup":"powerdown"); break;
+    case "cookoff": Snd.play("pistol",at(f.x,f.y,20,.6)); break;
+    case "legend": Snd.play("legend"); break;
+    case "flare": Snd.play("explode",at(f.x,f.y,20,.45)); break;
+    case "speech": { const e=S.ents.find(q=>q.id===f.id); if(e&&e.kind==="raider") Snd.play(e.syn?"synth":"radio",at(f.x,f.y,14)); break; }
+    case "revive": Snd.play("heal",at(f.x,f.y)); break;
+    case "spit": Snd.play("spit",at(f.x,f.y,18)); break;
+    case "stomp": Snd.play("stomp",at(f.x,f.y,20)); break;
+    case "roar": Snd.play("roar",at(f.x,f.y,40)); break;
+    case "chitter": Snd.play("chitter",at(f.x,f.y,16)); break;
+    case "robot": Snd.play("robot",at(f.x,f.y,14)); break;
+    case "levelup": Snd.play("levelup"); break;
+  } }
 function processFx(){
   const p=me(), now=performance.now();
+  for(const f of S.fx||[]) soundFx(f);
   for(const f of S.fx||[]){
     const vis=()=>VIS&&VIS[Sim.idx(S,f.x,f.y)];
     switch(f.type){
@@ -1472,6 +1503,11 @@ function render(now){
   if(hurtFlash>0||danger){ const a=Math.max(hurtFlash*.35,danger?(.12+.08*Math.sin(now*.006)):0); const gr=sctx.createRadialGradient(sw/2,shh/2,Math.min(sw,shh)*.25,sw/2,shh/2,Math.max(sw,shh)*.7); gr.addColorStop(0,"rgba(120,0,0,0)"); gr.addColorStop(1,`rgba(150,10,0,${a*2})`); sctx.fillStyle=gr; sctx.fillRect(0,0,sw,shh); }
   if(typeof drawEdges==="function") drawEdges(cx,cy);
   if(typeof updateTags==="function") updateTags(cx,cy);
+  if(typeof Snd!=="undefined"&&now-(sndT||0)>200){ sndT=now; const v=viewEnt();
+    Snd.setListener({x:v.x,y:v.y,see:(x,y)=>S.mode==="ship"||(VIS&&VIS[Sim.idx(S,x,y)])});
+    const nf=Object.keys(S.fire||{}).filter(k=>{ const i=+k; return Math.hypot(i%S.W-v.x,((i/S.W)|0)-v.y)<9; }).length, br=S.mode==="raid"&&S.windStr&&(S.windStr[Sim.idx(S,v.x,v.y)]||0)>2;
+    const danger=S.mode==="raid"&&S.ents.some(e=>e.alive&&VIS&&VIS[Sim.idx(S,e.x,e.y)]&&(e.kind==="husk"||e.kind==="bot"||(e.kind==="raider"&&attOf(e)==="hostile"&&!e.surr)));
+    Snd.scene({scene:!$("menu").hidden?"menu":S.mode,power:S.power,fire:nf/6,breach:br,danger}); }
 }
 function loop(now){ try{ render(now); }catch(e){ console.error(e); } requestAnimationFrame(loop); }
 
@@ -1612,7 +1648,8 @@ function renderEnd(){
 function targetable(x,y){ if(!VIS||x<0||y<0||x>=S.W||y>=S.H) return false; const i=Sim.idx(S,x,y); if(!VIS[i]) return false; const e=Sim.entAt(S,x,y); const t=S.tiles[i]; return (e&&(e.kind==="husk"||e.kind==="raider"))||t.t==="window"||(t.t==="prop"&&t.kind==="barrel"); }
 function send(a,keepTravel){ if(!S||S.status!=="playing") return false; if(!keepTravel) stopTravel();
   if(S.mode==="raid"&&typeof inSquad==="function"&&inSquad()) return netRaidAction(a);
-  const ok=Sim.act(S,PID,a); afterChange(); if(S.mode==="ship"&&a.type==="move"&&typeof netShipMoved==="function") netShipMoved(); return ok; }
+  const ok=Sim.act(S,PID,a); afterChange();
+  if(ok&&typeof Snd!=="undefined"){ if(a.type==="move") Snd.play("step"); else if(a.type==="pickup") Snd.play("pickup"); else if(a.type==="use") Snd.play("heal"); else if(a.type==="loot") Snd.play("pickup"); } if(S.mode==="ship"&&a.type==="move"&&typeof netShipMoved==="function") netShipMoved(); return ok; }
 function note(msg){ S.log.push({t:S.turn,msg,kind:"info"}); renderPanels(); }
 function nearestHusk(){ const p=me(); let best=null,bd=1e9; for(const e of S.ents){ if(!(e.kind==="husk"||(e.kind==="raider"&&attOf(e)==="hostile"&&!e.surr))||!e.alive||!VIS[Sim.idx(S,e.x,e.y)]) continue; const d=Math.hypot(e.x-p.x,e.y-p.y); if(d<bd){bd=d;best=e;} } return best; }
 function fire(){
@@ -1662,6 +1699,7 @@ document.addEventListener("keydown",e=>{
   if(k==="escape"){ stopTravel(); return; }
   if(k==="r"&&S.mode==="raid"){ send({type:"swap"}); return; }
   if(k==="l"){ toggleLight(); return; }
+  if(k==="m"&&typeof Snd!=="undefined"){ const on=Snd.toggle(); note(on?"Sound on.":"Sound muted. Press M to turn it back on."); return; }
   if(k==="i"||k==="tab"){ e.preventDefault(); if(typeof openPanel==="function") openPanel("inventory"); return; }
   if(k==="escape"&&throwMode){ throwMode=null; return; }
   if(k==="f"||k==="e") send({type:"interact"}); else if(k==="g") send({type:"pickup"}); else if(k==="x") fire(); else if(k==="q") send({type:"extract"});

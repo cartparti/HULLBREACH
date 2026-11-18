@@ -256,6 +256,7 @@ button.plain{padding:0 12px}
 .cm-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid rgba(255,255,255,.05)} .cm-row .slot{flex:none} .cm-t{flex:1;min-width:0;display:flex;flex-direction:column} .cm-t b{font:700 14px var(--f-hud)} .cm-t span{font-size:12px;color:var(--ash)} .cm-row button{flex:none;min-width:84px}
 .cm-talk h3{margin:2px 0} .cm-line{margin:8px 0;padding:6px 10px;border-left:3px solid var(--fc);background:rgba(255,255,255,.03);font:italic 15px var(--f-hud);color:#e8e0d0}
 @media (max-width:760px){ .cm{grid-template-columns:1fr} .cm-list{flex-direction:row;overflow-x:auto;max-height:none} .cm-fac{min-width:190px} .cm-call{grid-template-columns:1fr} .cm-holo canvas,.cm-idle canvas{width:180px;height:240px;margin:0 auto} }
+.menu-row{display:flex;gap:8px} .menu-row button{flex:1}
 .chip{display:inline-block;padding:2px 8px;border:1px solid var(--line-dim);font:600 12px var(--f-num)}
 .chips button{height:32px;padding:0 12px}
 .chips button[aria-pressed="true"]{border-color:var(--line);color:#fff;background:#14231f}
@@ -602,6 +603,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
       <button id="m-crew">Crew &amp; squads</button>
       <button id="m-ward">Wardrobe</button>
       <button id="m-mode">Controls: mouse &amp; keys</button>
+      <div class="menu-row"><button id="m-sound">Sound: 80%</button><button id="m-music">Music: on</button></div>
     </nav>
     <div class="menu-foot"><span id="m-stats"></span><span id="m-save"></span></div>
   </div>
