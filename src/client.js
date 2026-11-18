@@ -3,6 +3,9 @@
 // per-tile lightmap (multiply) + additive glow, then scaled up crisp.
 let PID="p1", spectating=false; const TS=24;
 const CREW_COL=["#9bc06a","#76c2c4","#e8b048","#d07ad0"];
+const isHum=e=>e&&(e.kind==="player"||e.kind==="raider");
+const ATT_COL={hostile:"#e0482f",wary:"#e8b048",friendly:"#7cc46a"};
+const attOf=e=>e&&e.kind==="raider"&&S.crews&&S.crews[e.crew]?S.crews[e.crew].att:null;
 function viewEnt(){ const m=me(); if(!S||S.mode!=="raid"||!m||m.alive||!spectating) return m; return S.ents.find(e=>e.kind==="player"&&e.alive)||m; }
 let S=null, VIS=null, mode="pc", overlay=false;
 const $=id=>document.getElementById(id);
@@ -1188,6 +1191,7 @@ function processFx(){
       case "legend": { const c=Items.RAR[f.r].col; spawn(30,cpx(f.x),cpx(f.y)-6,{col:[c,"#ffffff",c],speed:70,life:.9,emit:true}); lightsT.push({x:f.x,y:f.y,r:4,i:1.4,c:[1,.85,.5],t:0,dur:.6}); shake=Math.max(shake,2); break; }
       case "flavor": if(f.pid===PID&&typeof onFlavor==="function") setTimeout(()=>onFlavor(f.kind,f.x,f.y),0); flavorFx(f.kind,f.x,f.y,true); break;
       case "sit": if(f.pid===PID&&typeof onSit==="function") setTimeout(()=>onSit(f.kind),0); break;
+      case "lootbody": if(f.pid===PID&&typeof openPanel==="function") setTimeout(()=>openPanel("body",f.id),0); break;
       case "terminal": if(f.pid===PID&&typeof onTerminal==="function") setTimeout(()=>onTerminal(f.kind),0); break;
       case "explode": spawn(46,cpx(f.x),cpx(f.y),{col:["#fff0b0","#ffb040","#ff6a20","#c02a10"],speed:150,life:.6,size:2,emit:true}); spawn(30,cpx(f.x),cpx(f.y),{col:["#2a2420","#3a3430","#1a1614"],speed:90,life:1.1,size:2});
         lightsT.push({x:f.x,y:f.y,r:7,i:2.2,c:[1,.7,.35],t:0,dur:.45}); rings.push({x:cpx(f.x),y:cpx(f.y),t:0,dur:.35}); shake=Math.max(shake,13); break;
@@ -1259,7 +1263,7 @@ function castShadow(g,e,spr,x,y,left){ if(S.mode==="ship") return; const L=light
 function drawCorpse(g,e,x,y,now,downed){
   if(deathT[e.id]==null) deathT[e.id]=downed?now-1000:now;
   const t=Math.min(1,(now-deathT[e.id])/380), k=1-Math.pow(1-t,3), left=(dirH[e.id]??1)<0, dir=left?-1:1;
-  const set=e.kind==="player"?playerFrames({...lookOf(e),w:null}):huskFrames(dmgKey(e)), spr=set.idle0;
+  const set=isHum(e)?playerFrames({...lookOf(e),w:null}):huskFrames(dmgKey(e)), spr=set.idle0;
   if(t>=1&&!downed&&!e._pooled){ e._pooled=1; addGore({type:"pool",x:x+cx0+12-dir*4,y:y+cy0+20,t0:now,r:7+Math.random()*4}); }
   g.save(); g.translate(x+12-dir*11*k,y+22-3*k+(t<1?Math.sin(t*Math.PI)*-2:0)); g.rotate(dir*k*Math.PI/2); if(left) g.scale(-1,1); g.globalAlpha=1; g.drawImage(spr,-12,-30);
   g.globalCompositeOperation="source-atop"; g.fillStyle=`rgba(20,8,6,${.35*k})`; g.fillRect(-12,-30,24,32); g.restore(); }
@@ -1269,7 +1273,7 @@ function addGore(o){ GORE.push(o); if(GORE.length>420) GORE.splice(0,GORE.length
 function splat(px,py,n,a,spread){ for(let k=0;k<n;k++){ const an=a==null?Math.random()*6.283:a+(Math.random()-.5)*(spread||1), d=Math.random()*(a==null?6:14);
   addGore({type:"drop",x:px+Math.cos(an)*d,y:py+Math.sin(an)*d*.6,s:.5+Math.random()*(k<2?1.5:1),c:Math.random()<.5?"#5a0a06":"#7a1410"}); } }
 const LIMB_RECT={player:{head:[5.5,1,13,13],rarm:[4.5,14,3.5,10],larm:[16,14,3.5,10],rleg:[7.5,23,4.5,8],lleg:[12,23,4.5,8]},husk:{head:[7,4,10,11],rarm:[3.5,12,4,16],larm:[16.5,12,4,16],rleg:[8,23,3.5,8],lleg:[13,23,3.5,8]}};
-function limbSprite(e,limb){ const kind=e.kind==="player"?"player":"husk", rc=LIMB_RECT[kind][limb]; if(!rc) return null;
+function limbSprite(e,limb){ const kind=isHum(e)?"player":"husk", rc=LIMB_RECT[kind][limb]; if(!rc) return null;
   const src=(kind==="player"?playerFrames({...lookOf(e),dm:"000000",w:null}):huskFrames("000000")).idle0, c=cvs(rc[2]+2,rc[3]+2), g=c.getContext("2d");
   g.drawImage(src,rc[0],rc[1],rc[2],rc[3],1,1,rc[2],rc[3]); const end=limb==="head"?[rc[2]/2-1,rc[3]-.5]:limb.endsWith("leg")?[1,1]:[1,1];
   g.fillStyle="#7a1410"; g.fillRect(end[0],end[1],3,1.5); g.fillStyle="#e8dcc0"; g.fillRect(end[0]+1,end[1]+.5,.5,.5); return c; }
@@ -1281,7 +1285,7 @@ function drawGore(g,cx,cy,now){ cx0=cx; cy0=cy;
       g.save(); g.translate(px,py); g.rotate(o.rot+(1-t)*7); g.drawImage(o.spr,-o.spr.lw/2,-o.spr.lh/2); g.restore(); } } }
 function drawEnt(g,e,x,y,now){
   if(e.downed){ const t=now/400; drawCorpse(g,e,x,y,now,true); g.strokeStyle=`rgba(224,72,47,${.5+.4*Math.sin(t*3)})`; g.lineWidth=1; g.beginPath(); g.ellipse(x+12,y+16,10+Math.sin(t*3),5,0,0,6.283); g.stroke(); return; }
-  const isP=e.kind==="player", set=isP?playerFrames(lookOf(e)):huskFrames(dmgKey(e)), r=rp[e.id];
+  const isP=isHum(e), set=isP?playerFrames(lookOf(e)):huskFrames(dmgKey(e)), r=rp[e.id];
   const moving=r&&(Math.abs(r.x-e.x*TS)>.6||Math.abs(r.y-e.y*TS)>.6);
   let k=moving?(((now/110)|0)%2?"walk1":"walk2"):(((now/(isP?650:420)+(isP?0:e.x*.37))|0)%2?"idle1":"idle0");
   if(!isP&&atkT[e.id]&&now-atkT[e.id]<260) k="lunge";
@@ -1297,6 +1301,7 @@ function drawEnt(g,e,x,y,now){
   else if(!isP&&((now/700+e.x*1.7)|0)%9===0) rot+=Math.sin(now/30)*.05;
   g.save(); g.translate(x+12+ox,y+22+oy); g.rotate(rot); if(left) g.scale(-1,1); g.drawImage(spr,-12,-30); g.restore();
   if(Object.keys(e.bleed||{}).length&&((now/300+x)%3)<1) R(g,x+12,y+22,1,1,"#9a1a12");
+  if(e.surr){ const a=.6+.4*Math.sin(now/200); R(g,x+5,y-3,2,5,`rgba(232,220,192,${a})`); R(g,x+17,y-3,2,5,`rgba(232,220,192,${a})`); }
 }
 function drawProp(g,t,x,y,now){
   if(t.kind==="captive"){ const lunge=flavorT.captive&&now-flavorT.captive<700, k=lunge?"lunge":(((now/380)|0)%2?"idle1":"idle0"), sp=CH.husk[k], left=((now/2600)|0)%2===0;
@@ -1421,12 +1426,12 @@ function render(now){
     if(t.t==="door"&&!t.open&&S.power){ const v=doorVert(x,y); glow(v?ox+12:ox+21,v?oy+4:oy+11,4,t.locked?"rgba(255,60,40,.55)":"rgba(80,220,100,.45)"); }
     if(t.t==="extract"&&(now%1400)<700) glow(ox+12,oy+12,10,"rgba(255,160,50,.16)"); }
   for(const e of S.ents){ if(!e.alive) continue; const i=Sim.idx(S,e.x,e.y); if(!(VIS[i]||e.id===PID)) continue; const r=rp[e.id], left=(dirH[e.id]??1)<0, X=Math.round(r.x)-cx, Y=Math.round(r.y)-cy-8;
-    const lunge=atkT[e.id]&&now-atkT[e.id]<260, bob=((now/(e.kind==="player"?650:420)+(e.kind==="player"?0:e.x*.37))|0)%2;
+    const lunge=atkT[e.id]&&now-atkT[e.id]<260, bob=((now/(isHum(e)?650:420)+(isHum(e)?0:e.x*.37))|0)%2;
     const fc=e.face||[0,1], view=Math.abs(fc[1])>Math.abs(fc[0])?(fc[1]<0?"b":"f"):"s", L2=view==="s"&&fc[0]<0;
     if(e.kind==="husk"){ if(view!=="b"){ const ex=view==="f"?14.25:(lunge?20:19), ey=view==="f"?9.5+bob:(lunge?9:11+bob), px=L2?23-ex:ex; R(g,X+px,Y+ey,1,1,e.aware?"#ff5a3a":"#8a2010"); glow(X+px+.5,Y+ey+.5,e.aware?7:4,e.aware?"rgba(255,50,30,.5)":"rgba(160,20,10,.25)"); } }
     else { const hd=e.head&&e.head.d; if(hd==="hardhat"&&view!=="b"){ glow(X+(view==="f"?12:(L2?23-15.5:15.5)),Y+4+bob,9,"rgba(255,240,190,.55)"); }
       if(hd&&view!=="b"&&!["welder","flakhelm","eva","hardhat"].includes(hd)){ const vx=view==="f"?12:(L2?23-15:15), vy=8+bob, col=hd==="cowl"?"rgba(190,110,255,.45)":hd==="deathmask"?"rgba(255,60,40,.4)":"rgba(242,182,72,.35)"; glow(X+vx,Y+vy,view==="f"?7:5,col); }
-      const ci=S.ents.filter(q=>q.kind==="player").indexOf(e); if(S.ents.filter(q=>q.kind==="player").length>1){ const c=CREW_COL[ci%4]; R(g,X+10,Y-3,5,1,c); R(g,X+11,Y-2,3,1,c); R(g,X+12,Y-1,1,1,c); } } }
+      const ci=S.ents.filter(q=>q.kind==="player").indexOf(e); if(ci>=0&&S.ents.filter(q=>q.kind==="player").length>1){ const c=CREW_COL[ci%4]; R(g,X+10,Y-3,5,1,c); R(g,X+11,Y-2,3,1,c); R(g,X+12,Y-1,1,1,c); } } }
   for(const k of Object.keys(S.fire||{})){ const i=+k; if(!VIS[i]) continue; const lv=S.fire[i]; glow((i%S.W)*TS-cx+12,((i/S.W)|0)*TS-cy+12,14+lv*5,`rgba(255,110,30,${.16+.06*lv+.04*Math.sin(now*.03+i)})`); }
   for(const B of bursts){ const a=1-B.t/B.dur, x=B.x-cx, y=B.y-cy, L=(B.big?16:9)*(.6+a*.6); glow(x,y,B.big?18:11,`rgba(255,220,140,${.7*a})`);
     g.fillStyle=`rgba(255,250,220,${a})`; for(const [da,len,w] of [[0,L,1.5],[.55,L*.55,1],[-.55,L*.55,1],[2.4,L*.3,.7],[-2.4,L*.3,.7]]){ g.save(); g.translate(x,y); g.rotate(B.a+da); g.fillRect(0,-w/2,len,w); g.restore(); }
@@ -1477,7 +1482,7 @@ function afterChange(){
   Sim.bind(S); document.body.dataset.scene=S.mode==="ship"?"ship":"raid";
   const p=viewEnt(); VIS=Sim.fov(S,p); if(typeof shareVision==="function") shareVision();
   const k=tileKey(); if(k!==staticKey){ staticKey=k; buildStatic(); }
-  computeLights(); processFx();
+  computeLights(); processFx(); if(typeof harvestChat==="function") harvestChat();
   if(target&&!targetable(target.x,target.y)) target=null;
   renderPanels();
 }
@@ -1495,12 +1500,13 @@ function vitHTML(p){ const pr=S.P[Sim.idx(S,p.x,p.y)], bl=Sim.LIMBS.filter(l=>p.
 function drawEkg(root,p){ root.querySelectorAll("canvas.ekg").forEach(c=>{ const g=c.getContext("2d"), w=c.width, h=c.height; g.clearRect(0,0,w,h); g.fillStyle=p.blood>60?"#7fa86a":p.blood>35?"#c79a4a":"#e0482f";
   const amp=Math.max(.2,p.blood/100), rate=p.blood<50?14:20; for(let x=0;x<w;x+=2){ const ph=(x+S.turn*7)%rate; let y=h/2; if(ph===4) y=h/2-9*amp; else if(ph===6) y=h/2+7*amp; else if(ph===2) y=h/2+2; g.fillRect(x,Math.round(y),2,2); if(ph===4||ph===6){ const y0=Math.min(y,h/2), y1=Math.max(y,h/2); g.fillRect(x,y0,1,y1-y0); } } }); }
 function contractRows(p){ const vis=S.ents.filter(e=>e.kind==="husk"&&e.alive&&VIS[Sim.idx(S,e.x,e.y)]).length, bb=p.inv.some(i=>i.d==="blackbox");
-  return [["Black box",bb?"SECURED":"in the vault",bb?"good":""],["Haul",Sim.lootValue(p)+" cr",""],["Station power",S.power?"ON":"OFF",S.power?"good":"bad"],["Location",Sim.roomName(p.x,p.y),""],["Husks in sight",vis,vis?"bad":""],["Fires",Object.keys(S.fire||{}).length,Object.keys(S.fire||{}).length?"bad":""],...crewRows(),["Turn",S.turn,""]]
+  return [["Black box",bb?"SECURED":"in the vault",bb?"good":""],["Haul",Sim.lootValue(p)+" cr",""],["Station power",S.power?"ON":"OFF",S.power?"good":"bad"],["Location",Sim.roomName(p.x,p.y),""],["Husks in sight",vis,vis?"bad":""],...(()=>{ const rs=S.ents.filter(e=>e.kind==="raider"&&e.alive&&VIS[Sim.idx(S,e.x,e.y)]); if(!rs.length) return []; const h=rs.filter(e=>attOf(e)==="hostile"&&!e.surr).length; return [["Raiders in sight",h?`${rs.length} (${h} hostile)`:rs.length,h?"bad":""]]; })(),["Fires",Object.keys(S.fire||{}).length,Object.keys(S.fire||{}).length?"bad":""],...crewRows(),["Turn",S.turn,""]]
     .map(([a,b,c])=>`<span>${a}</span><span class="${c}">${b}</span>`).join(""); }
 function crewRows(){ const crew=S.ents.filter(e=>e.kind==="player"); if(crew.length<2) return [];
   const aboard=crew.filter(e=>e.alive).length, waiting=crew.filter(e=>e.alive&&!e.acted&&e.id!==PID).map(e=>typeof nameOf==="function"?nameOf(e.id):e.id);
   return [["Crew",`${aboard} aboard · ${crew.length-aboard} out`,""],...(me().alive&&me().acted&&waiting.length?[["Waiting on",waiting.join(", ").slice(0,28),"bad"]]:[])]; }
-function logText(l){ if(!l.pid||l.pid===PID||typeof nameOf!=="function") return l.msg; const n=nameOf(l.pid);
+function logText(l){ if(l.kind==="chat"){ const raider=l.fac!=null, nm=raider?l.who:(l.from===PID?"You":(typeof nameOf==="function"?nameOf(l.from):l.who)), c=raider?ATT_COL[l.att]||"#e8b048":(typeof colorOf==="function"?colorOf(l.from):"#c9a24a"); return `<b style="color:${c}">${esc(nm)}:</b> “${esc(l.msg)}”`; }
+  if(!l.pid||l.pid===PID||typeof nameOf!=="function") return l.msg; const n=nameOf(l.pid);
   const verb=w=>w==="have"?"has":/(s|sh|ch|x|z)$/.test(w)?w+"es":w+"s";
   return l.msg.replace(/^You die\./,n+" dies.").replace(/^You're /,n+" is ").replace(/^Your /,n+"'s ").replace(/^You ([a-z]+)\b(?!')/,(m,w)=>n+" "+verb(w)).replace(/^You /,n+" ").replace(/\byour\b/g,"their").replace(/\bYou\b/g,n).replace(/\byou\b/g,n); }
 function logHTML(n){ return S.log.slice(-n).map(l=>`<div class="${l.kind}"><span class="t">${String(l.t).padStart(3,"0")}</span>${logText(l)}</div>`).join(""); }
@@ -1514,7 +1520,7 @@ function useLabel(p){ if(!p||!p.alive) return "Use";
   return "Use"; }
 function renderPanels(){
   if(typeof renderCrew==="function") renderCrew();
-  if(S.mode==="raid"&&typeof panelKind!=="undefined"&&panelKind==="inventory") renderPanel();
+  if(S.mode==="raid"&&typeof panelKind!=="undefined"&&(panelKind==="inventory"||panelKind==="body")) renderPanel();
   if(S.mode==="ship"){ $("end").hidden=true; if(typeof renderShipHud==="function") renderShipHud(); return; }
   const p=me(), onPad=Sim.tileAt(S,p.x,p.y).t==="extract"&&S.status==="playing";
   { const lb=useLabel(p); const bi=$("b-int"); if(bi&&bi.dataset.l!==lb){ bi.dataset.l=lb; bi.innerHTML=`<span class="key">F</span>${lb}`; } const tu=$("t-use"); if(tu&&tu.textContent!==lb) tu.textContent=lb; }
@@ -1556,7 +1562,8 @@ function describe(x,y){
   if(t.t==="window"&&t.hp===1) s+=" (cracked)";
   let sub="";
   if(t.t==="floor"||t.t==="extract"||(t.t==="door"&&t.open)) sub=`${Math.round(S.P[i])} kPa`;
-  if(VIS[i]){ const e=Sim.entAt(S,x,y); if(e&&e.kind==="husk"){ const hurt=Sim.LIMBS.filter(l=>e.hp[l]<e.max[l]).length; s=`<b>Husk</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub=hurt?"Wounded":"Unharmed"; }
+  if(VIS[i]){ const e=Sim.entAt(S,x,y); if(e&&e.kind==="raider"){ const at=attOf(e), F=Sim.FACTIONS[e.fac]; s=`<b style="color:${ATT_COL[at]}">${esc(e.name)}</b> · ${F.name}`; sub=`${e.surr?"Surrendered · F to search":at[0].toUpperCase()+at.slice(1)} · ${Items.name(Sim.gun(e)||e.melee||{d:"knife"})} · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; }
+    else if(e&&e.kind==="husk"){ const hurt=Sim.LIMBS.filter(l=>e.hp[l]<e.max[l]).length; s=`<b>Husk</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub=hurt?"Wounded":"Unharmed"; }
     const its=S.items.filter(it=>it.x===x&&it.y===y); if(its.length) sub=(sub?sub+" · ":"")+its.map(q=>`<span style="color:${rarCol(q)}">${Items.name(q)}</span>`).join(", ");
     if(t.t==="window") sub="Shoot it out to vent the room";
     if(t.t==="prop"&&t.kind==="barrel") sub="Shoot it to detonate · blast radius 2"; }
@@ -1590,12 +1597,12 @@ function renderEnd(){
 }
 
 // ---------- actions & travel ----------
-function targetable(x,y){ if(!VIS||x<0||y<0||x>=S.W||y>=S.H) return false; const i=Sim.idx(S,x,y); if(!VIS[i]) return false; const e=Sim.entAt(S,x,y); const t=S.tiles[i]; return (e&&e.kind==="husk")||t.t==="window"||(t.t==="prop"&&t.kind==="barrel"); }
+function targetable(x,y){ if(!VIS||x<0||y<0||x>=S.W||y>=S.H) return false; const i=Sim.idx(S,x,y); if(!VIS[i]) return false; const e=Sim.entAt(S,x,y); const t=S.tiles[i]; return (e&&(e.kind==="husk"||e.kind==="raider"))||t.t==="window"||(t.t==="prop"&&t.kind==="barrel"); }
 function send(a,keepTravel){ if(!S||S.status!=="playing") return false; if(!keepTravel) stopTravel();
   if(S.mode==="raid"&&typeof inSquad==="function"&&inSquad()) return netRaidAction(a);
   const ok=Sim.act(S,PID,a); afterChange(); if(S.mode==="ship"&&a.type==="move"&&typeof netShipMoved==="function") netShipMoved(); return ok; }
 function note(msg){ S.log.push({t:S.turn,msg,kind:"info"}); renderPanels(); }
-function nearestHusk(){ const p=me(); let best=null,bd=1e9; for(const e of S.ents){ if(e.kind!=="husk"||!e.alive||!VIS[Sim.idx(S,e.x,e.y)]) continue; const d=Math.hypot(e.x-p.x,e.y-p.y); if(d<bd){bd=d;best=e;} } return best; }
+function nearestHusk(){ const p=me(); let best=null,bd=1e9; for(const e of S.ents){ if(!(e.kind==="husk"||(e.kind==="raider"&&attOf(e)==="hostile"&&!e.surr))||!e.alive||!VIS[Sim.idx(S,e.x,e.y)]) continue; const d=Math.hypot(e.x-p.x,e.y-p.y); if(d<bd){bd=d;best=e;} } return best; }
 function fire(){
   let tg=null;
   if(mode==="pc"&&hover&&targetable(hover.x,hover.y)) tg=hover; else if(target&&targetable(target.x,target.y)) tg=target; else { const h=nearestHusk(); if(h) tg={x:h.x,y:h.y}; }
@@ -1613,7 +1620,7 @@ function pathTo(gx,gy){
       if(!pass(S.tiles[j])||(S.fire&&S.fire[j]&&j!==goal)) continue; const o=Sim.entAt(S,nx,ny); if(o&&VIS[j]) continue; prev[j]=c; q.push(j); } }
   if(prev[goal]===-1) return null; const path=[]; let c=goal; while(c!==start){ path.push([c%W,(c/W)|0]); c=prev[c]; } return path.reverse();
 }
-const visHusks=()=>S.ents.filter(e=>e.kind==="husk"&&e.alive&&VIS[Sim.idx(S,e.x,e.y)]).map(e=>e.id);
+const visHusks=()=>S.ents.filter(e=>(e.kind==="husk"||(e.kind==="raider"&&attOf(e)==="hostile"&&!e.surr))&&e.alive&&VIS[Sim.idx(S,e.x,e.y)]).map(e=>e.id);
 const hpSum=p=>Sim.LIMBS.reduce((a,l)=>a+p.hp[l],0)+p.blood;
 function travelTo(x,y){ const path=pathTo(x,y); if(!path) return false; stopTravel(); travel={path,i:0,seen:visHusks(),tries:0}; travel.timer=setTimeout(stepTravel,10); return true; }
 function stopTravel(){ if(travel){ clearTimeout(travel.timer); travel=null; } }

@@ -146,7 +146,7 @@ const Sim = (() => {
     const mapId=G?"gen":(opts.map||"ks9"), MAP=G?G.rows:MAPS[mapId].rows; ROOMS=G?G.rooms:MAPS[mapId].rooms;
     const W=Math.max(...MAP.map(r=>r.length)), H=MAP.length;
     const s={v:1,seed:seed>>>0,rng:seed|0,turn:1,W,H,tiles:[],P:[],wind:[],blood:{},items:[],ents:[],
-      log:[],fx:[],fire:{},fuel:[],scorch:{},power:true,map:mapId,rooms:G?G.rooms:null,decals:G?G.decals:(mapId==="ks9"?[{type:"ritual",x:33,y:29}]:[]),mode:opts.mode||"raid",site:opts.site||"Relay KS-9",status:"playing",nextId:1,cause:null};
+      log:[],fx:[],fire:{},fuel:[],scorch:{},power:true,map:mapId,rooms:G?G.rooms:null,decals:G?G.decals:(mapId==="ks9"?[{type:"ritual",x:33,y:29}]:[]),mode:opts.mode||"raid",site:opts.site||"Relay KS-9",status:"playing",nextId:1,cause:null,crews:{}};
     for(let y=0;y<H;y++)for(let x=0;x<W;x++){
       const c=MAP[y][x]||"~"; let t;
       switch(c){
@@ -175,6 +175,7 @@ const Sim = (() => {
       for(const [x,y] of G.fires){ const i=idx(s,x,y); s.fire[i]=2; s.fuel[i]=14; } }
     if(s.mode==="ship"){ for(const p of players(s)) p.seen.fill(1); for(const t of s.tiles) if(t.t==="door") t.open=true; return s; }
     applyMods(s,opts.mods||{});
+    if(G) spawnRaiders(s,opts.gen.tier||1,opts.mods||{});
     say(s,`Shuttle docked at ${s.site}. Station is silent. ${s.power?"Lights are on.":"No power. Emergency lights only."}`,"info");
     say(s,"Your suit reads a full atmosphere outside the visor. Magboots engaged.","air");
     return s;
@@ -222,7 +223,7 @@ const Sim = (() => {
   const N4=[[1,0],[-1,0],[0,1],[0,-1]];
   function face(e,dx,dy){ if(!dx&&!dy) return; e.face=Math.abs(dx)>=Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]; }
   const fx=(s,o)=>s.fx.push(o);
-  let CTX=null; // which player a log line is about (multiplayer renders it from their perspective)
+  let CTX=null, ATK=null; const isPid=(s,id)=>!!id&&s.ents.some(q=>q.id===id&&q.kind==="player"); const label=e=>e.kind==="husk"?"the husk":e.name; // which player a log line is about (multiplayer renders it from their perspective)
   function say(s,msg,kind="info"){ s.log.push({t:s.turn,msg,kind,pid:CTX}); if(s.log.length>80) s.log.shift(); }
   function roomName(x,y){ for(const r of ROOMS) if(x>=r[1]&&x<=r[3]&&y>=r[2]&&y<=r[4]) return r[0]; return "Service crawlway"; }
   function line(x0,y0,x1,y1,extend=0){ // Bresenham, excludes start
@@ -252,28 +253,34 @@ const Sim = (() => {
 
   function damage(s,e,limb,dmg,bleedP,cause){
     if(!e.alive) return;
-    if(e.kind==="player"){ const G=gearOf(e), dr=limb==="head"?G.head:limb==="torso"?G.torso:limb==="larm"||limb==="rarm"?G.torso*.5:G.legs; if(dr) dmg=Math.max(1,Math.round(dmg*(1-dr))); }
+    if(e.kind==="raider"&&isPid(s,ATK)) provoke(s,e,ATK);
+    if(e.kind!=="husk"){ const G=gearOf(e), dr=limb==="head"?G.head:limb==="torso"?G.torso:limb==="larm"||limb==="rarm"?G.torso*.5:G.legs; if(dr) dmg=Math.max(1,Math.round(dmg*(1-dr))); }
     if(e.downed&&(limb==="head"||limb==="torso")){ kill(s,e,cause); return; }
     const was=e.hp[limb]; e.hp[limb]=Math.max(0,was-dmg);
     if(chance(s,bleedP)) e.bleed[limb]=1;
     bleedDecal(s,e.x,e.y,1); fx(s,{type:"hurt",id:e.id,x:e.x,y:e.y,limb,dmg});
-    const vis=anyPlayerSees(s,e.x,e.y), you=e.kind==="player";
+    const vis=anyPlayerSees(s,e.x,e.y), you=e.kind==="player", who=e.kind==="raider"?e.name+"'s":"The husk's";
     // a heavy hit that wrecks a limb can tear it clean off
     if(was>0&&e.hp[limb]<=0&&limb!=="torso"&&!(e.sev&&e.sev[limb])&&(dmg-was>=4||dmg>=14)){
       e.sev=e.sev||{}; e.sev[limb]=1; e.bleed[limb]=1; fx(s,{type:"sever",id:e.id,limb,x:e.x,y:e.y});
-      const c0=CTX; if(you) CTX=e.id; if(you) say(s,limb==="head"?"Your head comes apart.":`Your ${LNAME[limb]} is torn away!`,"bad"); else if(vis) say(s,limb==="head"?"The husk's head bursts apart.":`The husk's ${LNAME[limb]} tears off and hits the deck.`,"good"); CTX=c0;
+      const c0=CTX; if(you) CTX=e.id; if(you) say(s,limb==="head"?"Your head comes apart.":`Your ${LNAME[limb]} is torn away!`,"bad"); else if(vis) say(s,limb==="head"?`${who} head bursts apart.`:`${who} ${LNAME[limb]} tears off and hits the deck.`,"good"); CTX=c0;
       if(limb==="head"){ kill(s,e,cause); return; } }
     if(was>0&&e.hp[limb]<=0){
       if(limb==="head"||limb==="torso"){
         if(you&&players(s).length>1&&players(s).some(q=>q!==e&&q.alive&&!q.downed)){ e.downed=true; e.downT=8; e.downCause=cause; const c0=CTX; CTX=e.id; say(s,"You're down! A crewmate has 8 turns to reach you.","bad"); CTX=c0; fx(s,{type:"downed",id:e.id,x:e.x,y:e.y}); return; }
         kill(s,e,cause); return; }
       if(you) say(s,`Your ${LNAME[limb]} is mangled beyond use!`,"bad");
-      else if(vis) say(s,`The husk's ${LNAME[limb]} is blown off.`,"good");
+      else if(vis) say(s,`${who} ${LNAME[limb]} is ruined.`,"good");
+      if(e.kind==="raider"&&e.alive) rsay(s,e,"hit");
     }
   }
   function kill(s,e,cause){
     e.alive=false; bleedDecal(s,e.x,e.y,3); fx(s,{type:"die",id:e.id,x:e.x,y:e.y});
     if(e.kind==="player"){ s.cause=cause; e.cause=cause; const c0=CTX; CTX=e.id; say(s,`You die. ${cause}`,"bad"); CTX=c0; }
+    else if(e.kind==="raider"){ const C=crewOf(s,e), m=crewMates(s,e)[0]; e.surr=false;
+      if(anyPlayerSees(s,e.x,e.y)) say(s,`${e.name} of the ${FACTIONS[e.fac].name} goes down. Search the body with F.`,isPid(s,ATK)?"good":"info");
+      if(m) rsay(s,m,"ally_down",{n:e.name},true); if(ATK&&s.ents.some(q=>q.id===ATK&&q.kind==="raider")){ const k=s.ents.find(q=>q.id===ATK); if(k&&k.alive) rsay(s,k,"kill"); }
+      if(C&&isPid(s,ATK)) setAtt(s,e.crew,"hostile"); }
     else { if(chance(s,.35)) spawnItem(s,Items.roll(()=>rand(s),1,chance(s,.7)?"ammo":"mat"),e.x,e.y);
       if(anyPlayerSees(s,e.x,e.y)) say(s,`The husk collapses. ${cause==="vacuum"?"Its lungs gave out.":""}`.trim(),"good"); }
   }
@@ -281,8 +288,10 @@ const Sim = (() => {
   // ---------- player actions ----------
   function act(s,pid,a){
     if(s.status!=="playing") return false;
-    const p=s.ents.find(e=>e.id===pid); if(!p||!p.alive||p.acted||p.downed) return false;
-    s.fx=[]; CTX=p.id;
+    const p=s.ents.find(e=>e.id===pid);
+    if(p&&p.alive&&s.mode==="raid"&&(a.type==="talk"||a.type==="loot")&&!p.downed){ s.fx=[]; CTX=p.id; ATK=null; return a.type==="talk"?doTalk(s,p,a.text):doLoot(s,p,a); }
+    if(!p||!p.alive||p.acted||p.downed) return false;
+    s.fx=[]; CTX=p.id; ATK=p.id;
     let ok=false, slow=false;
     if(s.mode==="ship"){ // crew move freely aboard; no turns, no hazards
       if(a.type==="move") return !!doMove(s,p,a.dx,a.dy);
@@ -295,6 +304,8 @@ const Sim = (() => {
     if(a.type==="unequip") return doUnequip(s,p,a.slot);
     if(a.type==="light"){ if(!p.light){ say(s,"You don't have a light equipped.","info"); return false; } p.lightOff=!p.lightOff; say(s,p.lightOff?"You switch your light off. The dark closes in.":"You click your light on.","info"); return true; }
     if(a.type==="drop") return doDrop(s,p,a.index);
+    if(a.type==="talk") return doTalk(s,p,a.text);
+    if(a.type==="loot") return doLoot(s,p,a);
     switch(a.type){
       case "move": { const r=doMove(s,p,a.dx,a.dy); ok=!!r; slow=r==="walked"&&crippled(p); break; }
       case "wait": ok=true; break;
@@ -310,7 +321,7 @@ const Sim = (() => {
     if(!ok) return false;
     p.acted=true; if(slow){ p.busy=1; if(!p.flags.limp){p.flags.limp=1; say(s,"You drag your ruined leg. Moving takes twice as long.","warn");} }
     while(s.status==="playing"&&players(s).every(q=>!q.alive||q.acted||q.downed)){
-      CTX=null;
+      CTX=null; ATK=null;
       endTurn(s);
       for(const q of players(s)){ q.acted=false; if(q.busy>0&&q.alive){ q.busy--; q.acted=true; } }
     }
@@ -321,6 +332,7 @@ const Sim = (() => {
     face(p,dx,dy);
     const x=p.x+dx,y=p.y+dy, t=tileAt(s,x,y), o=entAt(s,x,y);
     if(o&&o.kind==="husk") return melee(s,p,o);
+    if(o&&o.kind==="raider"){ const C=crewOf(s,o); if(C&&C.att==="hostile"&&!o.surr) return melee(s,p,o); say(s,o.surr?`${o.name} flinches, hands up. Press F to search them.`:`${o.name} doesn't budge. "Watch it."`,"info"); return false; }
     if(o) return false;
     if(t.t==="door"&&!t.open) return tryDoor(s,p,t,x,y);
     if(t.t==="window"){ say(s,"Reinforced glass. Beyond it, nothing but stars.","info"); return false; }
@@ -356,10 +368,10 @@ const Sim = (() => {
   function melee(s,p,h){
     const st=ST(p.melee)||WRENCH, pen=(p.hp.rarm<=0?.3:0)+(p.hp.larm<=0?.1:0), wn=p.melee?nm(p.melee):"wrench";
     fx(s,{type:"melee",x:h.x,y:h.y});
-    const strike=(t)=>{ if(chance(s,.82+(st.acc||0)-pen)){ const l=pickLimb(s), d=ri(s,st.dmg[0],st.dmg[1]); say(s,`You hit the husk's ${LNAME[l]} with your ${wn}.`,"info"); damage(s,t,l,d,st.bleed??.25,"beaten"); if(st.stun&&t.alive) t.stun=Math.max(t.stun|0,st.stun); return true; } say(s,`Your ${wn} swing misses.`,"info"); return false; };
+    const strike=(t)=>{ if(chance(s,.82+(st.acc||0)-pen)){ const l=pickLimb(s), d=ri(s,st.dmg[0],st.dmg[1]); say(s,`You hit ${t.kind==="husk"?"the husk's":t.name+"'s"} ${LNAME[l]} with your ${wn}.`,"info"); damage(s,t,l,d,st.bleed??.25,"beaten"); if(st.stun&&t.alive) t.stun=Math.max(t.stun|0,st.stun); return true; } say(s,`Your ${wn} swing misses.`,"info"); return false; };
     strike(h);
     if(st.cleave) for(const [dx,dy] of N4){ const o=entAt(s,p.x+dx,p.y+dy); if(o&&o!==h&&o.kind==="husk") strike(o); }
-    h.aware=true; h.last={x:p.x,y:p.y};
+    if(h.kind==="husk"){ h.aware=true; h.last={x:p.x,y:p.y}; } else h.last={x:p.x,y:p.y};
     return true;
   }
   function hitChance(s,p,tx,ty){
@@ -407,11 +419,11 @@ const Sim = (() => {
         const isT=e===target, pel=st.pellets||1; let hits=0;
         for(let q=0;q<pel&&e.alive;q++){ if(isT?chance(s,hc):chance(s,.3)){ hits++; const l=st.head&&chance(s,st.head)?"head":pickLimb(s); damage(s,e,l,ri(s,st.dmg[0],st.dmg[1]),st.bleed??.55,"shot"); } }
         if(hits){ what="flesh"; fx(s,{type:"shot",x0:p.x,y0:p.y,x1:x,y1:y,what});
-          say(s, e.kind==="player"?`Your round hits ${e.name}!`:pel>1?`${hits} of ${pel} pellets tear into the husk.`:"You hit the husk.", "good");
+          say(s, e.kind!=="husk"?`Your round hits ${e.name}!`:pel>1?`${hits} of ${pel} pellets tear into the husk.`:"You hit the husk.", "good");
           if(e.kind==="husk"){ e.aware=true; e.last={x:p.x,y:p.y}; if(st.stun&&e.alive) e.stun=Math.max(e.stun|0,st.stun);
             if(st.knock&&e.alive){ const dx=Math.sign(e.x-p.x), dy=Math.sign(e.y-p.y), nx=e.x+(Math.abs(e.x-p.x)>=Math.abs(e.y-p.y)?dx:0), ny=e.y+(Math.abs(e.x-p.x)<Math.abs(e.y-p.y)?dy:0); if(walk(tileAt(s,nx,ny))&&!entAt(s,nx,ny)){ e.x=nx; e.y=ny; } } }
           if(st.pierce&&pierced++<1) continue; return; }
-        if(isT) say(s,"Your shot misses the husk.","info");
+        if(isT) say(s,`Your shot misses ${label(e)}.`,"info");
       }
     }
     fx(s,{type:"shot",x0:p.x,y0:p.y,x1:imp[0],y1:imp[1],what});
@@ -483,6 +495,9 @@ const Sim = (() => {
   }
   function doInteract(s,p){
     for(const [dx,dy] of N4){ const q=s.ents.find(e=>e.kind==="player"&&e.alive&&e.downed&&e.x===p.x+dx&&e.y===p.y+dy); if(q){ face(p,dx,dy); return doRevive(s,p,q); } }
+    if(s.mode==="raid"){ const b=s.ents.filter(e=>e.kind==="raider"&&!e.extracted&&(!e.alive||e.surr)&&Math.max(Math.abs(e.x-p.x),Math.abs(e.y-p.y))<=1)
+        .sort((a,b2)=>(a.alive?1:0)-(b2.alive?1:0)||(Math.abs(a.x-p.x)+Math.abs(a.y-p.y))-(Math.abs(b2.x-p.x)+Math.abs(b2.y-p.y)))[0];
+      if(b){ face(p,b.x-p.x,b.y-p.y); fx(s,{type:"lootbody",id:b.id,pid:p.id}); return false; } }
     if(s.mode==="ship"&&tileAt(s,p.x,p.y).t==="seat"){ fx(s,{type:"terminal",kind:"navtable",pid:p.id}); return false; }
     for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="terminal"){ face(p,dx,dy); fx(s,{type:"terminal",kind:t.kind,pid:p.id}); return false; } }
     if(s.mode==="ship") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="prop"){ face(p,dx,dy); fx(s,{type:"flavor",kind:t.kind,pid:p.id,x:p.x+dx,y:p.y+dy}); return false; } }
@@ -551,7 +566,7 @@ const Sim = (() => {
 
   // ---------- world resolution ----------
   function endTurn(s){
-    atmos(s); fireStep(s); wind(s); husks(s); vitals(s);
+    atmos(s); fireStep(s); wind(s); husks(s); raiders(s); vitals(s);
     for(const p of players(s)) if(p.alive&&p.downed&&--p.downT<=0){ CTX=p.id; kill(s,p,"Bled out before help arrived."); }
     CTX=null;
     s.turn++;
@@ -609,7 +624,7 @@ const Sim = (() => {
       if(!chance(s,Math.min(.85,str/18))) continue;
       const jx=j%s.W, jy=(j/s.W)|0; if(entAt(s,jx,jy)) continue;
       e.x=jx; e.y=jy;
-      if(s.tiles[j].t==="breach"){ e.alive=false; e.spaced=true; fx(s,{type:"spaced",x:jx,y:jy}); say(s,"A husk is torn through the breach and spins away into the void.","good"); }
+      if(s.tiles[j].t==="breach"){ e.alive=false; e.spaced=true; fx(s,{type:"spaced",x:jx,y:jy}); say(s,`${e.kind==="raider"?e.name+" is":"A husk is"} torn through the breach and spins away into the void.`,"good"); }
     }
   }
   // Fire: burns fuel, eats oxygen, needs >22 kPa, spreads (faster downwind),
@@ -685,10 +700,10 @@ const Sim = (() => {
         if(opts.length){ const [x,y]=opts[ri(s,0,opts.length-1)]; face(h,x-h.x,y-h.y); h.x=x; h.y=y; continue; } }
       // target: someone it can see beats someone it merely heard
       let best=null, bd=1e9, seen=false;
-      for(const p of players(s)){ if(!p.alive) continue; const v=huskSees(s,h,p), d=Math.abs(p.x-h.x)+Math.abs(p.y-h.y)-(v?100:0); if(d<bd){ bd=d; best=p; seen=v; } }
-      if(!best) return; bd=Math.abs(best.x-h.x)+Math.abs(best.y-h.y);
+      for(const p of s.ents){ if(!p.alive||(p.kind!=="player"&&p.kind!=="raider")) continue; const v=huskSees(s,h,p), d=Math.abs(p.x-h.x)+Math.abs(p.y-h.y)-(v?100:0); if(d<bd){ bd=d; best=p; seen=v; } }
+      if(!best) continue; bd=Math.abs(best.x-h.x)+Math.abs(best.y-h.y);
       if(seen){
-        if(!h.aware){ if(anyPlayerSees(s,h.x,h.y)) say(s,"The husk's head snaps toward you. It shrieks.","warn");
+        if(!h.aware){ if(anyPlayerSees(s,h.x,h.y)) say(s,best.kind==="raider"?`A husk shrieks and turns on ${best.name}.`:"The husk's head snaps toward you. It shrieks.","warn");
           fx(s,{type:"shriek",x:h.x,y:h.y,id:h.id});                       // the shriek calls the pack
           for(const o of s.ents) if(o!==h&&o.kind==="husk"&&o.alive&&Math.hypot(o.x-h.x,o.y-h.y)<=7&&!o.aware){ o.aware=true; o.last={x:best.x,y:best.y}; } }
         h.aware=true; h.last={x:best.x,y:best.y}; h.search=0; h.lurk=0;
@@ -731,6 +746,7 @@ const Sim = (() => {
     }
   }
   function huskAttack(s,h,p){
+    if(p.kind==="raider"){ face(h,p.x-h.x,p.y-h.y); fx(s,{type:"claw",x:p.x,y:p.y,id:h.id}); if(chance(s,.62)){ damage(s,p,pickLimb(s),ri(s,4,9),.35,"husk"); if(p.alive&&anyPlayerSees(s,p.x,p.y)&&chance(s,.4)) say(s,`A husk tears into ${p.name}.`,"info"); } return; }
     CTX=p.id; const armsGone=h.hp.larm<=0&&h.hp.rarm<=0; face(h,p.x-h.x,p.y-h.y); fx(s,{type:"claw",x:p.x,y:p.y,id:h.id});
     if(chance(s,armsGone?.5:.68)){
       const l=pickLimb(s), d=armsGone?ri(s,3,6):ri(s,4,9);
@@ -738,6 +754,307 @@ const Sim = (() => {
       damage(s,p,l,d,.35,"Torn apart by a husk.");
     } else say(s,"The husk lunges and misses.","info");
   }
+  // =================== RAIDERS: other scavenger crews ===================
+  // Crews from four outfits pick over the same wrecks. Each crew shares an attitude toward the players
+  // (hostile / wary / friendly), loots containers and the deck, fights husks, patches wounds, surrenders
+  // or runs when it's going badly, talks (and answers what you type), and eventually pulls out.
+  const RAIDER_HP={head:26,torso:52,larm:30,rarm:30,lleg:34,rleg:34};
+  const FACTIONS={
+    reaver:{name:"Red Reavers",short:"Reaver",hostile:.85,cloth:[2,4,7],cloak:["red","black"],visor:["red","amber"],crest:["horns","plume","none"],
+      head:["welder","welder","flakhelm",null],armor:["scrapvest","scrapvest","flak",null],legs:["kneepads","cargo",null],acc:["pauldron","cape","bandolier","pauldron"],
+      guns:["pipe","scatter","sixgun","rivet","coachgun","pipe"],side:["sixgun","cannon"],melee:["machete","axe","ripsaw","crowbar"],hair:[4,1,10,0,5],marks:[4,1,2,4],traits:["killer","killer","greedy","coward","talker"]},
+    saint:{name:"Rust Saints",short:"Saint",hostile:.6,cloth:[0,8,6,4],cloak:["bone","black","violet"],visor:["green","amber"],crest:["antenna","halo","none"],
+      head:["gasmask","gasmask","sallet",null],armor:["medcoat","brigandine","hazard"],legs:["hazlegs","kneepads"],acc:["censer","scarf","charm",null],
+      guns:["pump","carbine","warden","hound"],side:["pistol"],melee:["maul","crowbar","knife"],hair:[0,1,6,3],marks:[1,2,0],traits:["zealot","zealot","talker","veteran","coward"]},
+    guild:{name:"Salvage Guild",short:"Guild",hostile:.25,cloth:[1,5,7,0],cloak:["olive","bone","navy"],visor:["amber","cyan"],crest:["antenna","plume","none"],
+      head:["hardhat","eva","hardhat",null],armor:["harness","hazard","suit","hardsuit"],legs:["cargo","magboots","hazlegs"],acc:["toolbelt","oxytank","lamp",null],
+      guns:["pistol","carbine","hornet","bullpup","wasp"],side:["pistol"],melee:["crowbar","knife"],hair:[2,8,7,11,12,9],marks:[0,0,3,1],traits:["talker","talker","greedy","coward","veteran"]},
+    hollow:{name:"Hollow Company",short:"Hollow",hostile:.92,cloth:[4,9,3],cloak:["black","navy"],visor:["red","cyan","white"],crest:["none","fin"],
+      head:["sallet","flakhelm","pilothelm"],armor:["carrier","flak","carrier"],legs:["greaves","kneepads"],acc:["lamp","bandolier","drone",null],
+      guns:["bullpup","kestrel","hound","warden","longbore"],side:["cannon","wasp"],melee:["knife","machete"],hair:[1,0,10],marks:[1,5,0],traits:["veteran","veteran","killer","greedy"]},
+  };
+  const RNAMES=["Gutter","Tallow","Rook","Mags","Vex","Sallow","Brick","Cinder","Hask","Lull","Spit","Knuckle","Dregs","Ivo","Marrow","Ash","Pike","Wren","Tamsin","Oro","Juno","Grist","Halloran","Sev","Kettle","Dace","Moth","Nails","Corwin","Lark","Bastian","Fen","Quill","Rhee","Stitch","Varga","Yuri","Odette","Crane","Holt"];
+  // what they say. {you}=the player they're talking to, {it}=an item, {n}=their name, {f}=their outfit
+  const V={
+    spot_hostile:{_:["Contact! Light 'em up!","Fresh meat on the deck!","That's our salvage. Drop 'em!","Weapons free!"],reaver:["Meat! Fresh meat!","Skin 'em and take the kit!","Ha! Look what crawled in!"],saint:["Heretics on the deck. Purge them.","The rust takes all. Starting with you."],hollow:["Hostiles. Engage.","Contact front. Put them down.","Targets acquired."]},
+    spot_wary:{_:["Hold it right there.","Easy. Keep your hands where I can see 'em.","Stop. Who are you with?","Don't come any closer."],guild:["Guild salvage team. This section's tagged, friend.","Easy there. We're just cutting scrap."]},
+    spot_friendly:{_:["Hey! Don't shoot, we're friendly.","Another crew. Good. Plenty of wreck for all of us.","Easy, friend. We're not looking for trouble."],guild:["Guild here. Watch the husks in the lower decks.","Friendly! Guild salvage. Wave if you can hear me."]},
+    warn:{_:["I said back off.","Last warning.","You're too close. Move.","Step away or I start shooting."]},
+    provoked:{_:["You shot me! Kill them!","That's how it is? Fine!","They opened fire! Drop 'em!","Traitors!"],guild:["We trusted you! Guild, open fire!"],saint:["The faithless strike! Smite them!"]},
+    husk:{_:["Husk! Shoot it!","Contact, husk!","Here they come!","Something's moving in the dark."],hollow:["Biologic. Engaging."],saint:["Back to the rust, abomination!"]},
+    hit:{_:["Argh! I'm hit!","Gah!","They got me!","Hit! I'm hit!"]},
+    dry:{_:["I'm dry!","Out of ammo!","Click. Damn it!"]},
+    kill:{_:["Got one!","Stay down.","Next!","That's one less."],reaver:["Ha! Who's next?"],hollow:["Target down."]},
+    ally_down:{_:["They got {n}!","{n}'s down!","No! {n}!"]},
+    flee:{_:["I'm out! Fall back!","Not worth dying for!","Run!"]},
+    surrender:{_:["Alright! Alright! I give up!","Don't shoot! Take what you want!","I yield! Please!"]},
+    heal:{_:["Patching up.","Hold on, I'm bleeding.","Need a second to wrap this."]},
+    loot:{_:["Got something.","Mine.","Bag it.","Worth a few credits."]},
+    loot_good:{_:["Oh, that's a nice one.","Now this is worth the trip!","Jackpot."]},
+    blackbox:{_:["Got the black box! Let's go!","Black box is ours. Move out!"]},
+    leave:{_:["Packs are full. We're pulling out.","That's enough. Back to the ship.","Moving to the pad. Let's go."]},
+    hail_hostile:{_:["Talk all you like. You're still dying.","Ha! Nice try.","Shut up and bleed."],reaver:["We'll talk over your corpse!"]},
+    hail_wary:{_:["We hear you. Keep your distance.","Yeah? What do you want?","Talk. From over there."]},
+    hail_friendly:{_:["Hey. Watch yourself in here.","Good to see a live face.","Hey yourself."]},
+    befriend:{_:["Alright. You seem alright.","Fine. No trouble from us.","Okay. We're good."]},
+    truce_yes:{_:["Alright, alright. Truce. Nobody shoots.","Fine. Walk away and we walk away.","Okay! Okay. Truce."]},
+    truce_no:{_:["Truce? Ha! No.","Too late for that.","Not a chance."],saint:["The rust offers no mercy. Neither do we."]},
+    already:{_:["We're already fine, relax.","Told you, we're good."]},
+    backoff_obey:{_:["Alright, we're going.","Easy! We're backing off.","Fine. It's all yours."]},
+    backoff_defy:{_:["Or what?","You don't give orders here.","Try it."]},
+    surr_no:{_:["Make me.","Drop yours!","You first."]},
+    trade_yes:{_:["My {it} for your {mine}. Deal.","Here, {it} for the {mine}. Pleasure doing business.","Fair trade. {it} for {mine}."]},
+    trade_none:{_:["You've got nothing I want.","Come back with something worth my time."]},
+    trade_empty:{_:["Got nothing spare, sorry.","Packs are empty, friend."]},
+    trade_no:{_:["Not until I trust you.","Trade? Earn it first."]},
+    follow_yes:{_:["Sure, we'll watch your back for a bit.","Lead the way. We'll cover you.","Alright, we're with you."]},
+    follow_no:{_:["We've got our own work.","No. We're busy.","Not a chance."]},
+    threat_reply:{_:["Hey, easy!","Watch your mouth.","You want a fight? Keep talking."]},
+    intro:{_:["We're {f}. What's it to you?","{f}. We work this sector.","Name's {n}. {f}."]},
+    huh:{_:["What?","Speak plain.","Huh?","..."]},
+    robbed:{_:["Take it, just don't shoot.","Fine. Take it.","Bastard."]},
+    idle:{_:["Quiet in here.","Check the lockers.","Keep your eyes open.","I hate these old wrecks.","Smell that? Something died."],reaver:["Gonna find something shiny today."],saint:["The rust remembers."],guild:["Mark the good scrap for the cutters."],hollow:["Stay sharp."]},
+    following:{_:["Right behind you.","Moving with you.","Got your back."]},
+    follow_done:{_:["That's as far as we go. Good luck.","We're heading off. Watch yourself."]},
+  };
+  const INTENTS=[["surrender",/\b(drop (your|ya|the|it|them)\b|surrender|hands up|give up|on (your|ya) knees|yield)/],
+    ["backoff",/\b(back off|get back|stay back|go away|piss off|walk away|move along|leave us|get lost|or i('ll| will)? shoot|scram)/],
+    ["trade",/\b(trade|swap|deal|buy|sell|barter|exchange)/],
+    ["follow",/\b(follow|with me|watch my back|cover me|help me|join|team up|come with|escort)/],
+    ["truce",/\b(peace|truce|no trouble|(don'?t|do not) want (any )?trouble|mean no harm|don'?t shoot|friendly|friend|we'?re (cool|good|fine)|calm|easy|no harm|not here to fight|ceasefire|hold fire|relax|chill)/],
+    ["threat",/\b(kill (you|u|ya)|you('re| are) dead|gonna die|shoot you|i'?ll end|f+u+c+k+ (you|off|u)|die\b)/],
+    ["ask",/\b(who are you|what are you|who('s| is) that|what do you want|who you with|which crew)/],
+    ["hail",/\b(hey|hello|hi|hail|yo|oi|greetings|sup|anyone|howdy|morning|evening)\b/]];
+  function intentOf(text){ const t=" "+String(text||"").toLowerCase()+" "; for(const [k,re] of INTENTS) if(re.test(t)) return k; return "huh"; }
+  const raidersOf=s=>s.ents.filter(e=>e.kind==="raider");
+  const crewOf=(s,r)=>s.crews&&s.crews[r.crew];
+  const pickS=(s,a)=>a[ri(s,0,a.length-1)];
+  function rsay(s,r,ev,vars={},force){
+    if(!r.alive&&!force) return; if(!force&&(r.talkT|0)>s.turn) return;
+    const pool=V[ev]; if(!pool) return; const arr=pool[r.fac]&&chance(s,.6)?pool[r.fac]:pool._;
+    const msg=pickS(s,arr).replace(/\{n\}/g,vars.n||r.name).replace(/\{f\}/g,FACTIONS[r.fac].name).replace(/\{it\}/g,vars.it||"").replace(/\{mine\}/g,vars.mine||"").replace(/\{you\}/g,vars.you||"you");
+    r.talkT=s.turn+2;
+    const heard=players(s).some(p=>p.alive&&(Math.hypot(p.x-r.x,p.y-r.y)<=11||canSee(s,p,r.x,r.y)));
+    if(!heard) return;
+    s.log.push({t:s.turn,msg,kind:"chat",from:r.id,who:r.name,fac:r.fac,att:crewOf(s,r)?crewOf(s,r).att:"hostile",pid:null}); if(s.log.length>80) s.log.shift();
+    fx(s,{type:"speech",id:r.id,x:r.x,y:r.y});
+  }
+  function makeRaider(s,fac,tier,x,y,crew,lead,used){
+    const F=FACTIONS[fac], rr=()=>tier>=3?ri(s,0,2):tier===2?(chance(s,.45)?1:0):(chance(s,.15)?1:0), it=d=>d?{d,r:rr()}:null;
+    let name=pickS(s,RNAMES); for(let k=0;k<6&&used.has(name);k++) name=pickS(s,RNAMES); used.add(name);
+    const w1=it(pickS(s,F.guns)), w2=chance(s,.3)?it(pickS(s,F.side)):null, g=(chance(s,.5)?1:0);
+    const r={id:"r"+(s.nextId++),kind:"raider",name,fac,crew,lead:!!lead,trait:pickS(s,F.traits),x,y,hp:{...RAIDER_HP},max:{...RAIDER_HP},bleed:{},blood:100,
+      w1,w2,melee:it(pickS(s,F.melee)),head:it(pickS(s,F.head)),armor:it(pickS(s,F.armor)),legs:it(pickS(s,F.legs)),acc:it(pickS(s,F.acc)),light:chance(s,.75)?{d:"flashlight",r:0}:null,pack:chance(s,.6)?{d:pickS(s,["sling","field","field"]),r:0}:null,
+      act:1,ammo:{},mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),inv:[],alive:true,busy:0,face:[0,1],stimT:0,last:null,avoid:0,flee:0,surr:false,surrT:0,talkT:0,stun:0,flags:{},
+      look:{c:pickS(s,F.cloak),v:pickS(s,F.visor),k:pickS(s,F.crest),s:ri(s,0,6),h:g?pickS(s,[3,6,7,8,9,13,1,10]):pickS(s,F.hair),hc:ri(s,0,7),f:0,e:ri(s,0,4),t:ri(s,0,4),tc:pickS(s,F.cloth),b:ri(s,0,2),bc:pickS(s,F.cloth),bt:pickS(s,[4,4,0,7]),bs:ri(s,0,2),g,
+        fh:g?0:pickS(s,[0,1,1,2,3,4,5,6]),fm:pickS(s,F.marks),ey:ri(s,0,3),br:ri(s,0,4),mo:ri(s,0,4),no:ri(s,0,3)}};
+    for(const w of [w1,w2]) if(w){ const t=ST(w).ammo; if(t) r.ammo[t]=(r.ammo[t]|0)+Math.round(Items.AMMO[t].stack*(1+rand(s)*2)); }
+    r.cap=capOf(r);
+    if(chance(s,.65)) r.inv.push({d:"bandage",r:0,id:s.nextId++}); if(chance(s,.25)) r.inv.push({d:"medkit",r:0,id:s.nextId++});
+    for(let k=ri(s,1,3);k>0;k--){ const q=Items.roll(()=>rand(s),tier,pickS(s,["val","val","food","med","mat","ammo","any"])), D=Items.def(q.d);
+      if(D.k==="ammo") r.ammo[D.ammo]=(r.ammo[D.ammo]|0)+(q.n|0); else if(D.k==="mat") r.mats[q.d]=(r.mats[q.d]|0)+(q.n||1); else if(r.inv.length<r.cap) r.inv.push({...q,id:s.nextId++}); }
+    return r;
+  }
+  function spawnRaiders(s,tier,mods){
+    const p0=players(s)[0]; if(!p0) return;
+    let n=mods.raiders!=null?mods.raiders|0:(chance(s,.7)?1:0)+(tier>=2&&chance(s,.4)?1:0)+(tier>=3&&chance(s,.3)?1:0); if(!n) return;
+    // reachable floor from the shuttle (raiders came in through the same wreck)
+    const seen=new Uint8Array(s.W*s.H), q=[idx(s,p0.x,p0.y)]; seen[q[0]]=1;
+    for(let k=0;k<q.length;k++){ const c=q[k], x=c%s.W, y=(c/s.W)|0; for(const [dx,dy] of N4){ const nx=x+dx, ny=y+dy; if(!inb(s,nx,ny)) continue; const j=idx(s,nx,ny), t=s.tiles[j]; if(seen[j]) continue; if(walk(t)||(t.t==="door"&&!t.locked)){ seen[j]=1; q.push(j); } } }
+    const rooms=(s.rooms||[]).filter(r=>r[0]&&!/Docking|Vault|corridor|shaft|hall/i.test(r[0])&&Math.hypot((r[1]+r[3])/2-p0.x,(r[2]+r[4])/2-p0.y)>15);
+    const facW=tier>=3?[["hollow",3],["reaver",3],["saint",2],["guild",1]]:tier===2?[["reaver",3],["saint",2],["guild",2],["hollow",1]]:[["reaver",3],["guild",3],["saint",2]];
+    s.crews=s.crews||{}; const used=new Set();
+    for(let c=0;c<n&&rooms.length;c++){
+      const rm=rooms.splice(ri(s,0,rooms.length-1),1)[0]; let tot=facW.reduce((a,f)=>a+f[1],0), v=rand(s)*tot, fac="reaver"; for(const [f,w] of facW){ if((v-=w)<0){ fac=f; break; } }
+      const F=FACTIONS[fac], att=chance(s,F.hostile)?"hostile":chance(s,.6)?"wary":"friendly", id="c"+(c+1);
+      const tiles=[]; for(let y=rm[2];y<=rm[4];y++)for(let x=rm[1];x<=rm[3];x++){ const j=idx(s,x,y); if(seen[j]&&s.tiles[j].t==="floor"&&!entAt(s,x,y)&&!s.items.some(i=>i.x===x&&i.y===y)) tiles.push([x,y]); }
+      const size=Math.min(tiles.length,ri(s,1,3)+(tier>=3?1:0)); if(!size) continue;
+      s.crews[id]={id,fac,att,met:{},warn:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:110+ri(s,0,90)};
+      for(let k=0;k<size;k++){ const [x,y]=tiles.splice(ri(s,0,tiles.length-1),1)[0]; s.ents.push(makeRaider(s,fac,tier,x,y,id,k===0,used)); }
+    }
+  }
+  const sightOf=(s,r)=>sightR(s)+(r.light&&!s.power?3:0)+(r.trait==="veteran"?1:0);
+  const rSees=(s,r,e)=>e.alive&&Math.hypot(e.x-r.x,e.y-r.y)<=sightOf(s,r)+.5&&los(s,r.x,r.y,e.x,e.y);
+  const crewMates=(s,r)=>s.ents.filter(e=>e.kind==="raider"&&e.alive&&e.crew===r.crew&&e!==r);
+  function setAtt(s,crew,att){ const C=s.crews[crew]; if(!C||C.att===att) return; C.att=att; if(att==="hostile"){ C.follow=null; C.followT=0; } }
+  // a player hurt one of them
+  function provoke(s,r,pid){ const C=crewOf(s,r); if(!C) return; if(C.att!=="hostile"){ setAtt(s,r.crew,"hostile"); rsay(s,r.alive?r:(crewMates(s,r)[0]||r),"provoked",{},true); }
+    const p=s.ents.find(e=>e.id===pid); if(p) for(const m of [r,...crewMates(s,r)]) m.last={x:p.x,y:p.y};
+    if(r.surr&&r.alive){ r.surr=false; } }
+  function crewStrength(s,r){ const all=[r,...crewMates(s,r)]; return all.reduce((a,m)=>a+(m.hp.torso/m.max.torso)*(m.blood/100)*(gun(m)&&(m.ammo[ST(gun(m)).ammo]|0)>0?1:.4),0); }
+  function playerStrength(s,r){ return players(s).filter(p=>p.alive&&Math.hypot(p.x-r.x,p.y-r.y)<12).reduce((a,p)=>a+(p.hp.torso/p.max.torso)*(p.blood/100)*(gun(p)?1:.4),0); }
+  const isHurt=r=>r.hp.torso<r.max.torso*.45||r.blood<45||(r.hp.lleg<=0&&r.hp.rleg<=0);
+  // ---- talking to them ----
+  function doTalk(s,p,text){
+    text=String(text||"").replace(/[\u0000-\u001f]/g,"").trim().slice(0,120); if(!text) return false;
+    if(p.talkT===s.turn&&(p.talkN|0)>=2){ say(s,"Give them a second to answer.","info"); return false; }
+    p.talkN=p.talkT===s.turn?(p.talkN|0)+1:1; p.talkT=s.turn;
+    s.log.push({t:s.turn,msg:text,kind:"chat",from:p.id,who:p.name,pid:null}); if(s.log.length>80) s.log.shift(); fx(s,{type:"speech",id:p.id,x:p.x,y:p.y});
+    // whoever is close enough to hear answers
+    const near=raidersOf(s).filter(r=>r.alive&&(Math.hypot(r.x-p.x,r.y-p.y)<=5||(Math.hypot(r.x-p.x,r.y-p.y)<=11&&los(s,p.x,p.y,r.x,r.y)))).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y));
+    if(!near.length) return true;
+    const r=near[0], C=crewOf(s,r), it=intentOf(text); r.talkT=0;
+    noise(s,p.x,p.y,4);
+    const T=r.trait, odds=crewStrength(s,r)/Math.max(.3,playerStrength(s,r)), hurt=isHurt(r);
+    const tryP=pr=>chance(s,Math.max(0,Math.min(.95,pr)));
+    if(r.surr){ rsay(s,r,it==="threat"?"surrender":"robbed",{},true); return true; }
+    switch(it){
+      case "hail": if(C.att==="hostile"){ if(tryP((T==="talker"?.3:.08)+(hurt?.2:0))){ setAtt(s,r.crew,"wary"); rsay(s,r,"hail_wary",{},true); } else { rsay(s,r,"hail_hostile",{},true); for(const m of [r,...crewMates(s,r)]) m.busy=Math.max(m.busy,m===r?0:0); } }
+        else if(C.att==="wary"){ if(tryP(.2+(T==="talker"?.3:0)+(r.fac==="guild"?.2:0))){ setAtt(s,r.crew,"friendly"); rsay(s,r,"befriend",{},true); } else rsay(s,r,"hail_wary",{},true); }
+        else rsay(s,r,"hail_friendly",{},true); break;
+      case "truce": if(C.att==="hostile"){ const pr=.08+(hurt?.35:0)+(odds<.8?.25:0)+(T==="talker"?.2:0)+(T==="coward"?.25:0)-(T==="killer"||T==="zealot"?.3:0)-(r.fac==="hollow"?.15:0);
+          if(tryP(pr)){ setAtt(s,r.crew,"wary"); for(const m of [r,...crewMates(s,r)]) m.last=null; rsay(s,r,"truce_yes",{},true); } else rsay(s,r,"truce_no",{},true); }
+        else if(C.att==="wary"){ if(tryP(.4+(T==="talker"?.25:0)+(r.fac==="guild"?.2:0)-(T==="killer"?.25:0))){ setAtt(s,r.crew,"friendly"); rsay(s,r,"befriend",{},true); } else rsay(s,r,"hail_wary",{},true); }
+        else rsay(s,r,"already",{},true); break;
+      case "backoff": if(C.att==="hostile"){ if(hurt||T==="coward"){ for(const m of [r,...crewMates(s,r)]){ m.flee=6; } rsay(s,r,"flee",{},true); } else rsay(s,r,"backoff_defy",{},true); }
+        else if(T==="killer"&&tryP(.5)){ setAtt(s,r.crew,"hostile"); rsay(s,r,"backoff_defy",{},true); } else { for(const m of [r,...crewMates(s,r)]) m.avoid=10; C.goal=null; rsay(s,r,"backoff_obey",{},true); } break;
+      case "surrender": if(C.att==="friendly"){ setAtt(s,r.crew,"wary"); rsay(s,r,"threat_reply",{},true); break; }
+        { const pr=(hurt?.45:0)+(odds<.6?.3:odds<1?.1:0)+(T==="coward"?.3:0)-(T==="killer"||T==="zealot"?.4:0)-(T==="veteran"?.2:0);
+          if(tryP(pr)){ for(const m of [r,...crewMates(s,r)]){ if(Math.hypot(m.x-p.x,m.y-p.y)<10){ m.surr=true; m.surrT=0; m.flee=0; } } setAtt(s,r.crew,"hostile"); rsay(s,r,"surrender",{},true); say(s,`${r.name} raises their hands. Search them with F to take their gear.`,"good"); }
+          else { setAtt(s,r.crew,"hostile"); rsay(s,r,"surr_no",{},true); } } break;
+      case "trade": if(C.att!=="friendly"){ rsay(s,r,C.att==="hostile"?"hail_hostile":"trade_no",{},true); break; }
+        { const offer=r.inv.filter(i=>Items.kind(i)!=="key"&&i.d!=="blackbox").sort((a,b)=>Items.value(b)-Items.value(a))[0];
+          if(!offer){ rsay(s,r,"trade_empty",{},true); break; } const need=Items.value(offer)*(T==="greedy"?1.15:.8);
+          const mine=p.inv.map((q,i)=>[q,i]).filter(([q])=>q.d!=="blackbox"&&Items.value(q)>=need).sort((a,b)=>Items.value(a[0])-Items.value(b[0]))[0];
+          if(!mine||Math.hypot(r.x-p.x,r.y-p.y)>2.5){ rsay(s,r,mine?"hail_friendly":"trade_none",{},true); if(mine) say(s,`Get closer to ${r.name} to trade.`,"info"); break; }
+          r.inv.splice(r.inv.indexOf(offer),1); const [q,qi]=mine; p.inv.splice(qi,1); p.inv.push({...offer,id:s.nextId++}); r.inv.push({...q,id:s.nextId++});
+          rsay(s,r,"trade_yes",{it:nm(offer),mine:nm(q)},true); say(s,`You trade your ${nm(q)} for ${r.name}'s ${nm(offer)}.`,"good"); } break;
+      case "follow": if(C.att==="friendly"&&tryP(.55+(T==="talker"||T==="veteran"?.2:0)-(T==="greedy"?.25:0))){ C.follow=p.id; C.followT=45; C.goal=null; rsay(s,r,"follow_yes",{},true); }
+        else rsay(s,r,C.att==="hostile"?"hail_hostile":"follow_no",{},true); break;
+      case "threat": if(C.att==="friendly"){ setAtt(s,r.crew,"wary"); rsay(s,r,"threat_reply",{},true); }
+        else if(C.att==="wary"){ if(T==="coward"){ for(const m of [r,...crewMates(s,r)]) m.avoid=10; rsay(s,r,"backoff_obey",{},true); } else if(T==="killer"||tryP(.35)){ setAtt(s,r.crew,"hostile"); rsay(s,r,"backoff_defy",{},true); } else rsay(s,r,"warn",{},true); }
+        else rsay(s,r,"hail_hostile",{},true); break;
+      case "ask": rsay(s,r,"intro",{},true); break;
+      default: rsay(s,r,"huh",{},true);
+    }
+    return true;
+  }
+  // ---- their turn ----
+  function rTake(s,r,it){ const D=Items.def(it.d); if(!D) return false;
+    if(D.k==="ammo"){ r.ammo[D.ammo]=(r.ammo[D.ammo]|0)+(it.n|0); return true; }
+    if(D.k==="mat"){ r.mats[it.d]=(r.mats[it.d]|0)+(it.n||1); return true; }
+    const slot=Items.slotOf(it); const {x,y,...rest}=it; const o={...rest,id:s.nextId++};
+    if(slot==="gun"&&!r.w2){ r.w2=o; return true; } if(slot&&slot!=="gun"&&!r[slot]){ r[slot]=o; r.cap=capOf(r); return true; }
+    if(r.inv.length<r.cap){ r.inv.push(o); return true; }
+    const cheap=r.inv.slice().sort((a,b)=>Items.value(a)-Items.value(b))[0]; if(cheap&&Items.value(cheap)<Items.value(it)){ r.inv.splice(r.inv.indexOf(cheap),1); spawnItem(s,{...cheap,id:undefined},r.x,r.y); r.inv.push(o); return true; }
+    return false; }
+  function rStep(s,r,x,y){ const t=tileAt(s,x,y);
+    if(t.t==="door"&&!t.open){ face(r,x-r.x,y-r.y); if(t.locked) return false; if(s.power||t.broken){ t.open=true; fx(s,{type:"door",x,y}); return true; } t.pry=(t.pry|0)+1; noise(s,x,y,5); fx(s,{type:"bash",x,y}); if(t.pry>=3){ t.open=true; t.pry=0; } return true; }
+    if(!walk(t)||entAt(s,x,y)||s.fire[idx(s,x,y)]) return false; face(r,x-r.x,y-r.y); r.x=x; r.y=y;
+    for(const it of s.items.filter(i=>i.x===x&&i.y===y)){ if(rTake(s,r,it)){ s.items=s.items.filter(q=>q!==it); if(it.d==="blackbox"){ rsay(s,r,"blackbox",{},true); if(anyPlayerSees(s,x,y)) say(s,`${r.name} pockets the black box!`,"bad"); } else if(Items.rarOf(it)>=2) rsay(s,r,"loot_good"); } }
+    return true; }
+  function rGo(s,r,tx,ty){ const st=stepToward(s,r,tx,ty); if(!st) return false; if(st[0]===tx&&st[1]===ty&&!walk(tileAt(s,tx,ty))&&tileAt(s,tx,ty).t!=="door") return "there"; return rStep(s,r,st[0],st[1]); }
+  function rAway(s,r,fx0,fy0){ const o=N4.map(([dx,dy])=>[r.x+dx,r.y+dy]).filter(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)&&!s.fire[idx(s,x,y)]).sort((a,b)=>Math.hypot(b[0]-fx0,b[1]-fy0)-Math.hypot(a[0]-fx0,a[1]-fy0));
+    if(o.length&&Math.hypot(o[0][0]-fx0,o[0][1]-fy0)>=Math.hypot(r.x-fx0,r.y-fy0)) return rStep(s,r,o[0][0],o[0][1]); return false; }
+  function rShoot(s,r,t){
+    const g=gun(r), st=ST(g); if(!st||st.cls==="launcher") return false; const at=st.ammo; if((r.ammo[at]|0)<=0) return false;
+    // don't fire through a crewmate
+    const pts=line(r.x,r.y,t.x,t.y,4); for(const [x,y] of pts){ if(x===t.x&&y===t.y) break; const e=entAt(s,x,y); if(e&&e.kind==="raider"&&e.crew===r.crew) return false; if(!clear(tileAt(s,x,y))) return false; }
+    face(r,t.x-r.x,t.y-r.y); noise(s,r.x,r.y,st.cls==="sniper"?14:10); ATK=r.id;
+    const shots=Math.min(st.burst||1,r.ammo[at]), hc=hitChance(s,r,t.x,t.y)*(r.trait==="veteran"?1:.85);
+    for(let k=0;k<shots&&t.alive;k++){ r.ammo[at]--; let imp=[t.x,t.y], what="none";
+      for(const [x,y] of pts){ if(!inb(s,x,y)) break; const tt=tileAt(s,x,y); imp=[x,y]; if(!clear(tt)||tt.t==="window"){ what="wall"; break; }
+        const e=entAt(s,x,y); if(!e||e===r) continue; const isT=e===t, pel=st.pellets||1; let hits=0;
+        const hl=[]; for(let q=0;q<pel;q++) if(isT?chance(s,hc):chance(s,.25)) hl.push([st.head&&chance(s,st.head*.6)?"head":pickLimb(s),ri(s,st.dmg[0],st.dmg[1])]); hits=hl.length;
+        if(hits){ what="flesh"; const c0=CTX; if(e.kind==="player"){ CTX=e.id; say(s,`${r.name} shoots you${pel>1?` (${hits} pellet${hits>1?"s":""})`:""}!`,"bad"); }
+          for(const [l,d] of hl) if(e.alive) damage(s,e,l,d,st.bleed??.5,`Shot dead by ${r.name} of the ${FACTIONS[r.fac].name}.`); CTX=c0;
+          if(e.kind==="husk"&&!e.alive) rsay(s,r,"kill"); if(e.kind==="husk"){ e.aware=true; e.last={x:r.x,y:r.y}; } break; }
+        if(isT&&e.kind==="player"&&chance(s,.5)){ const c0=CTX; CTX=e.id; say(s,`A round from ${r.name} cracks past you.`,"warn"); CTX=c0; } }
+      fx(s,{type:"shot",x0:r.x,y0:r.y,x1:imp[0],y1:imp[1],what}); }
+    if(st.bolt) r.busy=1; ATK=null;
+    if((r.ammo[at]|0)<=0){ const o=r.act===1?r.w2:r.w1; if(o&&(r.ammo[ST(o).ammo]|0)>0) r.act=r.act===1?2:1; else rsay(s,r,"dry"); }
+    return true; }
+  function rMelee(s,r,t){ const st=ST(r.melee)||WRENCH; face(r,t.x-r.x,t.y-r.y); fx(s,{type:"claw",x:t.x,y:t.y,id:r.id}); ATK=r.id;
+    if(chance(s,.75+(st.acc||0))){ const l=pickLimb(s), d=ri(s,st.dmg[0],st.dmg[1]); const c0=CTX; if(t.kind==="player"){ CTX=t.id; say(s,`${r.name} hits your ${LNAME[l]} with a ${nm(r.melee||{d:"crowbar"}).toLowerCase()}!`,"bad"); } damage(s,t,l,d,st.bleed??.3,`Hacked down by ${r.name}.`); CTX=c0; }
+    else if(t.kind==="player"){ const c0=CTX; CTX=t.id; say(s,`${r.name} swings at you and misses.`,"info"); CTX=c0; }
+    if(t.kind==="husk"){ t.aware=true; t.last={x:r.x,y:r.y}; } ATK=null; return true; }
+  function rHeal(s,r){ const bl=LIMBS.filter(l=>r.bleed[l]); if(!bl.length) return false; const i=r.inv.findIndex(q=>q.d==="bandage"||q.d==="medkit"); if(i<0) return false;
+    const it=r.inv.splice(i,1)[0]; if(it.d==="medkit"){ r.bleed={}; for(const l of LIMBS) if(r.hp[l]>0) r.hp[l]=Math.min(r.max[l],r.hp[l]+16); r.blood=Math.min(100,r.blood+15); } else delete r.bleed[bl[0]];
+    rsay(s,r,"heal"); if(anyPlayerSees(s,r.x,r.y)) say(s,`${r.name} ${it.d==="medkit"?"jabs a medkit":"wraps a bandage tight"}.`,"info"); return true; }
+  function rSearch(s,r,x,y){ const t=tileAt(s,x,y); if(t.t!=="prop"||!CONTAINERS.has(t.kind)||t.searched) return false; face(r,x-r.x,y-r.y); t.searched=true; const got=t.loot||[]; delete t.loot;
+    fx(s,{type:"search",x,y,kind:t.kind}); let good=false; for(const it of got){ if(!rTake(s,r,it)) spawnItem(s,it,r.x,r.y); else if(Items.rarOf(it)>=2||Items.kind(it)==="val") good=true; }
+    if(t.kind==="strongbox"){ r.busy=1; noise(s,x,y,6); }
+    if(anyPlayerSees(s,r.x,r.y)) say(s,`${r.name} rifles through a ${t.kind==="ammocrate"?"ammo crate":t.kind==="medcab"?"medical cabinet":t.kind}.`,"info");
+    if(got.length) rsay(s,r,good?"loot_good":"loot"); return true; }
+  function pickGoal(s,r){ let best=null, bd=1e9;
+    for(let i=0;i<s.tiles.length;i++){ const t=s.tiles[i]; if(t.t!=="prop"||!CONTAINERS.has(t.kind)||t.searched) continue; const x=i%s.W, y=(i/s.W)|0, d=Math.abs(x-r.x)+Math.abs(y-r.y)+rand(s)*6; if(d<bd&&d<40){ bd=d; best={x,y,k:"box"}; } }
+    for(const it of s.items){ const d=Math.abs(it.x-r.x)+Math.abs(it.y-r.y)+rand(s)*4-(Items.kind(it)==="val"?3:0); if(d<bd&&d<30){ bd=d; best={x:it.x,y:it.y,k:"item"}; } }
+    if(!best){ const rm=ROOMS[ri(s,0,ROOMS.length-1)]; if(rm) best={x:(rm[1]+rm[3])>>1,y:(rm[2]+rm[4])>>1,k:"walk"}; }
+    return best; }
+  function raiders(s){
+    const list=raidersOf(s).filter(r=>r.alive); if(!list.length) return; const extracts=[]; for(let i=0;i<s.tiles.length;i++) if(s.tiles[i].t==="extract") extracts.push([i%s.W,(i/s.W)|0]);
+    for(const C of Object.values(s.crews||{})){ if(C.followT>0&&--C.followT===0){ const m=list.find(r=>r.crew===C.id&&r.alive); C.follow=null; if(m) rsay(s,m,"follow_done",{},true); }
+      if(!C.leave&&s.turn-C.born>C.stay){ C.leave=true; const m=list.find(r=>r.crew===C.id&&r.alive); if(m) rsay(s,m,"leave"); } }
+    for(const r of list){
+      if(!r.alive) continue; const C=crewOf(s,r); CTX=null;
+      if(r.busy>0){ r.busy--; continue; } if(r.stun>0){ r.stun--; continue; }
+      if(s.fire[idx(s,r.x,r.y)]){ if(rAway(s,r,r.x,r.y)) continue; }
+      const ps=players(s).filter(p=>p.alive);
+      // ---- surrendered: hands up until nobody's watching for a while ----
+      if(r.surr){ const close=ps.some(p=>Math.hypot(p.x-r.x,p.y-r.y)<7); r.surrT=close?0:r.surrT+1; if(r.surrT>12){ r.surr=false; r.flee=8; } else continue; }
+      // ---- what can they see ----
+      const huskV=s.ents.filter(h=>h.kind==="husk"&&h.alive&&rSees(s,r,h));
+      const pV=ps.filter(p=>rSees(s,r,p));
+      for(const p of pV) if(!C.met[p.id]){ C.met[p.id]=1; rsay(s,r,"spot_"+C.att,{},true); }
+      const foes=[...huskV, ...(C.att==="hostile"?pV:[])];
+      // wary crews warn players who crowd them, then open fire
+      if(C.att==="wary"){ for(const p of pV){ const d=Math.hypot(p.x-r.x,p.y-r.y); if(d<=2.5){ C.warn[p.id]=(C.warn[p.id]|0)+1; if(C.warn[p.id]===2||C.warn[p.id]===4) rsay(s,r,"warn",{},true); if(C.warn[p.id]>=6&&r.trait!=="coward"){ setAtt(s,r.crew,"hostile"); rsay(s,r,"provoked",{},true); } } else if(C.warn[p.id]>0&&d>4) C.warn[p.id]--; } }
+      if(huskV.length&&!r.flags.huskCall){ r.flags.huskCall=1; rsay(s,r,"husk"); } if(!huskV.length) r.flags.huskCall=0;
+      // ---- hurt: patch up, run, or give up ----
+      const hurt=isHurt(r);
+      if(LIMBS.some(l=>r.bleed[l])&&!foes.some(f=>Math.abs(f.x-r.x)+Math.abs(f.y-r.y)<=2)&&rHeal(s,r)) continue;
+      if(hurt&&foes.length&&!r.flags.broke){ r.flags.broke=1;
+        const giveUp=C.att==="hostile"&&pV.length&&(r.trait==="coward"?.6:r.trait==="killer"||r.trait==="zealot"?.05:.25);
+        if(giveUp&&chance(s,giveUp)){ r.surr=true; r.surrT=0; rsay(s,r,"surrender",{},true); if(anyPlayerSees(s,r.x,r.y)) say(s,`${r.name} drops to their knees, hands up. Search them with F to take their gear.`,"good"); continue; }
+        if(chance(s,r.trait==="coward"?.85:r.trait==="killer"?.15:.45)){ r.flee=6; rsay(s,r,"flee",{},true); } }
+      if(r.flee>0){ r.flee--; const f=foes[0]||ps[0]; if(f&&rAway(s,r,f.x,f.y)) continue; }
+      if(r.avoid>0&&!foes.length){ r.avoid--; const p=ps.sort((a,b)=>Math.hypot(a.x-r.x,a.y-r.y)-Math.hypot(b.x-r.x,b.y-r.y))[0]; if(p&&Math.hypot(p.x-r.x,p.y-r.y)<7&&rAway(s,r,p.x,p.y)) continue; }
+      // ---- fight ----
+      if(foes.length){ const t=foes.sort((a,b)=>(Math.abs(a.x-r.x)+Math.abs(a.y-r.y))-(Math.abs(b.x-r.x)+Math.abs(b.y-r.y)))[0], d=Math.abs(t.x-r.x)+Math.abs(t.y-r.y);
+        r.last={x:t.x,y:t.y}; for(const m of crewMates(s,r)) if(!m.last&&t.kind==="player") m.last={x:t.x,y:t.y};
+        const g=gun(r), st=g&&ST(g), loaded=st&&st.cls!=="launcher"&&(r.ammo[st.ammo]|0)>0;
+        if(d===1&&(!loaded||(st.cls==="sniper"))){ rMelee(s,r,t); continue; }
+        if(loaded&&Math.hypot(t.x-r.x,t.y-r.y)<=(st.cls==="sniper"?10:st.cls==="shotgun"?6:8)&&rShoot(s,r,t)) continue;
+        if(!loaded){ const o=r.act===1?r.w2:r.w1; if(o&&(r.ammo[ST(o).ammo]|0)>0){ r.act=r.act===1?2:1; continue; } }
+        // close the distance (or step around a crewmate in the way)
+        if(rGo(s,r,t.x,t.y)) continue; const side=N4.map(([dx,dy])=>[r.x+dx,r.y+dy]).filter(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)); if(side.length){ const [x,y]=side[ri(s,0,side.length-1)]; rStep(s,r,x,y); } continue; }
+      // hunt the last place they saw a hostile player
+      if(C.att==="hostile"&&r.last){ if(r.x===r.last.x&&r.y===r.last.y){ r.last=null; } else if(!rGo(s,r,r.last.x,r.last.y)) r.last=null; continue; }
+      // ---- escort a friendly player ----
+      if(C.follow){ const p=ps.find(q=>q.id===C.follow); if(p){ const d=Math.abs(p.x-r.x)+Math.abs(p.y-r.y); if(d>2) rGo(s,r,p.x,p.y); else if(chance(s,.04)) rsay(s,r,"following"); continue; } C.follow=null; }
+      // ---- crew sticks together; the leader picks where to go ----
+      const lead=list.find(m=>m.crew===r.crew&&m.alive&&m.lead)||r; if(!lead.lead) lead.lead=true;
+      if(r!==lead&&Math.abs(lead.x-r.x)+Math.abs(lead.y-r.y)>3){ rGo(s,r,lead.x,lead.y); continue; }
+      // search whatever's within reach first
+      let did=false; for(const [dx,dy] of N4){ if(rSearch(s,r,r.x+dx,r.y+dy)){ did=true; break; } } if(did) continue;
+      if(C.leave||r.inv.length>=r.cap){ if(!C.leave){ C.leave=true; rsay(s,r,"leave"); }
+        const ex=extracts.sort((a,b)=>(Math.abs(a[0]-r.x)+Math.abs(a[1]-r.y))-(Math.abs(b[0]-r.x)+Math.abs(b[1]-r.y)))[0];
+        if(ex&&r.x===ex[0]&&r.y===ex[1]){ r.alive=false; r.extracted=true; if(anyPlayerSees(s,r.x,r.y)) say(s,`${r.name} climbs into a waiting skiff and is gone${r.inv.some(i=>i.d==="blackbox")?", with the black box":""}.`,r.inv.some(i=>i.d==="blackbox")?"bad":"info"); continue; }
+        if(ex){ if(!rGo(s,r,ex[0],ex[1])){ const side=N4.map(([dx,dy])=>[r.x+dx,r.y+dy]).filter(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)); if(side.length){ const [x,y]=side[ri(s,0,side.length-1)]; rStep(s,r,x,y); } } } continue; }
+      if(r!==lead){ if(chance(s,.3)){ const side=N4.map(([dx,dy])=>[r.x+dx,r.y+dy]).filter(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)); if(side.length){ const [x,y]=side[ri(s,0,side.length-1)]; rStep(s,r,x,y); } } continue; }
+      if(!C.goal||chance(s,.02)) C.goal=pickGoal(s,r);
+      if(C.goal){ const G=C.goal; if(G.k==="box"&&Math.abs(G.x-r.x)+Math.abs(G.y-r.y)===1){ rSearch(s,r,G.x,G.y); C.goal=null; continue; }
+        if(G.k==="box"&&tileAt(s,G.x,G.y).searched){ C.goal=null; continue; }
+        if((G.k==="item"||G.k==="walk")&&r.x===G.x&&r.y===G.y){ C.goal=null; continue; }
+        const res=rGo(s,r,G.x,G.y); if(!res){ C.goal=null; } }
+      if(chance(s,.015)) rsay(s,r,"idle");
+    }
+    CTX=null;
+  }
+  // ---- looting a body (or a raider who gave up) ----
+  function lootable(s,p,id){ const b=s.ents.find(e=>e.id===id&&e.kind==="raider"&&!e.extracted&&(!e.alive||e.surr)); if(!b) return null; return Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y))<=1?b:null; }
+  function doLoot(s,p,a){ const b=lootable(s,p,a.id); if(!b){ say(s,"You need to be right next to them.","info"); return false; }
+    const took=[], give=(it)=>{ const k=K(it), D=Items.def(it.d); if(k==="ammo"){ p.ammo[D.ammo]=(p.ammo[D.ammo]|0)+(it.n|0); return true; } if(k==="mat"){ p.mats[it.d]=(p.mats[it.d]|0)+(it.n||1); return true; }
+      if(p.inv.length>=p.cap) return false; p.inv.push({...it,id:s.nextId++}); return true; };
+    const takeAmmo=()=>{ for(const t of Object.keys(b.ammo)) if(b.ammo[t]>0){ p.ammo[t]=(p.ammo[t]|0)+b.ammo[t]; took.push(`${b.ammo[t]} ${Items.AMMO[t].name.toLowerCase()}`); b.ammo[t]=0; } for(const m of Object.keys(b.mats)) if(b.mats[m]>0){ p.mats[m]=(p.mats[m]|0)+b.mats[m]; took.push(`${b.mats[m]} ${(Items.MATS[m]||m).toLowerCase()}`); b.mats[m]=0; } };
+    if(a.all){ takeAmmo(); for(const it of b.inv.slice()){ if(give(it)){ b.inv.splice(b.inv.indexOf(it),1); took.push(nm(it)); } }
+      for(const sl of EQ_SLOTS){ const it=b[sl]; if(it&&give(it)){ b[sl]=null; took.push(nm(it)); } } }
+    else if(a.src==="ammo") takeAmmo();
+    else if(a.src==="inv"){ const it=b.inv[a.key|0]; if(!it) return false; if(!give(it)){ say(s,"Your pack is full.","warn"); return false; } b.inv.splice(a.key|0,1); took.push(nm(it)); }
+    else if(a.src==="eq"&&EQ_SLOTS.includes(a.key)){ const it=b[a.key]; if(!it) return false; if(!give(it)){ say(s,"Your pack is full.","warn"); return false; } b[a.key]=null; took.push(nm(it)); }
+    if(!took.length){ say(s,p.inv.length>=p.cap?"Your pack is full.":"Nothing left to take.","info"); return false; }
+    say(s,`You take ${took.join(", ")} from ${b.name}${b.alive?"":"'s body"}.`,"good"); if(b.alive&&chance(s,.5)) rsay(s,b,"robbed",{},true); return true; }
+
   function vitals(s){
     for(const e of s.ents){
       if(!e.alive) continue; CTX=e.kind==="player"?e.id:null; if(e.stimT>0) e.stimT--;
@@ -752,11 +1069,12 @@ const Sim = (() => {
         if(e.kind==="player"&&e.blood<40&&chance(s,.25)) say(s,"Your vision tunnels. You've lost a lot of blood.","bad");
       }
       if(s.fire[idx(s,e.x,e.y)]){ const lv=s.fire[idx(s,e.x,e.y)], l=chance(s,.6)?(chance(s,.5)?"lleg":"rleg"):pickLimb(s);
-        if(e.kind==="player") say(s,"You're burning!","bad"); else if(anyPlayerSees(s,e.x,e.y)) say(s,"The husk shrieks as it burns.","good");
+        if(e.kind==="player") say(s,"You're burning!","bad"); else if(anyPlayerSees(s,e.x,e.y)&&chance(s,.5)) say(s,e.kind==="raider"?`${e.name} is on fire!`:"The husk shrieks as it burns.","good");
         const fr=e.kind==="player"?gearOf(e).fire:0;
         damage(s,e,l,Math.max(1,Math.round((ri(s,2,3)+lv)*(1-fr))),0,e.kind==="player"?"Burned alive in a dying station.":"burned"); if(!e.alive) continue; }
       const pr=s.P[idx(s,e.x,e.y)];
-      if(e.kind==="husk"){
+      if(e.kind==="raider"){ if(pr<35&&s.turn%3===0) damage(s,e,"torso",2,0,"vacuum"); }
+      else if(e.kind==="husk"){
         if(pr<35){ damage(s,e,"torso",3,0,"vacuum"); if(e.alive) damage(s,e,"head",1,0,"vacuum"); }
       } else {
         if(pr<45){ e.o2=Math.max(0,e.o2-1);
@@ -772,10 +1090,10 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
+    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 
-  return {gearOf,STARTER,VALUABLES,MAPS,bind,hash,normLo,gun,newGame,act,fov,canSee,hitChance,roomName,lootValue,tileAt,entAt,idx,los,walk,LIMBS,LNAME};
+  return {FACTIONS,intentOf,gearOf,STARTER,VALUABLES,MAPS,bind,hash,normLo,gun,newGame,act,fov,canSee,hitChance,roomName,lootValue,tileAt,entAt,idx,los,walk,LIMBS,LNAME};
 })();
 // ============================== SIM END ==============================

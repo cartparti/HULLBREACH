@@ -163,8 +163,22 @@ const PANELS={
   board:{eye:"Break room",title:()=>"Job board",view:viewBoard},
   crew:{eye:"Crew",title:()=>inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew",view:viewCrew},
   airlock:{eye:"Airlock",title:()=>here().type==="derelict"?`Board ${here().name}`:here().name,view:viewAirlock},
+  body:{eye:()=>{ const b=lootBody(); return b?Sim.FACTIONS[b.fac].name:"Search"; },title:()=>{ const b=lootBody(); return b?(b.alive?`${b.name} · hands up`:`${b.name}'s body`):"Gone"; },view:viewBody},
   debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
 };
+// ---------- searching a dead (or surrendered) raider ----------
+function lootBody(){ return S&&S.mode==="raid"?S.ents.find(e=>e.id===panelSub&&e.kind==="raider"&&!e.extracted&&(!e.alive||e.surr)):null; }
+function viewBody(){ const b=lootBody(), p=me(); if(!b) return `<p class="risk">There's nothing here any more.</p>`;
+  const near=Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y))<=1, SL=[["w1","Primary"],["w2","Sidearm"],["melee","Melee"],["head","Helmet"],["armor","Chest"],["legs","Legs"],["acc","Trinket"],["light","Light"],["pack","Pack"]];
+  const row=(it,lbl,act)=>`<div class="eq-row"><span class="lbl">${lbl}</span>${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${esc(Items.statLine(it))}</span></div><button class="plain" data-act="${act}" ${near?"":"disabled"}>Take</button></div>`;
+  const eq=SL.filter(([k])=>b[k]).map(([k,l])=>row(b[k],l,`loot:eq:${k}`)).join(""), inv=b.inv.map((it,i)=>row(it,"Pack",`loot:inv:${i}`)).join("");
+  const am=Object.keys(b.ammo||{}).filter(t=>b.ammo[t]>0).map(t=>`${b.ammo[t]} ${Items.AMMO[t].name.toLowerCase()}`).concat(Object.keys(b.mats||{}).filter(m=>b.mats[m]>0).map(m=>`${b.mats[m]} ${(Items.MATS[m]||m).toLowerCase()}`));
+  const F=Sim.FACTIONS[b.fac];
+  return `<section class="panel h-card"><div class="bar-row"><div class="grow"><div class="h-eyebrow">${esc(F.name)}${b.alive?" · surrendered":""}</div><p class="risk">${b.alive?`${esc(b.name)} watches you with their hands up. Take what you want. Their crew won't like it.`:`What ${esc(b.name)} was carrying.`} Your pack: ${p.inv.length}/${p.cap}.${near?"":" Step next to them to take anything."}</p></div>
+    <button class="plain" data-act="lootall" ${near?"":"disabled"}>Take everything</button></div>
+    <div class="h-eyebrow">Worn and carried</div>${eq||`<p class="risk">Stripped bare.</p>`}
+    <div class="h-eyebrow">Pack</div>${inv||`<p class="risk">Empty.</p>`}
+    <div class="h-eyebrow">Ammo and materials</div>${am.length?`<div class="bar-row"><p class="grow" style="margin:0">${esc(am.join(", "))}</p><button class="plain" data-act="loot:ammo:0" ${near?"":"disabled"}>Take</button></div>`:`<p class="risk">None.</p>`}</section>`; }
 function onTerminal(kind){ if(warp) return; openPanel(kind==="navtable"?"helm":kind); }
 function onSit(kind){ const name={pilot:"pilot's seat",copilot:"co-pilot's seat",nav:"navigator's seat",eng:"engineer's seat"}[kind]||"seat";
   toast(`You take the ${name}.${kind==="pilot"&&!isHost()?" The squad leader still has the controls.":""} Press ${mode==="pc"?"F":"USE"} for the star map.`);
@@ -508,6 +522,8 @@ $("p-body").addEventListener("click",e=>{
     // stash + workbench
     case "scrap": { const it=byUid(x); if(!it) break; if(!arm("scrap:"+x)) break; const yv=scrapYield(it); profile.stash=profile.stash.filter(q=>q.uid!==x); stashSel=null;
       for(const m in yv) profile.mats[m]=(profile.mats[m]|0)+yv[m]; toast(`Broke down ${Items.name(it)}: ${MAT_T.filter(m=>yv[m]).map(m=>yv[m]+" "+Items.MATS[m].toLowerCase()).join(", ")}.`); save(); refreshLook(); break; }
+    case "loot": send({type:"loot",id:panelSub,src:x,key:x==="inv"?+y:y}); break;
+    case "lootall": send({type:"loot",id:panelSub,all:true}); break;
     case "craft": { const R2=Items.RECIPES.find(q=>q.id===x); if(!R2||R2.lvl>fabLvl()||!canPay(R2.cost)) break; pay(R2.cost); const out={...R2.out,r:Items.craftRarity(R2,fabLvl())}; World.grant(profile,out); const OD=Items.def(out.d);
       if(OD&&OD.k==="ammo"){ const t=OD.ammo, k=profile.kit; if(k.type!=="starter"){ k.ammo=k.ammo||{}; k.ammo[t]=Math.min(profile.ammo[t]|0,(k.ammo[t]|0)+(out.n|0)); }
         toast(`Crafted ${Items.AMMO[t].name} ×${out.n|0}. ${profile.ammo[t]|0} in the hold${k.type!=="starter"?", packed in your kit":" (switch to a custom kit to bring it)"}.`); }

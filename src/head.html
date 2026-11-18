@@ -312,6 +312,7 @@ body[data-mode="touch"] .s-prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
 
 /* ---------- squad play ---------- */
 body:not([data-squad="1"]) .sq-only{display:none!important}
+body[data-scene="raid"]:not([data-squad="1"]) .sq-only.talk{display:revert!important}
 .tags{position:absolute;inset:0;pointer-events:none;z-index:9;overflow:hidden}
 .tag{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap}
 .tag b{font:700 13px var(--f-hud);letter-spacing:.06em;color:var(--c);text-shadow:0 1px 0 #000,0 0 4px #000}
@@ -319,6 +320,14 @@ body:not([data-squad="1"]) .sq-only{display:none!important}
 .tag i span{display:block;height:100%;background:var(--c)}
 .tag em{font:700 11px var(--f-num);font-style:normal;color:#000;background:var(--c);padding:0 4px}
 .tag em.down{background:#e0482f;color:#fff}
+.tag b small{font:600 10px var(--f-num);opacity:.75;letter-spacing:.04em}
+.rtag b{font-size:12px}
+.bubble{position:absolute;transform:translate(-50%,-100%);max-width:200px;padding:4px 8px;background:rgba(8,4,4,.88);border:1px solid var(--c);color:#e8e0d0;font:13px/1.25 var(--f-hud);text-align:center;white-space:normal;pointer-events:none;animation:bub .18s ease-out}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-5px;width:8px;height:8px;margin-left:-4px;background:rgba(8,4,4,.88);border-right:1px solid var(--c);border-bottom:1px solid var(--c);transform:rotate(45deg)}
+@keyframes bub{from{opacity:0;transform:translate(-50%,-80%)}to{opacity:1;transform:translate(-50%,-100%)}}
+body[data-mode="touch"][data-scene="raid"] .chat:not(.open) .chat-feed{display:none} body[data-mode="touch"] .chat-feed div{font-size:12px;padding:2px 6px;background:rgba(5,9,9,.6)} body[data-mode="touch"] .chat:not(.open){width:min(300px,calc(100% - 32px))}
+.chat-feed small{font:600 10px var(--f-num);opacity:.7}
+.log .chat{color:#d8d0c0}
 .crew-cards{padding:6px 8px;display:flex;flex-direction:column;gap:5px;min-width:280px}
 .cc{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:3px 8px;align-items:center;font-size:13px}
 .cc .dot{width:8px;height:22px;background:var(--c)}
@@ -634,7 +643,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
   </div>
   <div class="hud s-tr ship-only">
     <div class="panel s-res" id="s-res"></div>
-    <div class="btns"><button id="s-chat" class="plain sq-only">Chat</button><button id="s-menu" class="plain">Menu</button><button id="s-inv" class="plain">Inventory</button><button id="s-crew" class="plain">Crew</button><button id="s-mode" class="plain">Touch mode</button></div>
+    <div class="btns"><button id="s-chat" class="plain sq-only talk">Talk</button><button id="s-menu" class="plain">Menu</button><button id="s-inv" class="plain">Inventory</button><button id="s-crew" class="plain">Crew</button><button id="s-mode" class="plain">Touch mode</button></div>
   </div>
   <div class="hud s-prompt ship-only" id="s-prompt"></div>
   <div class="hud s-bl ship-only pc-only"><div class="panel s-help">
@@ -647,7 +656,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
     <div class="t-row">
       <div class="t-mon"><div class="fig" id="tfig"></div></div>
       <div class="t-vit" id="tvit"></div>
-      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-chat" class="sq-only" aria-label="Chat">Chat</button></div>
+      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-chat" class="sq-only talk" aria-label="Talk">Talk</button></div>
     </div>
     <div class="t-ticker" id="tick" role="button" aria-label="Open comms log"></div>
     <div class="t-crew" id="tcrew" hidden></div>

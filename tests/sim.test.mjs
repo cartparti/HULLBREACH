@@ -251,4 +251,28 @@ test("containers: generated stations hide loot in lockers and crates, searched o
   assert.ok(total > 20, "plenty of containers: " + total); assert.ok(found > total * .4);
 });
 
+test("raiders: crews spawn kitted out, loot, fight, talk back, and can be searched", () => {
+  let crews = 0, hostile = 0, uniq = new Set();
+  for (let k = 0; k < 30; k++) { const s = Sim.newGame(5000 + k * 101, null, { gen: { tier: 1 + (k % 3) } });
+    for (const C of Object.values(s.crews)) { crews++; if (C.att === "hostile") hostile++; }
+    for (const r of s.ents.filter((e) => e.kind === "raider")) { assert.ok(r.w1 && r.look && r.name); uniq.add(JSON.stringify([r.w1.d, r.head && r.head.d, r.armor && r.armor.d, r.look.s, r.look.h])); } }
+  assert.ok(crews > 15, "crews spawn: " + crews); assert.ok(hostile > crews * .5 && hostile < crews, "mostly hostile, not all"); assert.ok(uniq.size > 20, "raiders look different");
+  // a wary crew answers what you type
+  const s = Sim.newGame(777, null, { gen: { tier: 2 }, mods: { raiders: 1 } }), p = playerOf(s), r = s.ents.find((e) => e.kind === "raider");
+  s.crews[r.crew].att = "wary"; for (const h of s.ents) if (h.kind === "husk") h.alive = false;
+  const spot = [[2, 0], [0, 2], [-2, 0], [0, -2], [1, 1], [-1, 1]].map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y)); r.x = spot[0]; r.y = spot[1];
+  assert.equal(Sim.intentOf("Drop your weapons!"), "surrender"); assert.equal(Sim.intentOf("we don't want trouble"), "truce"); assert.equal(Sim.intentOf("back off or I shoot"), "backoff");
+  const n0 = s.log.length, t0 = s.turn; assert.ok(Sim.act(s, "p1", { type: "talk", text: "Hello there" })); assert.equal(s.turn, t0, "talking is free");
+  assert.ok(s.log.slice(n0).some((l) => l.kind === "chat" && l.from === r.id), "they answer");
+  // shooting them makes the crew hostile; a dead raider can be searched
+  for (let i = 0; i < 12 && r.alive; i++) { p.ammo.pistol = 50; p.acted = false; Sim.act(s, "p1", { type: "shoot", x: r.x, y: r.y }); }
+  assert.equal(s.crews[r.crew].att, "hostile");
+  if (r.alive) { r.alive = false; }
+  const adj = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [r.x + a, r.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y)); p.x = adj[0]; p.y = adj[1]; p.acted = false;
+  const gunD = r.w1 && r.w1.d; assert.ok(Sim.act(s, "p1", { type: "loot", id: r.id, src: "eq", key: "w1" }) || !gunD); if (gunD) assert.ok(p.inv.some((i) => i.d === gunD));
+  // long unattended runs never throw and stay serialisable
+  for (let k = 0; k < 12; k++) { const g = Sim.newGame(9000 + k, null, { gen: { tier: 3 }, mods: { raiders: 3 } }); const q = playerOf(g); q.hp.torso = q.max.torso = 9999;
+    for (let i = 0; i < 300 && g.status === "playing"; i++) Sim.act(g, "p1", { type: "wait" }); JSON.parse(JSON.stringify(g)); }
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);
