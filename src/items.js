@@ -133,6 +133,8 @@ const Items = (() => {
     bandage:  { k: "med", name: "Bandage roll", value: 15, desc: "Stops bleeding on one limb." },
     medkit:   { k: "med", name: "Trauma kit", value: 55, rar: 1, desc: "Stops all bleeding and patches every limb." },
     o2:       { k: "med", name: "Oxygen canister", value: 25, desc: "Refills 50 suit O₂." },
+    splint:   { k: "med", name: "Field splint", value: 45, desc: "Sets a broken limb so the fracture stops wrecking your aim or your stride." },
+    antibiotic:{ k: "med", name: "Antibiotics", value: 60, rar: 1, desc: "Kills an infection before the fever takes hold." },
     stim:     { k: "med", name: "Combat stim", value: 140, rar: 2, desc: "Restores 25 blood and numbs crippled legs for 10 turns." },
     keycard:  { k: "key", name: "Captain's keycard", value: 20, desc: "Opens the vault while station power is on." },
     blackbox: { k: "box", name: "Black box recorder", value: 150, desc: "A flight recorder. Worth far more to whoever hired you." },
@@ -206,7 +208,7 @@ const Items = (() => {
     if (cat === "food") return make(pick(rng, ["ration", "ration", "paste", "stew", "jerky", "waterflask", "waterflask", "purewater", "recaf", rng() < .3 ? "amber" : "stew", rng() < .2 ? "feast" : "ration"]), 0);
     if (cat === "light") return rng() < .1 * tier ? make("lumen") : rng() < .3 ? make("floodlamp") : make("flashlight", Math.min(2, r));
     if (cat === "val") { const i = Math.floor(rng() * VALS.length); return { d: "val" + i, r: 0, v: Math.round(VALS[i][1] * (.85 + rng() * .4) * (1 + (tier - 1) * .2)) }; }
-    if (cat === "med") return make(pick(rng, ["bandage", "bandage", "bandage", "o2", "o2", "medkit", "medkit", "stim"]), 0);
+    if (cat === "med") return make(pick(rng, ["bandage", "bandage", "bandage", "o2", "o2", "medkit", "medkit", "stim", "splint", "splint", "antibiotic"]), 0);
     if (cat === "dye") { const ds = Object.keys(DEF).filter((d) => DEF[d].k === "dye" && DEF[d].rar <= Math.max(1, r)); return make(pick(rng, ds), 0); }
     if (r >= 3) { const pool = UNIQ.filter((d) => DEF[d].rar === r && (cat === "weapon" ? DEF[d].k === "weapon" : DEF[d].k === cat)); if (pool.length) return make(pick(rng, pool)); }
     const base = cat === "weapon" ? BASE_WEAPONS : Object.keys(DEF).filter((d) => DEF[d].k === cat && !(DEF[d].rar >= 3));
@@ -234,7 +236,7 @@ const Items = (() => {
     R_("f_paste", "food", 1, "paste", { org: 2 }), R_("f_water", "food", 1, "waterflask", { org: 1, scrap: 1 }), R_("f_stew", "food", 2, "stew", { org: 3 }),
     R_("f_pure", "food", 2, "purewater", { org: 1, circ: 1 }), R_("f_recaf", "food", 2, "recaf", { org: 2 }), R_("f_amber", "food", 4, "amber", { org: 4, prop: 1 }), R_("f_feast", "food", 5, "feast", { org: 6 }),
     R_("m_bandage", "meds", 1, "bandage", { scrap: 1, org: 1 }), R_("m_o2", "meds", 2, "o2", { scrap: 2, circ: 1 }), R_("m_medkit", "meds", 2, "medkit", { scrap: 2, circ: 2, org: 1 }, { r: 1 }),
-    R_("m_stim", "meds", 3, "stim", { circ: 2, org: 3 }, { r: 2 }),
+    R_("m_stim", "meds", 3, "stim", { circ: 2, org: 3 }, { r: 2 }), R_("m_splint", "meds", 1, "splint", { scrap: 2, org: 1 }), R_("m_anti", "meds", 2, "antibiotic", { org: 3, circ: 1 }),
     R_("t_decoy", "meds", 2, "decoy", { scrap: 2, circ: 1 }), R_("t_frag", "weapon", 2, "frag", { scrap: 2, prop: 2 }), R_("t_inc", "weapon", 2, "incendiary", { scrap: 1, prop: 3 }), R_("t_stun", "weapon", 3, "stun", { scrap: 2, circ: 2 }),
     R_("w_crowbar", "weapon", 1, "crowbar", { scrap: 3 }), R_("w_knife", "weapon", 1, "knife", { scrap: 3 }), R_("w_pipe", "weapon", 1, "pipe", { scrap: 5, prop: 1 }),
     R_("w_pistol", "weapon", 2, "pistol", { scrap: 6, prop: 1, circ: 1 }), R_("w_sixgun", "weapon", 2, "sixgun", { scrap: 7, circ: 1 }), R_("w_coach", "weapon", 2, "coachgun", { scrap: 7, prop: 2 }), R_("w_machete", "weapon", 2, "machete", { scrap: 5 }),

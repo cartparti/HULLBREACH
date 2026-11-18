@@ -22,7 +22,7 @@ function fixProfile(p){ const d=newProfile(); if(!p) return d; if(p.v===1) p=mig
   p.stats={...d.stats,...(p.stats||{})}; p.kit={...d.kit,...(p.kit||{})}; if(!Array.isArray(p.kit.inv)) p.kit.inv=[]; p.kit.ammo=p.kit.ammo||{};
   p.stash=Array.isArray(p.stash)?p.stash.filter(q=>q&&Items.def(q.d)):[]; for(const q of p.stash) if(!q.uid) Object.assign(q,mk(q));
   p.ammo=p.ammo||{}; p.mats=p.mats||{}; if(p.food==null) p.food=80; if(p.water==null) p.water=80; if(!p.gotLight){ p.gotLight=1; p.stash.push(mk({d:"flashlight"})); } p.look={...d.look,...(p.look||{})}; if(p.look.fh==null){ const old=+p.look.f|0; p.look.fh=[0,1,3,5,0,0][old]||0; p.look.fm=[0,0,0,0,1,2][old]||0; } p.unlocks={cloak:[],visor:[],crest:[],...(p.unlocks||{})};
-  p.rep=p.rep&&typeof p.rep==="object"?p.rep:{}; if(p.hire&&!(p.hire.fac in Sim.FACTIONS)) p.hire=null;
+  p.rep=p.rep&&typeof p.rep==="object"?p.rep:{}; p.xp=p.xp|0; p.perks=p.perks&&typeof p.perks==="object"?p.perks:{}; p.injury=p.injury||{frac:{},inf:0}; if(p.hire&&!(p.hire.fac in Sim.FACTIONS)) p.hire=null;
   p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); return p; }
 const ship=()=>(typeof Net!=="undefined"&&Net.sq&&!Net.host&&Net.ship)?Net.ship:profile.ship, here=()=>World.loc(ship().loc);
 function shipScene(){ return here().scene; }
@@ -161,6 +161,7 @@ const PANELS={
   wardrobe:{eye:"Crew quarters",title:()=>"Wardrobe",view:viewWardrobe},
   inventory:{eye:()=>S&&S.mode==="raid"?"In the field":"Aboard",title:()=>"Inventory",view:viewInventory},
   records:{eye:"Crew quarters",title:()=>"Crew log",view:viewRecords},
+  skills:{eye:"Contractor",title:()=>`Skills · level ${levelOf(profile.xp)}`,view:viewSkills},
   board:{eye:"Break room",title:()=>"Job board",view:viewBoard},
   crew:{eye:"Crew",title:()=>inSquad()?`Squad ${Net.code.toUpperCase()}`:"Crew",view:viewCrew},
   airlock:{eye:"Airlock",title:()=>here().type==="derelict"?`Board ${here().name}`:here().name,view:viewAirlock},
@@ -295,7 +296,7 @@ function closePanel(){ $("panel").hidden=true; panelKind=null; armed={}; if(S&&S
 function renderPanel(){ if(!panelKind) return; const P=PANELS[panelKind];
   $("p-eyebrow").textContent=typeof P.eye==="function"?P.eye():P.eye; $("p-title").textContent=P.title(); $("h-cr").textContent=profile.credits.toLocaleString("en-US");
   $("panel").dataset.kind=panelKind; $("p-body").innerHTML=P.view(); renderSync(); if(panelKind==="comms") holoTick();
-  const MINE=[["inventory","Kit"],["rack","Loadout"],["stash","Stash"],["workbench","Fabricator"],["wardrobe","Wardrobe"],["bar","Galley"]];
+  const MINE=[["inventory","Kit"],["rack","Loadout"],["stash","Stash"],["skills","Skills"],["workbench","Fabricator"],["wardrobe","Wardrobe"],["bar","Galley"]];
   $("p-tabs").innerHTML=S&&S.mode==="ship"&&MINE.some(([k])=>k===panelKind)?MINE.map(([k,n])=>`<button data-tab="${k}" aria-current="${panelKind===k}">${n}</button>`).join(""):"";
   const c=$("h-prev"); if(c){ const g=c.getContext("2d"); g.clearRect(0,0,c.width,c.height); g.drawImage(playerFrames(S&&S.mode==="raid"&&panelKind==="inventory"?lookOf(me()):lookOfKit()).idle0,0,0,c.width,c.height); }
   const c2=$("h-prev2"); if(c2){ const g=c2.getContext("2d"); g.clearRect(0,0,c2.width,c2.height); g.drawImage(playerFrames({...profile.look,hd:null,a:null,lg:null,ac:null,w:null}).idle0,0,0,c2.width,c2.height); } }
@@ -505,6 +506,26 @@ function ivMove(src,dst){ const D=ivData(), it=ivItem(D,src); if(!it||!dst||src=
     if(d0.ghost){ d0.ghost.remove(); d0.el.classList.remove("dragging"); const t=document.elementFromPoint(e.clientX,e.clientY), d=t&&t.closest("[data-drop]"); if(d) ivMove(d0.src,d.dataset.drop); else renderPanel(); return; }
     invSel=invSel===d0.pick?null:d0.pick; renderPanel(); });
 })();
+// ---------- skills: XP from every raid buys perks ----------
+const PERKS={
+  marksman:{name:"Marksman",max:3,desc:"+4% to hit per rank with every gun."},
+  ghost:{name:"Ghost",max:2,desc:"+1 stealth per rank. Your shots carry less far."},
+  medic:{name:"Field medic",max:2,desc:"Bandages also heal; trauma kits heal more. Rank 2 halves infection risk."},
+  silver:{name:"Silver tongue",max:3,desc:"+10% per rank to talk raiders round: truces, surrenders, trades."},
+  mule:{name:"Pack mule",max:2,desc:"+1 pack slot per rank."},
+  tough:{name:"Hard to kill",max:2,desc:"+12% health on every limb per rank."},
+  scavenger:{name:"Scavenger",max:2,desc:"30% per rank to find an extra item in each container."},
+  steady:{name:"Iron stance",max:1,desc:"Brutes can't knock you down. Bones break half as often."},
+};
+const xpFor=l=>60*l*(l+1);
+const levelOf=xp=>{ let l=0; while(xpFor(l+1)<=(xp|0)) l++; return l; };
+const perkPoints=()=>levelOf(profile.xp)-Object.values(profile.perks||{}).reduce((a,n)=>a+(n|0),0);
+function viewSkills(){ const xp=profile.xp|0, L=levelOf(xp), a=xpFor(L), b=xpFor(L+1), pts=perkPoints(), I=profile.injury||{frac:{},inf:0};
+  const inj=[...Object.keys(I.frac||{}).map(l=>`Broken ${Sim.LNAME[l]}`),...(I.inf?["Infected wound"]:[])];
+  const has=d=>profile.stash.find(q=>q.d===d);
+  return `<section class="h-grid"><div class="panel h-card span12"><div class="bar-row"><div class="grow"><div class="h-eyebrow">Level ${L}</div><div class="meter" style="height:8px;margin:6px 0"><i style="width:${Math.round((xp-a)/(b-a)*100)}%;background:var(--brass)"></i></div><p class="risk">${xp} XP · ${b-xp} to level ${L+1}. You earn XP for kills, searches, talking crews down, contracts and getting out alive. Dying keeps half.</p></div><div class="stat panel"><b>${pts}</b><span>perk point${pts===1?"":"s"}</span></div></div></div>
+    ${Object.entries(PERKS).map(([k,P])=>{ const n=profile.perks[k]|0; return `<div class="panel h-card span6 perk"><div class="bar-row"><div class="grow"><b>${P.name}</b> <span class="pips">${"◆".repeat(n)}${"◇".repeat(P.max-n)}</span><p class="risk">${P.desc}</p></div><button class="plain" data-act="perk:${k}" ${pts<1||n>=P.max?"disabled":""}>${n>=P.max?"Mastered":"Learn"}</button></div></div>`; }).join("")}
+    <div class="panel h-card span12"><div class="h-eyebrow">Injuries</div>${inj.length?`<p>${inj.join(" · ")}. These come with you into the next raid until they're treated.</p><div class="bar-row">${Object.keys(I.frac||{}).length?`<button class="plain" data-act="treat:splint" ${has("splint")?"":"disabled"}>Splint from stash</button>`:""}${I.inf?`<button class="plain" data-act="treat:antibiotic" ${has("antibiotic")?"":"disabled"}>Antibiotics from stash</button>`:""}</div><p class="risk">A medbay upgrade on the ship treats these automatically when you get back.</p>`:`<p class="risk">None. You're fit to fly.</p>`}</div></section>`; }
 function viewRecords(){ const s=profile.stats, rate=s.raids?Math.round(s.extracts/s.raids*100):0;
   return `<div class="stats">${[["Raids",s.raids],["Extracted",s.extracts],["Lost",s.deaths],["Survival",rate+"%"],["Contracts done",s.contracts],["Salvage value",s.earned+" cr"],["Best haul",s.best+" cr"],["Ship day",ship().day]].map(([a,b])=>`<div class="panel stat"><b>${b}</b><span>${a}</span></div>`).join("")}</div>`; }
 function contractRow(id,btn){ const C=World.CONTRACTS[id], site=World.loc(C.site), giver=World.NPCS[C.giver];
@@ -585,6 +606,8 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
     ${Lr.win?`<p>Brought home ${Lr.items.length} item${Lr.items.length===1?"":"s"} worth about ${Lr.value} cr. Everything is in the stash locker.</p>${Lr.items.length?`<ul>${Lr.items.slice(0,12).map(li).join("")}${Lr.items.length>12?`<li>and ${Lr.items.length-12} more</li>`:""}</ul>`:""}
       ${Lr.ammo&&Object.keys(Lr.ammo).length?`<div class="h-eyebrow">Ammo recovered</div>${ammoChips(Lr.ammo)}`:""}${Lr.mats&&MAT_T.some(t=>Lr.mats[t])?`<div class="h-eyebrow" style="margin-top:6px">Materials</div>${matChips(Lr.mats)}`:""}`
       :`<p>${Lr.cause||"You did not come back."} ${Lr.kit==="custom"?"Your custom kit is gone.":"You went in on the starter kit, so your stash is untouched."}</p>`}
+    ${Lr.xp?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
+    ${Lr.treated?`<p class="risk good">The medbay patched up your injuries.</p>`:""}
     ${Lr.bounty?`<p class="risk good">Concord bounty: ${Lr.bounty.n} raider${Lr.bounty.n>1?"s":""} put down. ${Lr.bounty.pay} cr paid.</p>`:""}
     ${Lr.standing&&Lr.standing.length?`<div class="h-eyebrow">Standing</div><div class="chips">${Lr.standing.map(x=>{ const F=Sim.FACTIONS[x.f]; return F?`<span class="chip" style="border-color:${F.col};color:${x.n>0?"var(--bile)":"var(--blood2)"}">${esc(F.name)} ${x.n>0?"+":""}${x.n}</span>`:""; }).join("")}</div>`:""}
     <div class="bar-row"><button class="plain" data-act="close">Back to the ship</button></div></section>`; }
@@ -632,6 +655,8 @@ $("p-body").addEventListener("click",e=>{
     // stash + workbench
     case "scrap": { const it=byUid(x); if(!it) break; if(!arm("scrap:"+x)) break; const yv=scrapYield(it); profile.stash=profile.stash.filter(q=>q.uid!==x); stashSel=null;
       for(const m in yv) profile.mats[m]=(profile.mats[m]|0)+yv[m]; toast(`Broke down ${Items.name(it)}: ${MAT_T.filter(m=>yv[m]).map(m=>yv[m]+" "+Items.MATS[m].toLowerCase()).join(", ")}.`); save(); refreshLook(); break; }
+    case "perk": if(perkPoints()>0&&PERKS[x]&&(profile.perks[x]|0)<PERKS[x].max){ profile.perks[x]=(profile.perks[x]|0)+1; save(); toast(`${PERKS[x].name} rank ${profile.perks[x]}.`); } break;
+    case "treat": { const i=profile.stash.findIndex(q=>q.d===x); if(i<0) break; const I=profile.injury; if(x==="splint"){ const l=Object.keys(I.frac||{})[0]; if(!l) break; delete I.frac[l]; toast(`Splinted your ${Sim.LNAME[l]}.`); } else { if(!I.inf) break; I.inf=0; toast("Infection treated."); } profile.stash.splice(i,1); save(); break; }
     case "call": if(commsFac!==x){ commsFac=x; commsT0=performance.now(); commsMsg=""; } break;
     case "cmdo": commsDo(x); break;
     case "cmbuy": commsBuy(+x); break;
@@ -687,7 +712,7 @@ function boardShip(){
   boardShipCrew([{id:"p1",name:"You",loadout:{}}]);
 }
 // the loadout that travels to the station (compact: no uids)
-function loadoutFromKit(r){ const lo={ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water)}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
+function loadoutFromKit(r){ const lo={ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
 function consumeKit(lo){
   profile.stats.raids++; profile.active={kit:lo.starter?"starter":"custom",site:ship().loc,at:Date.now()};
   if(!lo.starter){ const r=kitResolved(), gone=new Set([...KIT_SLOTS.map(s=>r[s]&&!r[s].iss&&r[s].uid),...r.inv.map(i=>i.uid)].filter(Boolean));
@@ -726,6 +751,10 @@ function settlePersonal(){
     for(const t of MAT_T){ const n=(p.mats||{})[t]|0; if(n){ profile.mats[t]=(profile.mats[t]|0)+n; rep.mats[t]=n; } }
     profile.stats.extracts++; profile.stats.earned+=rep.value; profile.stats.best=Math.max(profile.stats.best,rep.value);
   } else profile.stats.deaths++;
+  // experience: kept in full when you get out, half when you don't
+  { const before=levelOf(profile.xp), base=(p.xp|0)+(win?40:0)+(rep.contract?60:0), got=win?base:Math.floor(base/2); profile.xp=(profile.xp|0)+got; rep.xp={got,full:base,level:levelOf(profile.xp),up:levelOf(profile.xp)>before}; }
+  // injuries come home with you, unless the ship's medbay patches you up
+  { const md=(ship().up&&ship().up.medbay)|0; const fr=win?{...(p.frac||{})}:{}, inf=win?(p.inf|0):0; profile.injury={frac:md>=1?{}:fr,inf:md>=2?0:inf}; rep.treated=md&&(Object.keys(fr).length||inf)?true:false; }
   // standing with the factions you met, and the Marshals' bounty on raiders
   rep.standing=[]; for(const [f,n] of Object.entries(S.repd||{})){ if(!n) continue; const was=profile.rep[f]|0; profile.rep[f]=Math.max(-100,Math.min(100,was+n)); rep.standing.push({f,n}); }
   { const k=S.kills||{}, b=((k.reaver|0)+(k.blacksun|0)+(k.choir|0)); if(b&&(profile.rep.marshal|0)>=0){ const pay=b*40; profile.credits+=pay; rep.bounty={n:b,pay}; } }

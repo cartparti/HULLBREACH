@@ -124,6 +124,7 @@ const Sim = (() => {
     for(const k of GEAR){ const it=e[k]; if(!it) continue; if(k==="light"&&e.lightOff) continue; const st=ST(it); if(!st) continue;
       const dr=st.dr||0; if(st.part==="head") g.head+=dr; else if(st.part==="legs") g.legs+=dr; else g.torso+=dr;
       g.torso+=st.tdr||0; g.fire+=st.fire||0; g.stealth+=st.stealth||0; g.o2+=st.o2||0; g.slots+=st.slots||0; g.acc+=st.acc||0; if(st.dark||st.k==="light") g.dark=1; if(st.k==="light") g.lit=1; if(st.nolimp) g.nolimp=1; }
+    if(e.perks){ g.stealth+=e.perks.ghost|0; g.slots+=e.perks.mule|0; }
     g.fire=Math.min(.8,g.fire); g.head=Math.min(.6,g.head); g.torso=Math.min(.6,g.torso); g.legs=Math.min(.6,g.legs); return g; }
   const capOf = e => Items.POCKETS+(e.pack?ST(e.pack).slots:0)+gearOf(e).slots;
 
@@ -214,10 +215,12 @@ const Sim = (() => {
     lo=normLo(lo); const cp=v=>v&&Items.def(v.d)?{d:v.d,r:v.r|0,...(v.l?{l:v.l}:{}),...(v.v?{v:v.v}:{}),...(v.iss?{iss:1}:{})}:null;
     const armor=cp(lo.armor), pack=cp(lo.pack), G0={head:cp(lo.head),armor,legs:cp(lo.legs),acc:cp(lo.acc),light:cp(lo.light),pack}, A=gearOf(G0), cap=capOf(G0);
     const ammo={}; for(const t of AMMO_TYPES) ammo[t]=Math.max(0,(lo.ammo&&lo.ammo[t])|0);
-    s.ents.push({id,kind:"player",name,x,y,hp:{...PLAYER_HP},max:{...PLAYER_HP},bleed:{},blood:100,o2:A.o2,o2max:A.o2,
+    const PK=lo.perks&&typeof lo.perks==="object"?{...lo.perks}:{}, HPX={}; for(const l of LIMBS) HPX[l]=Math.round(PLAYER_HP[l]*(1+.12*(PK.tough|0)));
+    s.ents.push({id,kind:"player",name,x,y,hp:{...HPX},max:{...HPX},perks:PK,xp:0,frac:{...((lo.injury&&lo.injury.frac)||{})},inf:(lo.injury&&lo.injury.inf)|0,bleed:{},blood:100,o2:A.o2,o2max:A.o2,
       w1:cp(lo.w1),w2:cp(lo.w2),melee:cp(lo.melee),head:G0.head,armor,legs:G0.legs,acc:G0.acc,light:G0.light,pack,act:1,ammo,mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),cap,look:lo.look||null,stimT:0,
       food:lo.food==null?80:Math.max(0,Math.min(100,+lo.food)),water:lo.water==null?80:Math.max(0,Math.min(100,+lo.water)),
-      inv:(lo.inv||[]).slice(0,cap).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
+      inv:(lo.inv||[]).slice(0,cap+((lo.perks&&lo.perks.mule)|0)).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
+    const P=s.ents[s.ents.length-1]; P.cap=capOf(P);
   }
   function addHusk(s,x,y,type="husk"){ const T0=HTYPES[type]||HTYPES.husk, hp={}; for(const l of LIMBS) hp[l]=Math.round(HUSK_HP[l]*T0.hp);
     const h={id:"h"+(s.nextId++),kind:"husk",type,name:T0.name,x,y,hp,max:{...hp},bleed:{},blood:type==="matriarch"?200:60,
@@ -282,7 +285,7 @@ const Sim = (() => {
     return v;
   }
   function pickLimb(s){ let r=rand(s)*100; for(const [l,w] of HIT_W){ if((r-=w)<0) return l; } return "torso"; }
-  function crippled(e){ return !(e.stimT>0)&&!(e.kind==="player"&&gearOf(e).nolimp)&&(e.hp.lleg<=0||e.hp.rleg<=0); }
+  function crippled(e){ return !(e.stimT>0)&&!(e.kind==="player"&&gearOf(e).nolimp)&&(e.hp.lleg<=0||e.hp.rleg<=0||!!(e.frac&&(e.frac.lleg||e.frac.rleg))); }
   function bleedDecal(s,x,y,n=1){ const k=idx(s,x,y); s.blood[k]=Math.min(6,(s.blood[k]||0)+n); }
   function noise(s,x,y,r){ for(const h of s.ents) if(h.kind==="husk"&&h.alive&&Math.hypot(h.x-x,h.y-y)<=r){ h.aware=true; h.last={x,y}; } }
 
@@ -314,6 +317,7 @@ const Sim = (() => {
   function kill(s,e,cause){
     e.alive=false; bleedDecal(s,e.x,e.y,3); fx(s,{type:"die",id:e.id,x:e.x,y:e.y});
     if(e.kind==="player"){ s.cause=cause; e.cause=cause; const c0=CTX; CTX=e.id; say(s,`You die. ${cause}`,"bad"); CTX=c0; }
+    if(e.kind!=="player"&&isPid(s,ATK)) gainXP(s,ATK,e.kind==="husk"?(XP_KILL[e.type||"husk"]||6):e.kind==="bot"?10:18);
     else if(e.kind==="raider"){ const C=crewOf(s,e), m=crewMates(s,e)[0]; e.surr=false;
       if(anyPlayerSees(s,e.x,e.y)) say(s,`${e.name} of the ${FACTIONS[e.fac].name} goes down. Search the body with F.`,isPid(s,ATK)?"good":"info");
       if(m) rsay(s,m,"ally_down",{n:e.name},true); if(ATK&&s.ents.some(q=>q.id===ATK&&q.kind==="raider")){ const k=s.ents.find(q=>q.id===ATK); if(k&&k.alive) rsay(s,k,"kill"); }
@@ -419,6 +423,7 @@ const Sim = (() => {
     const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<8||p.water<8)) c-=.05;
     if(st.close&&d<3) c-=st.close;
     c-= p.hp.rarm<=0?.35:(1-p.hp.rarm/p.max.rarm)*.15;
+    if(p.perks) c+=.04*(p.perks.marksman|0); if(p.frac){ if(p.frac.rarm) c-=.12; if(p.frac.larm) c-=.06; } if((p.inf|0)>=25) c-=.08;
     c-= p.hp.larm<=0?.12:0;
     if(p.blood<50) c-=.15;
     if(!s.power&&d>3&&!st.dark&&!G.dark) c-=.1;
@@ -432,7 +437,7 @@ const Sim = (() => {
     const t=tileAt(s,tx,ty), target=entAt(s,tx,ty), barrel=t.t==="prop"&&t.kind==="barrel";
     if(!target&&t.t!=="window"&&!barrel&&st.cls!=="launcher"){ say(s,"Nothing worth a bullet there.","info"); return false; }
     if((p.ammo[st.ammo]|0)<=0){ say(s,`*click* Out of ${Items.AMMO[st.ammo].name.toLowerCase()}.`,"warn"); return false; }
-    face(p,tx-p.x,ty-p.y); noise(s,p.x,p.y,st.cls==="sniper"||st.cls==="launcher"?14:st.cls==="shotgun"?11:10);
+    face(p,tx-p.x,ty-p.y); noise(s,p.x,p.y,Math.max(4,(st.cls==="sniper"||st.cls==="launcher"?14:st.cls==="shotgun"?11:10)-2*((p.perks&&p.perks.ghost)|0)-(st.quiet|0)));
     const shots=Math.min(st.burst||1,p.ammo[st.ammo]);
     for(let k=0;k<shots;k++){ p.ammo[st.ammo]--; fireOne(s,p,tx,ty,st,target); if(target&&!target.alive) break; }
     if(st.bolt){ p.busy=Math.max(p.busy,1); say(s,"You work the bolt.","info"); }
@@ -479,7 +484,7 @@ const Sim = (() => {
       if(tj.t==="window"&&chance(s,d<=1.5?.8:.4)) hitWindow(s,x,y,tj,true);
       if(gas(tj)){ s.scorch[j]=1; if(o.fire&&s.fuel[j]>0&&!s.fire[j]&&chance(s,d<=1.5?.85:.5)) s.fire[j]=2; }
       const e=entAt(s,x,y);
-      if(e){ if(o.dmg){ const hits=d<=1.2?2:1, fr=e.kind==="player"?gearOf(e).fire*.5:0; for(let k=0;k<hits&&e.alive;k++) damage(s,e,pickLimb(s),Math.max(1,Math.round(ri(s,o.dmg[0],o.dmg[1])*(d<=1.2?1:.6)*(1-fr))),.4,"Caught in a blast."); }
+      if(e){ if(o.dmg){ const hits=d<=1.2?2:1, fr=e.kind==="player"?gearOf(e).fire*.5:0; for(let k=0;k<hits&&e.alive;k++){ const l=pickLimb(s), dd=Math.max(1,Math.round(ri(s,o.dmg[0],o.dmg[1])*(d<=1.2?1:.6)*(1-fr))); damage(s,e,l,dd,.4,"Caught in a blast."); injure(s,e,l,dd,{frac:.25}); } }
         if(o.stun&&e.kind==="husk"&&e.alive) e.stun=Math.max(e.stun|0,o.stun); }
     }
     for(const [x,y] of drums) explode(s,x,y);
@@ -543,7 +548,9 @@ const Sim = (() => {
     if(s.mode==="ship") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="prop"){ face(p,dx,dy); fx(s,{type:"flavor",kind:t.kind,pid:p.id,x:p.x+dx,y:p.y+dy}); return false; } }
     // search lockers, crates and the like
     for(const [dx,dy] of [p.face||[0,-1],...N4]){ const x=p.x+dx,y=p.y+dy,t=tileAt(s,x,y); if(t.t!=="prop"||!CONTAINERS.has(t.kind)||t.searched) continue;
-      face(p,dx,dy); t.searched=true; const nm2={locker:"locker",crate:"crate",footlocker:"footlocker",ammocrate:"ammo crate",medcab:"medical cabinet",shelf:"shelf",strongbox:"strongbox",pallet:"pallet",gunrack:"gun rack",fridge:"cold locker"}[t.kind];
+      face(p,dx,dy); t.searched=true; gainXP(s,p.id,1);
+      if(p.perks&&p.perks.scavenger&&chance(s,.3*p.perks.scavenger)){ t.loot=t.loot||[]; t.loot.push(Items.roll(()=>rand(s),2,chance(s,.5)?"val":"any")); }
+      const nm2={locker:"locker",crate:"crate",footlocker:"footlocker",ammocrate:"ammo crate",medcab:"medical cabinet",shelf:"shelf",strongbox:"strongbox",pallet:"pallet",gunrack:"gun rack",fridge:"cold locker"}[t.kind];
       if(t.kind==="strongbox"){ p.busy=Math.max(p.busy,1); noise(s,p.x,p.y,6); }
       const got=t.loot||[]; delete t.loot; fx(s,{type:"search",x,y,kind:t.kind});
       if(!got.length){ say(s,`You search the ${nm2}. Nothing worth taking.`,"info"); return true; }
@@ -584,13 +591,16 @@ const Sim = (() => {
     if(k==="food"){ const D=ST(it); p.food=Math.max(0,Math.min(100,p.food+(D.food||0))); p.water=Math.max(0,Math.min(100,p.water+(D.water||0))); if(D.heal) p.blood=Math.min(100,p.blood+D.heal);
       p.inv.splice(i,1); say(s,D.water>(D.food||0)?`You drink the ${nm(it).toLowerCase()}.`:`You eat the ${nm(it).toLowerCase()}.`,"good"); return true; }
     const bleeding=LIMBS.filter(l=>p.bleed[l]);
+    const MED=(p.perks&&p.perks.medic)|0;
     if(it.d==="bandage"){
       if(!bleeding.length){ say(s,"You're not bleeding.","info"); return false; }
       const l=bleeding.sort((a,b)=>(a==="torso"||a==="head"?-1:0)-(b==="torso"||b==="head"?-1:0))[0];
-      delete p.bleed[l]; p.inv.splice(i,1); say(s,`You wrap your ${LNAME[l]} tight. The bleeding stops.`,"good"); return true;
+      delete p.bleed[l]; if(MED&&p.hp[l]>0) p.hp[l]=Math.min(p.max[l],p.hp[l]+8*MED); p.inv.splice(i,1); say(s,`You wrap your ${LNAME[l]} tight. The bleeding stops.`,"good"); return true;
     }
+    if(it.d==="splint"){ const f=LIMBS.find(l=>p.frac&&p.frac[l]); if(!f){ say(s,"Nothing's broken.","info"); return false; } delete p.frac[f]; p.inv.splice(i,1); say(s,`You set your ${LNAME[f]} with a grunt and strap the splint on tight.`,"good"); return true; }
+    if(it.d==="antibiotic"){ if(!p.inf){ say(s,"No infection to treat.","info"); return false; } p.inf=0; p.inv.splice(i,1); say(s,"You dry-swallow the antibiotics. The fever will break.","good"); return true; }
     if(it.d==="medkit"){
-      p.bleed={}; for(const l of LIMBS) if(p.hp[l]>0) p.hp[l]=Math.min(p.max[l],p.hp[l]+18);
+      p.bleed={}; for(const l of LIMBS) if(p.hp[l]>0) p.hp[l]=Math.min(p.max[l],p.hp[l]+18+10*MED);
       p.blood=Math.min(100,p.blood+15); p.inv.splice(i,1); say(s,"You jab a coagulant and staple your wounds shut.","good"); return true;
     }
     if(it.d==="o2"){ p.o2=Math.min(p.o2max,p.o2+50); p.inv.splice(i,1); say(s,"You clip the canister into your suit. +50 O₂.","air"); return true; }
@@ -809,7 +819,7 @@ const Sim = (() => {
       say(s, h.type==="brute"?`The brute slams into your ${LNAME[l]}!`:h.type==="matriarch"?`The Matriarch's claws tear through your ${LNAME[l]}!`:armsGone?`The ${n} bites into your ${LNAME[l]}!`:`The ${n} rakes your ${LNAME[l]}!`, "bad");
       if(h.type==="brute") fx(s,{type:"stomp",x:p.x,y:p.y});
       damage(s,p,l,d,.35,h.type==="matriarch"?"Torn apart by the Matriarch.":`Torn apart by a ${n}.`);
-      if(p.alive&&TY.stun&&chance(s,TY.stun)){ p.busy=Math.max(p.busy|0,1); say(s,"The blow knocks you off your feet!","bad"); }
+      if(p.alive&&TY.stun&&!(p.perks&&p.perks.steady)&&chance(s,TY.stun)){ p.busy=Math.max(p.busy|0,1); say(s,"The blow knocks you off your feet!","bad"); }
       if(p.alive) wound(s,p,l,d,{infect:TY.infect||0,frac:TY.frac||0});
     } else say(s,`The ${TY.name} lunges and misses.`,"info");
   }
@@ -997,6 +1007,12 @@ const Sim = (() => {
     const r=makeRaider(s,H.fac,Math.min(3,tier+1),spot[0],spot[1],"hire",true,new Set()); r.trait="veteran"; r.hired=true; s.ents.push(r);
     for(const p of players(s)) p.seen[idx(s,r.x,r.y)]=1;
     s.log.push({t:s.turn,msg:`${r.name} of the ${FACTIONS[H.fac].name} checks their ${nm(r.w1)} and falls in behind you.`,kind:"good",pid:null}); }
+  function gainXP(s,pid,n){ const p=s.ents.find(e=>e.id===pid&&e.kind==="player"); if(p) p.xp=(p.xp|0)+n; }
+  const XP_KILL={husk:6,stalker:5,spitter:8,brute:14,matriarch:120};
+  // fractures and infections: they stay with you until treated (or the medbay sees you)
+  function injure(s,p,limb,dmg,o){ if(!p||p.kind!=="player"||!p.alive) return; const ST2=p.perks||{};
+    if(o.frac&&limb!=="head"&&limb!=="torso"&&!(p.frac&&p.frac[limb])&&(dmg>=8||p.hp[limb]<p.max[limb]*.4)&&chance(s,o.frac*(ST2.steady?.5:1))){ p.frac=p.frac||{}; p.frac[limb]=1; fx(s,{type:"bash",x:p.x,y:p.y}); const c0=CTX; CTX=p.id; say(s,`Something snaps. Your ${LNAME[limb]} is broken.${limb.endsWith("leg")?" You can barely walk on it.":" Your aim is shot."} A splint would set it.`,"bad"); CTX=c0; }
+    if(o.infect&&!p.inf&&chance(s,o.infect*((ST2.medic|0)>=2?.5:1))){ p.inf=1; const c0=CTX; CTX=p.id; say(s,"The wound is filthy. It will turn septic if you don't get antibiotics.","warn"); CTX=c0; } }
   function addRep(s,fac,n){ if(!s.repd||!FACTIONS[fac]) return; s.repd[fac]=(s.repd[fac]||0)+n; }
   const sightOf=(s,r)=>sightR(s)+(r.light&&!s.power?3:0)+(r.trait==="veteran"?1:0);
   const rSees=(s,r,e)=>e.alive&&Math.hypot(e.x-r.x,e.y-r.y)<=sightOf(s,r)+.5&&los(s,r.x,r.y,e.x,e.y);
@@ -1021,14 +1037,14 @@ const Sim = (() => {
     const r=near[0], C=crewOf(s,r), it=intentOf(text); r.talkT=0;
     noise(s,p.x,p.y,4);
     const T=r.trait, odds=crewStrength(s,r)/Math.max(.3,playerStrength(s,r)), hurt=isHurt(r);
-    const tryP=pr=>chance(s,Math.max(0,Math.min(.95,pr)));
+    const tryP=pr=>chance(s,Math.max(0,Math.min(.95,pr+.1*((p.perks&&p.perks.silver)|0))));
     if(r.surr){ rsay(s,r,it==="threat"?"surrender":"robbed",{},true); return true; }
     switch(it){
       case "hail": if(C.att==="hostile"){ if(tryP((T==="talker"?.3:.08)+(hurt?.2:0))){ setAtt(s,r.crew,"wary"); rsay(s,r,"hail_wary",{},true); } else { rsay(s,r,"hail_hostile",{},true); for(const m of [r,...crewMates(s,r)]) m.busy=Math.max(m.busy,m===r?0:0); } }
         else if(C.att==="wary"){ if(tryP(.2+(T==="talker"?.3:0)+(r.fac==="guild"?.2:0))){ setAtt(s,r.crew,"friendly"); { rsay(s,r,"befriend",{},true); addRep(s,r.fac,3); } } else rsay(s,r,"hail_wary",{},true); }
         else rsay(s,r,"hail_friendly",{},true); break;
       case "truce": if(C.att==="hostile"){ const pr=.08+(hurt?.35:0)+(odds<.8?.25:0)+(T==="talker"?.2:0)+(T==="coward"?.25:0)-(T==="killer"||T==="zealot"?.3:0)-(r.fac==="hollow"?.15:0);
-          if(tryP(pr)){ setAtt(s,r.crew,"wary"); for(const m of [r,...crewMates(s,r)]) m.last=null; rsay(s,r,"truce_yes",{},true); addRep(s,r.fac,3); } else rsay(s,r,"truce_no",{},true); }
+          if(tryP(pr)){ setAtt(s,r.crew,"wary"); for(const m of [r,...crewMates(s,r)]) m.last=null; rsay(s,r,"truce_yes",{},true); addRep(s,r.fac,3); gainXP(s,p.id,8); } else rsay(s,r,"truce_no",{},true); }
         else if(C.att==="wary"){ if(tryP(.4+(T==="talker"?.25:0)+(r.fac==="guild"?.2:0)-(T==="killer"?.25:0))){ setAtt(s,r.crew,"friendly"); { rsay(s,r,"befriend",{},true); addRep(s,r.fac,3); } } else rsay(s,r,"hail_wary",{},true); }
         else rsay(s,r,"already",{},true); break;
       case "backoff": if(C.att==="hostile"){ if(hurt||T==="coward"){ for(const m of [r,...crewMates(s,r)]){ m.flee=6; } rsay(s,r,"flee",{},true); } else rsay(s,r,"backoff_defy",{},true); }
@@ -1090,7 +1106,7 @@ const Sim = (() => {
     if((r.ammo[at]|0)<=0){ const o=r.act===1?r.w2:r.w1; if(o&&(r.ammo[ST(o).ammo]|0)>0) r.act=r.act===1?2:1; else rsay(s,r,"dry"); }
     return true; }
   function rMelee(s,r,t){ const st=ST(r.melee)||WRENCH; face(r,t.x-r.x,t.y-r.y); fx(s,{type:"claw",x:t.x,y:t.y,id:r.id}); ATK=r.id;
-    if(chance(s,.75+(st.acc||0))){ const l=pickLimb(s), d=ri(s,st.dmg[0],st.dmg[1]); const c0=CTX; if(t.kind==="player"){ CTX=t.id; say(s,`${r.name} hits your ${LNAME[l]} with a ${nm(r.melee||{d:"crowbar"}).toLowerCase()}!`,"bad"); } damage(s,t,l,d,st.bleed??.3,`Hacked down by ${r.name}.`); CTX=c0; }
+    if(chance(s,.75+(st.acc||0))){ const l=pickLimb(s), d=ri(s,st.dmg[0],st.dmg[1]); const c0=CTX; if(t.kind==="player"){ CTX=t.id; say(s,`${r.name} hits your ${LNAME[l]} with a ${nm(r.melee||{d:"crowbar"}).toLowerCase()}!`,"bad"); } damage(s,t,l,d,st.bleed??.3,`Hacked down by ${r.name}.`); injure(s,t,l,d,{frac:.15}); CTX=c0; }
     else if(t.kind==="player"){ const c0=CTX; CTX=t.id; say(s,`${r.name} swings at you and misses.`,"info"); CTX=c0; }
     if(t.kind==="husk"){ t.aware=true; t.last={x:r.x,y:r.y}; } ATK=null; return true; }
   function rHeal(s,r){ const bl=LIMBS.filter(l=>r.bleed[l]); if(!bl.length) return false; const i=r.inv.findIndex(q=>q.d==="bandage"||q.d==="medkit"); if(i<0) return false;
@@ -1208,6 +1224,7 @@ const Sim = (() => {
   function vitals(s){
     for(const e of s.ents){
       if(!e.alive) continue; CTX=e.kind==="player"?e.id:null; if(e.stimT>0) e.stimT--;
+      if(e.kind==="player"&&e.inf>0){ e.inf++; if(e.inf===25) say(s,"You're running a fever. Your hands won't stop shaking.","bad"); if(e.inf>=25&&s.turn%(e.inf>=80?3:6)===0){ e.blood-=1; if(e.blood<=0){ kill(s,e,"Taken by fever and infection."); continue; } } }
       if(e.kind==="player"&&e.food!=null){ const hf=e.food, hw=e.water; e.food=Math.max(0,+(e.food-.03).toFixed(3)); e.water=Math.max(0,+(e.water-.045).toFixed(3));
         if(hf>=15&&e.food<15) say(s,"Your stomach knots. You should eat something.","warn"); if(hw>=15&&e.water<15) say(s,"Your mouth is dry. You should drink something.","warn");
         if((e.food<=0||e.water<=0)&&s.turn%5===0){ e.blood-=1; if(s.turn%15===0) say(s,e.water<=0?"Dehydration is shutting you down.":"You're starving. Your strength is going.","bad"); if(e.blood<=0){ kill(s,e,e.water<=0?"Died of thirst in the dark.":"Starved in the dark."); continue; } }
@@ -1242,7 +1259,7 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
+    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 

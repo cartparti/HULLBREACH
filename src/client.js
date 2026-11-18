@@ -766,6 +766,8 @@ function itemIcon(g,it,x,y,blink){
     case "med":
       if(it.d==="bandage"){ r(3,6,10,7,"#a39b86"); r(3,6,10,1,"#d0c7b0"); r(11,6,2,7,"#857d6a"); r(5,8,4,2,"#7a1a14"); }
       else if(it.d==="medkit"){ r(2,5,12,9,"#363b27"); r(2,5,12,1,"#575d3e"); r(7,6,2,7,"#a32a1d"); r(5,8,6,2,"#a32a1d"); r(6,3,4,2,"#1a1a16"); }
+      else if(it.d==="splint"){ r(3,3,3,11,"#8a7a5a"); r(10,3,3,11,"#8a7a5a"); r(3,3,1,11,"#b8a880"); r(10,3,1,11,"#b8a880"); r(2,6,12,2,"#d8d0b8"); r(2,10,12,2,"#d8d0b8"); }
+      else if(it.d==="antibiotic"){ r(5,4,6,10,"#d8e0e0"); r(5,4,1,10,"#ffffff"); r(5,2,6,2,"#3a7ab0"); r(6,8,4,3,"#3a7ab0"); r(7,9,2,1,"#ffffff"); }
       else if(it.d==="o2"){ r(5,3,6,11,"#36545a"); r(5,3,1,11,"#6a9aa0"); r(6,1,4,2,"#8a8a80"); r(5,7,6,1,"#c9a24a"); }
       else { r(2,7,10,3,"#cfd8d8"); r(2,7,10,1,"#ffffff"); r(4,8,6,1,"#e04060"); r(12,8,3,1,"#8a8a80"); r(0,7,2,3,"#4a5056"); }
       break;
@@ -1581,7 +1583,7 @@ const limbCol=(e,l)=>{ const f=e.hp[l]/e.max[l]; return f<=0?"#262320":f>.66?"#4
 function figHTML(p){ return Sim.LIMBS.map(l=>`<i class="${l}${p.bleed[l]?" bleed":""}" style="background:${limbCol(p,l)}" title="${Sim.LNAME[l]} ${p.hp[l]}/${p.max[l]}"></i>`).join(""); }
 function vitHTML(p){ const pr=S.P[Sim.idx(S,p.x,p.y)], bl=Sim.LIMBS.filter(l=>p.bleed[l]);
   const m=(lbl,val,max,col,txt)=>`<span class="lbl">${lbl}</span><div class="meter"><i style="width:${Math.max(0,Math.min(100,val/max*100))}%;background:${col}"></i></div><span class="num">${txt}</span>`;
-  const st=!p.alive?"Flatline":bl.length?`Bleeding: ${bl.map(l=>Sim.LNAME[l]).join(", ")}`:(pr<45?"Suit sealed · on tank air":"Stable");
+  const fr=Object.keys(p.frac||{}), st=!p.alive?"Flatline":bl.length?`Bleeding: ${bl.map(l=>Sim.LNAME[l]).join(", ")}`:fr.length?`Broken ${fr.map(l=>Sim.LNAME[l]).join(", ")}`:(p.inf>=25?"Feverish · infected":p.inf?"Infected wound":pr<45?"Suit sealed · on tank air":"Stable");
   return `<span class="big" style="color:${p.blood>60?"var(--bile)":p.blood>35?"var(--brass)":"var(--blood2)"}">${Math.max(0,p.blood)}</span><canvas class="ekg" width="200" height="26"></canvas>`+
     m("O₂",p.o2,p.o2max||100,p.o2>20?"var(--cold)":"var(--blood2)",p.o2)+m("Air",pr,101,pr>70?"var(--cold)":pr>40?"var(--brass)":"var(--blood2)",Math.round(pr)+" kPa")+
     (p.food!=null?m("Food",p.food,100,p.food>30?"#b08a4a":"var(--blood2)",Math.round(p.food))+m("Water",p.water,100,p.water>30?"#5a9ad0":"var(--blood2)",Math.round(p.water)):"")+
