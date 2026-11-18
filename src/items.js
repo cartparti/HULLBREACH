@@ -279,8 +279,8 @@ const Items = (() => {
   const BAR_TOGO = [["ration", 18], ["paste", 20], ["stew", 32], ["waterflask", 14], ["purewater", 28], ["recaf", 18], ["amber", 70]];
   // character styles: free to change in the wardrobe
   const STYLE = {
-    skin: ["#f1c9a5", "#d9a77e", "#b07a52", "#8a5634", "#5e3a22", "#3e2616", "#a8b0a0"],
-    hair: ["none", "buzz", "short", "long", "mohawk", "topknot", "braid", "ponytail", "bob", "pixie", "undercut", "curly", "slick", "buns"],
+    skin: ["#f1c9a5", "#d9a77e", "#b07a52", "#8a5634", "#5e3a22", "#3e2616", "#a8b0a0", "#fbe2cc", "#c89a6e", "#2a1a10"],
+    hair: ["none", "buzz", "short", "long", "mohawk", "topknot", "braid", "ponytail", "bob", "pixie", "undercut", "curly", "slick", "buns", "afro", "dreads", "sidecut"],
     body: ["male", "female"],
     facialHair: ["none", "stubble", "shortbeard", "fullbeard", "goatee", "moustache", "chops"],
     marks: ["none", "scar", "tattoo", "freckles", "warpaint", "eyepatch"],
@@ -288,9 +288,11 @@ const Items = (() => {
     brows: ["normal", "thick", "thin", "stern", "arched"],
     mouth: ["neutral", "smirk", "frown", "full", "grim"],
     nose: ["straight", "broad", "small", "hooked"],
-    hairCol: ["#1a1410", "#3a2414", "#6a4020", "#a0682e", "#d8b060", "#c8c8c0", "#8a2a1c", "#3a6a8a"],
+    hairCol: ["#1a1410", "#3a2414", "#6a4020", "#a0682e", "#d8b060", "#c8c8c0", "#8a2a1c", "#3a6a8a", "#ece4d4", "#3a7a4a", "#6a3a8a", "#d05a8a"],
+    aug: ["none", "cybereye", "jawplate", "faceplate", "ocular"],
+    pierce: ["none", "earrings", "nosering", "browbar"],
     face: ["clean", "stubble", "beard", "moustache", "scar", "tattoo"],
-    eyes: ["#2a1e14", "#3a5a8a", "#4a7a3a", "#8a6a2a", "#7a1a12"],
+    eyes: ["#2a1e14", "#3a5a8a", "#4a7a3a", "#8a6a2a", "#7a1a12", "#c8a020", "#8a8a9a", "#5ad0d0"],
     top: ["coverall", "jacket", "hivis", "undersuit", "singlet"],
     bottom: ["fatigues", "workpants", "shorts"],
     boots: ["magboots", "workboots", "wraps"],

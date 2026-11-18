@@ -234,7 +234,7 @@ test("inventory: stow gear back into the pack, equip a gun into a chosen slot", 
 test("containers: generated stations hide loot in lockers and crates, searched once", () => {
   let found = 0, total = 0;
   for (let seed = 1; seed <= 6; seed++) {
-    const s = Sim.newGame(seed, null, { gen: { tier: 2 } }), p = playerOf(s);
+    const s = Sim.newGame(seed, null, { gen: { tier: 2 } }), p = playerOf(s); for (const e of s.ents) if (e.kind !== "player") e.alive = false;
     const boxes = s.tiles.map((t, i) => [t, i]).filter(([t]) => t.t === "prop" && t.loot);
     total += boxes.length; found += boxes.filter(([t]) => t.loot.length).length;
     const [t, i] = boxes.find(([t]) => t.loot.length) || [];

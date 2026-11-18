@@ -27,7 +27,7 @@ function sendChat(text){ text=String(text||"").trim().slice(0,140); if(!text) re
   if(!inSquad()) return; emit({t:"chat",m:text}); addChat(Net.myKey,text); }
 // lines spoken in the raid (yours, your crew's, raiders') go to the chat feed and float over the speaker
 function harvestChat(){ if(!S||!S.log) return; let any=false;
-  for(const l of S.log){ if(l.kind!=="chat"||heardLog.has(l)) continue; heardLog.add(l); if(l.t<S.turn-2) continue; any=true; BUBBLE[l.from]={msg:l.msg,at:Date.now()};
+  for(const l of S.log){ if(l.kind!=="chat"||heardLog.has(l)) continue; heardLog.add(l); if(l.t<S.turn-2) continue; any=true; BUBBLE[l.from]={msg:l.msg,at:Date.now()}; if(typeof setExpr==="function"){ const m=l.fac!=null?(l.att==="hostile"?(/!/.test(l.msg)?"shout":"angry"):l.att==="friendly"?"happy":"talk"):chatMood(l.msg); setExpr(l.from,m==="angry"?"angry":m,m==="talk"?1500:1700,2); }
     const raider=l.fac!=null; addChat(l.from,l.msg,false,raider?{nm:l.who,col:{hostile:"#e0482f",wary:"#e8b048",friendly:"#7cc46a"}[l.att]||"#e8b048",tagx:Sim.FACTIONS[l.fac].short}:{}); }
   if(any) renderChat(); }
 function renderChat(){

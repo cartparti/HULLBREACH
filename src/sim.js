@@ -1002,7 +1002,8 @@ const Sim = (() => {
       w1,w2,melee:it(pickS(s,F.melee)),head:it(pickS(s,F.head)),armor:it(pickS(s,F.armor)),legs:it(pickS(s,F.legs)),acc:it(pickS(s,F.acc)),light:chance(s,.75)?{d:"flashlight",r:0}:null,pack:chance(s,.6)?{d:pickS(s,["sling","field","field"]),r:0}:null,
       act:1,ammo:{},mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),inv:[],alive:true,busy:0,face:[0,1],stimT:0,last:null,avoid:0,flee:0,surr:false,surrT:0,talkT:0,stun:0,flags:{},
       look:{c:pickS(s,F.cloak),v:pickS(s,F.visor),k:pickS(s,F.crest),s:ri(s,0,6),h:g?pickS(s,[3,6,7,8,9,13,1,10]):pickS(s,F.hair),hc:ri(s,0,7),f:0,e:ri(s,0,4),t:ri(s,0,4),tc:pickS(s,F.cloth),b:ri(s,0,2),bc:pickS(s,F.cloth),bt:pickS(s,[4,4,0,7]),bs:ri(s,0,2),g,
-        fh:g||syn?0:pickS(s,[0,1,1,2,3,4,5,6]),fm:pickS(s,F.marks),ey:ri(s,0,3),br:ri(s,0,4),mo:ri(s,0,4),no:ri(s,0,3),...(syn?{syn:1,h:0}:{})}};
+        fh:g||syn?0:pickS(s,[0,1,1,2,3,4,5,6]),fm:pickS(s,F.marks),ey:ri(s,0,3),br:ri(s,0,4),mo:ri(s,0,4),no:ri(s,0,3),
+        au:syn?0:chance(s,fac==="hollow"||fac==="reaver"?.35:.12)?ri(s,1,4):0,pc:chance(s,fac==="reaver"||fac==="blacksun"?.4:.15)?ri(s,1,3):0,...(syn?{syn:1,h:0}:{})}};
     for(const w of [w1,w2]) if(w){ const t=ST(w).ammo; if(t) r.ammo[t]=(r.ammo[t]|0)+Math.round(Items.AMMO[t].stack*(1+rand(s)*2)); }
     r.cap=capOf(r); if(w1&&(fac==="hollow"||fac==="marshal"||fac==="blacksun"||tier>=3)&&chance(s,.45)){ const ms=Object.keys(Items.MODS).filter(m=>Items.modFits(m,w1)); if(ms.length) w1.m=pickS(s,ms); }
     if(!syn&&chance(s,.65)) r.inv.push({d:"bandage",r:0,id:s.nextId++}); if(chance(s,.25)) r.inv.push({d:"medkit",r:0,id:s.nextId++});
