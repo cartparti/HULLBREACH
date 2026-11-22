@@ -73,6 +73,10 @@ const Snd = (() => {
     die: (n) => { tone(n, { f: 210, f1: 38, a: .02, d: .9, v: .35 }); noise(n, { d: .6, v: .2, f: 500, f1: 90 }); },
     spark: (n) => { for (let k = 0; k < 4; k++) noise(n, { t: k * .03, d: .025, v: .35, type: "highpass", f: 4500 }); tone(n, { type: "square", f: 1300, f1: 600, d: .07, v: .1 }); },
     robot: (n) => { tone(n, { type: "square", f: 600, f1: 300, d: .12, v: .12 }); tone(n, { t: .08, type: "square", f: 900, d: .06, v: .08 }); },
+    klaxon: (n) => { for (let k = 0; k < 3; k++) { tone(n, { t: k * .7, type: "sawtooth", f: 440, f1: 330, a: .02, d: .55, v: .14 }); tone(n, { t: k * .7, type: "square", f: 220, f1: 165, a: .02, d: .55, v: .05 }); } },
+    horn: (n) => { for (const det of [0, 12, -15]) tone(n, { type: "sawtooth", f: 58, f1: 46, a: .4, d: 2.4, v: .16, det }); noise(n, { a: .3, d: 2.2, v: .2, f: 300, f1: 120 }); },
+    geiger: (n) => { noise(n, { d: .008, v: .25, type: "highpass", f: 3000 }); },
+    takedown: (n) => { noise(n, { d: .12, v: .5, f: 600, f1: 150 }); tone(n, { f: 110, f1: 50, d: .2, v: .4 }); noise(n, { t: .08, d: .2, v: .25, type: "bandpass", f: 900, q: 2 }); },
     casing: (n) => { tone(n, { f: R(3200, 4200), d: .06, v: .05 }); tone(n, { t: .05, f: R(2600, 3400), d: .05, v: .03 }); },
     hull: (n) => { tone(n, { type: "triangle", f: R(500, 700), d: .06, v: .06 }); noise(n, { d: .03, v: .05, type: "bandpass", f: 1200 }); },
     pump: (n) => { noise(n, { d: .06, v: .3, type: "bandpass", f: 900, q: 2 }); tone(n, { f: 180, f1: 120, d: .05, v: .15 }); noise(n, { t: .12, d: .07, v: .35, type: "bandpass", f: 1300, q: 2 }); tone(n, { t: .12, f: 220, f1: 150, d: .05, v: .15 }); },
@@ -111,7 +115,7 @@ const Snd = (() => {
   function wind(g) { const s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(); s.buffer = noiseBuf; s.loop = true; fl.type = "bandpass"; fl.frequency.value = 500; fl.Q.value = .5; s.connect(fl); fl.connect(g); s.start(); }
   function pad(g) { // slow minor drone for the menu and the ship
     for (const [f, det] of [[55, 0], [55, 8], [82.4, -6], [110, 4]]) { const o = ctx.createOscillator(), fl = ctx.createBiquadFilter(), og = ctx.createGain(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = det; fl.type = "lowpass"; fl.frequency.value = 420; og.gain.value = .05; o.connect(fl); fl.connect(og); og.connect(g); o.start(); } }
-  const SCALE = [220, 261.6, 293.7, 329.6, 392, 440, 523.3]; let nextBell = 0, nextCreak = 0, lastDanger = false;
+  const SCALE = [220, 261.6, 293.7, 329.6, 392, 440, 523.3]; let nextBell = 0, nextCreak = 0, lastDanger = false, heat = 0, nextBeat = 0, beatN = 0;
   function setG(g, v, tc = .8) { g.gain.setTargetAtTime(v, T(), tc); }
   // st: {scene:"menu"|"ship"|"raid", power, fire (0..1), breach, danger}
   function scene(st) {
@@ -127,6 +131,13 @@ const Snd = (() => {
       else if (k < .7) { tone(amb, { f: R(1800, 2600), d: .25, v: .04 }); } // drip
       else noise(amb, { a: .2, d: 1.2, v: .06, type: "bandpass", f: R(300, 700), q: 3 }); } // vent breath
     if (raid && st.danger && !lastDanger) play("stinger"); lastDanger = raid && !!st.danger;
+    const want = raid ? Math.min(1, (st.threat || 0) / 4) : 0; heat += (want - heat) * (want > heat ? .5 : .08);
+    if (heat > .05 && S0.music > 0) { while (nextBeat < now + .4) { if (nextBeat < now) nextBeat = now + .02; const step = beatN++ % 8, v = heat * S0.music * 1.4;
+        if (step % 4 === 0) { tone(mus, { t: nextBeat - now, f: 62, f1: 30, d: .28, v: .35 * v }); }
+        if (step % 4 === 2 && heat > .35) noise(mus, { t: nextBeat - now, d: .1, v: .18 * v, type: "bandpass", f: 1800, q: .8 });
+        if (heat > .55) noise(mus, { t: nextBeat - now, d: .03, v: .06 * v, type: "highpass", f: 6000 });
+        const bass = [55, 55, 65.4, 55, 49, 55, 73.4, 65.4][step]; tone(mus, { t: nextBeat - now, type: "sawtooth", f: bass, d: .2, v: .07 * v });
+        nextBeat += heat > .6 ? .2 : .26; } } else nextBeat = now;
   }
   function setListener(l) { listener = l; }
   function cfg() { return { ...S0 }; }

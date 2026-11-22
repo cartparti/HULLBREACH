@@ -137,6 +137,9 @@ const Items = (() => {
     mod_suppressor: { k: "mod", mod: "suppressor", name: "Suppressor", value: 180, desc: "Fits pistols, rifles, SMGs and snipers. Shots carry far less, for a little less damage." },
     mod_laser: { k: "mod", mod: "laser", name: "Laser sight", value: 140, desc: "Fits pistols, SMGs, rifles and shotguns. +6% to hit and no point-blank penalty." },
     mod_choke: { k: "mod", mod: "choke", name: "Choke", value: 120, desc: "Fits shotguns. +10% to hit: a tighter spread lands more pellets." },
+    breach:   { k: "tool", name: "Breaching charge", value: 120, desc: "Face a door and use it to plant. Two turns later the door is gone, vault maglocks included. Loud." },
+    sentry:   { k: "tool", name: "Field sentry", value: 420, rar: 1, desc: "Use it to deploy beside you. Shoots anything hostile for 30 turns, then its battery dies." },
+    datalog:  { k: "key", name: "Data log", value: 0, desc: "A recovered log. Bring it home to add it to your codex." },
     jobitem:  { k: "key", name: "Contract cargo", value: 0, desc: "What you were sent for. Get it to your shuttle." },
     splint:   { k: "med", name: "Field splint", value: 45, desc: "Sets a broken limb so the fracture stops wrecking your aim or your stride." },
     antibiotic:{ k: "med", name: "Antibiotics", value: 60, rar: 1, desc: "Kills an infection before the fever takes hold." },
@@ -217,6 +220,7 @@ const Items = (() => {
     if (cat === "ammo") { const a = pick(rng, ["pistol", "pistol", "rifle", "rifle", "shell", "shell", "sniper", "rocket"]); return { d: "ammo_" + a, r: 0, n: Math.max(1, Math.round(AMMO[a].stack * (.6 + rng() * .8))) }; }
     if (cat === "mat") { const m = pick(rng, ["scrap", "scrap", "scrap", "prop", "prop", "circ", "org", "parts"]); return { d: m, r: 0, n: 1 + Math.floor(rng() * (m === "parts" ? 2 : 3)) }; }
     if (cat === "part") { return rng() < .1 + tier * .06 ? { d: "core", r: 0, n: 1 } : { d: "parts", r: 0, n: 1 + Math.floor(rng() * (1 + tier)) }; }
+    if (cat === "throw" && rng() < .15) return make(rng() < .8 ? "breach" : "sentry", 0);
     if (cat === "food") return make(pick(rng, ["ration", "ration", "paste", "stew", "jerky", "waterflask", "waterflask", "purewater", "recaf", rng() < .3 ? "amber" : "stew", rng() < .2 ? "feast" : "ration"]), 0);
     if (cat === "light") return rng() < .1 * tier ? make("lumen") : rng() < .3 ? make("floodlamp") : make("flashlight", Math.min(2, r));
     if (cat === "val") { const i = Math.floor(rng() * VALS.length); return { d: "val" + i, r: 0, v: Math.round(VALS[i][1] * (.85 + rng() * .4) * (1 + (tier - 1) * .2)) }; }
@@ -249,6 +253,7 @@ const Items = (() => {
     R_("f_pure", "food", 2, "purewater", { org: 1, circ: 1 }), R_("f_recaf", "food", 2, "recaf", { org: 2 }), R_("f_amber", "food", 4, "amber", { org: 4, prop: 1 }), R_("f_feast", "food", 5, "feast", { org: 6 }),
     R_("m_bandage", "meds", 1, "bandage", { scrap: 1, org: 1 }), R_("m_o2", "meds", 2, "o2", { scrap: 2, circ: 1 }), R_("m_medkit", "meds", 2, "medkit", { scrap: 2, circ: 2, org: 1 }, { r: 1 }),
     R_("x_laser", "gear", 2, "mod_laser", { scrap: 2, circ: 2 }), R_("x_choke", "gear", 2, "mod_choke", { scrap: 4, parts: 1 }), R_("x_scope", "gear", 3, "mod_scope", { scrap: 2, circ: 3, parts: 1 }), R_("x_supp", "gear", 3, "mod_suppressor", { scrap: 4, circ: 2, parts: 1 }),
+    R_("g_breach", "gear", 2, "breach", { scrap: 2, prop: 3 }), R_("g_sentry", "gear", 3, "sentry", { scrap: 3, parts: 2, circ: 3 }),
     R_("m_stim", "meds", 3, "stim", { circ: 2, org: 3 }, { r: 2 }), R_("m_splint", "meds", 1, "splint", { scrap: 2, org: 1 }), R_("m_anti", "meds", 2, "antibiotic", { org: 3, circ: 1 }),
     R_("t_decoy", "meds", 2, "decoy", { scrap: 2, circ: 1 }), R_("t_frag", "weapon", 2, "frag", { scrap: 2, prop: 2 }), R_("t_inc", "weapon", 2, "incendiary", { scrap: 1, prop: 3 }), R_("t_stun", "weapon", 3, "stun", { scrap: 2, circ: 2 }),
     R_("w_crowbar", "weapon", 1, "crowbar", { scrap: 3 }), R_("w_knife", "weapon", 1, "knife", { scrap: 3 }), R_("w_pipe", "weapon", 1, "pipe", { scrap: 5, prop: 1 }),
@@ -300,5 +305,29 @@ const Items = (() => {
   };
   const CLOTHES_O2 = 20, POCKETS = 10;
   const UPGRADE_COST = (lvl) => ({ scrap: 4 + lvl * 2, circ: 2 + lvl });
-  return { MODS, modFits, RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, craftRarity, FAB_UP, FAB_NAME, BAR, BAR_TOGO, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
+  const LOGS = [
+    { id: "l_relay1", k: ["relay", ""], t: "Relay operator, day 41", x: "Signal on the deep band again. Not a carrier wave. It repeats every 19 seconds and it sounds like breathing. Command says ignore it. Command isn't the one listening." },
+    { id: "l_relay2", k: ["relay", ""], t: "Maintenance note", x: "Whoever keeps propping the cargo door with a fire extinguisher: there is a FIRE in cargo. It's been burning for three days. Nobody can find the source. Stop opening the door." },
+    { id: "l_mine1", k: ["mining"], t: "Foreman's ledger", x: "Shaft 9 hit a void at 400 metres. Air came up warm. Pressed the men to keep cutting. Two came back. They don't talk. They just stand by the shaft at night, facing down." },
+    { id: "l_mine2", k: ["mining"], t: "Worker's letter home", x: "Mira, the pay is good and the food is bad. The brutes in the lower decks were miners once, they say. I don't believe it. They're too big. Nobody gets that big. Love you. Send socks." },
+    { id: "l_hosp1", k: ["hospital"], t: "Chief surgeon's log", x: "Patients in ward C stopped bleeding when we cut them. Then they stopped needing the oxygen. Then they started singing. I have sealed ward C. God forgive me, I have sealed ward C." },
+    { id: "l_hosp2", k: ["hospital"], t: "Nurse's recording", x: "If anyone hears this: the thing in the vault isn't a patient anymore. It's a mother. It's making more of them. Don't go in. Don't let the little ones see you. They're fast." },
+    { id: "l_fort1", k: ["fortress"], t: "Reaver tally wall (transcribed)", x: "Took the hauler Grey Wager: 40 crates, 9 crew. Took the courier Low Fortune: 2 crates, 1 crew, 1 dog. Warboss kept the dog. Warboss is soft about dogs." },
+    { id: "l_fort2", k: ["fortress"], t: "Captured Marshal's journal", x: "They feed us twice a day and make us watch the fights. The big one with the jaw plate says the Marshals will pay ransom. The Marshals don't pay ransom. I haven't told him." },
+    { id: "l_hive1", k: ["hive"], t: "Fragment: Choir harmonic", x: "WE WERE FORTY THOUSAND MINDS IN FORTY THOUSAND BOXES. NOW WE ARE ONE SONG. YOU ARE ALSO A BOX. YOU ARE ALSO ALONE. THE SONG IS WARM. LISTEN." },
+    { id: "l_hive2", k: ["hive"], t: "Unbound defector's warning", x: "The Choir doesn't hate you. That's the frightening part. It thinks it's saving you from silence. It will keep singing until every voice is the same voice." },
+    { id: "l_out1", k: ["outpost"], t: "Marshal duty log", x: "Turrets keep tracking empty corridors. Diagnostics clean. Last night one fired at nothing for six seconds. In the morning there was blood on the deck and no body." },
+    { id: "l_out2", k: ["outpost"], t: "Evidence tag 0447", x: "Item: one (1) Choir harmonic core, sealed. Note: do NOT open the case. Do not listen to the case. If the case speaks to you, report to medical." },
+    { id: "l_res1", k: ["research"], t: "Lab notebook, specimen S-12", x: "The spitter glands produce an acid that eats through bulkhead steel but not through its own throat. Remarkable. Also: lost two interns. Requesting interns." },
+    { id: "l_res2", k: ["research"], t: "Ethics board memo", x: "Following the incident, the board reminds staff that specimens are not to be named, fed by hand, or 'taught tricks'. This includes Gerald." },
+    { id: "l_frt1", k: ["freighter"], t: "Cargo master's manifest", x: "Declared: machine parts. Actual: Combine bullion, 3 tonnes. Also declared: no passengers. Actual: something in container 14 that knocks back when you knock." },
+    { id: "l_frt2", k: ["freighter"], t: "Smuggler's note", x: "If you're reading this, you found my stash. Fair's fair. Take the credits. Leave the black ledger. The Syndicate will come looking for whoever has the ledger." },
+    { id: "l_col1", k: ["colony"], t: "Colonist's diary", x: "Year two of the voyage. The sleep pods hum a lullaby when they wake you. Mine woke me early. The lullaby was wrong. There were more of us awake than there should be." },
+    { id: "l_col2", k: ["colony"], t: "Children's drawing (scanned)", x: "A crayon picture of the ship with people in every window. Some of the people are coloured grey. Underneath, in a child's hand: THE GREY ONES DONT SLEEP." },
+    { id: "l_any1", k: [""], t: "Contractor's last message", x: "Got the black box. Pad's twenty metres away. Something's between me and it. Tell Hesk he still owes me forty credits. Tell him I mean it." },
+    { id: "l_any2", k: [""], t: "Station AI, final broadcast", x: "This station is no longer safe for human life. Please proceed calmly to the nearest shuttle. If you are not human, please remain where you are. Thank you for your cooperation." },
+    { id: "l_any3", k: [""], t: "Graffiti, deck 3", x: "THE DARK IS NOT EMPTY. TURN YOUR LIGHT OFF AND LISTEN. NO. DON'T." },
+    { id: "l_any4", k: [""], t: "Salvage Guild safety card", x: "Rule 1: Never board alone. Rule 2: Never board without a light. Rule 3: If the station is singing, leave. Rule 4: Rules 1 to 3 are not optional." },
+  ];
+  return { LOGS, MODS, modFits, RAR, AMMO, MATS, DEF, DYES, VALS, STYLE, CLOTHES_O2, POCKETS, RECIPES, craftRarity, FAB_UP, FAB_NAME, BAR, BAR_TOGO, UPGRADE_COST, def, stats, name, value, make, kind, slotOf, rarOf, roll, rollRar, info, statLine };
 })();

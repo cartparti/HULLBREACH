@@ -188,8 +188,10 @@ const Sim = (() => {
       for(const [x,y] of G.fires){ const i=idx(s,x,y); s.fire[i]=2; s.fuel[i]=14; } }
     if(s.mode==="ship"){ for(const p of players(s)) p.seen.fill(1); for(const t of s.tiles) if(t.t==="door") t.open=true; return s; }
     applyMods(s,opts.mods||{});
+    if(G) furnishExtras(s,(opts.gen&&opts.gen.tier)||1,(opts.gen&&opts.gen.kind)||"");
     spawnRemains(s); s.prisoners=[]; s.huskKills=0; if(G) setupJobs(s,opts.jobs||[],(opts.gen&&opts.gen.tier)||1);
     s.repd={}; s.kills={}; s.factionRep=(opts.factions&&opts.factions.rep)||{};
+    s.tierN=(opts.gen&&opts.gen.tier)||1;
     if(G) placeSecurity(s,opts.gen.tier||1,opts.gen.kind||"",opts.gen.kind==="hive"?"choir":opts.gen.kind==="outpost"?"marshal":null);
     if(G){ spawnRaiders(s,opts.gen.tier||1,opts.mods||{},opts.factions); if(opts.factions&&opts.factions.hire) spawnHire(s,opts.gen.tier||1,opts.factions.hire); }
     say(s,`Shuttle docked at ${s.site}. Station is silent. ${s.power?"Lights are on.":"No power. Emergency lights only."}`,"info");
@@ -223,6 +225,37 @@ const Sim = (() => {
       inv:(lo.inv||[]).slice(0,cap+((lo.perks&&lo.perks.mule)|0)).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
     const P=s.ents[s.ents.length-1]; P.cap=capOf(P); P.secCap=Math.max(0,lo.secCap==null?2:lo.secCap|0); P.brig=!!lo.brig; if(lo.remains&&lo.remains.items) P.remainsLo=lo.remains;
   }
+  // ---- extras that make each station worth exploring: hidden caches, lore, radiation, and something going wrong ----
+  function furnishExtras(s,tier,kind){
+    const rooms=(s.rooms||[]).filter(r=>r[0]&&!/Docking|corridor|shaft|hall/i.test(r[0]));
+    // loose wall panels on a room's back wall, hiding a stash
+    const walls=[]; for(const r of rooms){ const y=r[2]-1; for(let x=r[1];x<=r[3];x++){ const t=tileAt(s,x,y), b=tileAt(s,x,y+1); if(t.t==="wall"&&walk(b)) walls.push([x,y]); } }
+    for(let k=ri(s,1,2)+(tier>=3?1:0);k>0&&walls.length;k--){ const [x,y]=walls.splice(ri(s,0,walls.length-1),1)[0], items=[]; for(let n=ri(s,2,3);n>0;n--) items.push(Items.roll(()=>rand(s),tier+1,pickS(s,["val","val","weapon","armor","med","ammo"]))); s.tiles[idx(s,x,y)].cache=items; }
+    // data logs: lore from whoever was here, tucked in lockers and shelves (or left on the deck)
+    const pool=Items.LOGS.filter(l=>l.k.includes(kind)||l.k.includes("")), boxes=[]; for(let i=0;i<s.tiles.length;i++){ const t=s.tiles[i]; if(t.t==="prop"&&["locker","shelf","footlocker","crate"].includes(t.kind)) boxes.push(t); }
+    for(let k=ri(s,1,2);k>0&&pool.length;k--){ const L=pool.splice(ri(s,0,pool.length-1),1)[0], it={d:"datalog",r:0,lg:L.id,jn:"Data log: "+L.t}; if(boxes.length){ const t=boxes[ri(s,0,boxes.length-1)]; t.loot=t.loot||[]; t.loot.push(it); } else { const T=farTiles(s,6); if(T.length){ const [x,y]=T[ri(s,0,T.length-1)]; spawnItem(s,it,x,y); } } }
+    // radiation: a leaking reactor or fuel store floods one room
+    const hot=rooms.filter(r=>/Engineering|Fuel storage/.test(r[0])); s.rad=[];
+    if(hot.length&&chance(s,kind==="mining"||kind==="hive"?.6:.3)){ const r=hot[ri(s,0,hot.length-1)]; for(let y=r[2];y<=r[4];y++)for(let x=r[1];x<=r[3];x++){ const i=idx(s,x,y); if(s.tiles[i].t!=="wall"&&s.tiles[i].t!=="space") s.rad.push(i); } }
+    // a station event, some time into the raid
+    if(chance(s,.45)){ const opts=s.power?[["meltdown",3],["horde",4],["lockdown",2],["surge",2]]:[["meltdown",2],["horde",5]]; let t=opts.reduce((a,o)=>a+o[1],0)*rand(s), type="horde"; for(const [k,w] of opts){ if((t-=w)<0){ type=k; break; } } s.ev={type,at:ri(s,30,100),on:0}; } }
+  function eventTick(s){ const E=s.ev; if(!E) return;
+    if(!E.on&&s.turn>=E.at){ E.on=1; fx(s,{type:"alarm",kind:E.type});
+      if(E.type==="meltdown"){ E.end=s.turn+55; say(s,"KLAXONS. \"Reactor scram failure. Core breach in 55 turns. All personnel evacuate.\" Get to the shuttle.","bad"); }
+      if(E.type==="horde"){ const ps=players(s).filter(q=>q.alive); const T=farTiles(s,14).filter(([x,y])=>ps.every(q=>Math.hypot(q.x-x,q.y-y)>14)); const n=6+(s.tierN|0)*2;
+        for(let k=0;k<n&&T.length;k++){ const [x,y]=T.splice(ri(s,0,T.length-1),1)[0], h=addHusk(s,x,y,chance(s,.3)?"stalker":"husk"), q=ps[ri(s,0,ps.length-1)]; h.aware=true; if(q) h.last={x:q.x,y:q.y}; }
+        say(s,"A long, wet howl rolls through the vents. Then another. Then dozens. A horde is coming for you.","bad"); }
+      if(E.type==="lockdown"){ E.end=s.turn+15; E.doors=[]; for(let i=0;i<s.tiles.length;i++){ const t=s.tiles[i]; if(t.t==="door"&&!t.broken&&!t.locked){ if(!entAt(s,i%s.W,(i/s.W)|0)) t.open=false; t.locked=true; E.doors.push(i); } } for(const b of s.ents) if(b.kind==="bot") b.seen={};
+        say(s,"\"SECURITY LOCKDOWN.\" Every door slams and maglocks. 15 turns, or a breaching charge.","bad"); }
+      if(E.type==="surge"){ E.end=s.turn+12; s.power=false; say(s,"A power surge blows the main bus. The station goes dark. The backup should kick in soon.","warn"); }
+      return; }
+    if(!E.on||E.done) return;
+    if(E.type==="meltdown"){ const left=E.end-s.turn; if(left>0&&left%10===0) say(s,`"Core breach in ${left} turns."`,"bad");
+      if(left<=0){ E.done=1; fx(s,{type:"explode",x:players(s)[0]?players(s)[0].x:0,y:players(s)[0]?players(s)[0].y:0,big:1}); for(const e of s.ents) if(e.alive&&(e.kind!=="player"||!e.extracted)){ CTX=e.kind==="player"?e.id:null; kill(s,e,"Vaporised when the reactor went critical."); } CTX=null; } }
+    if((E.type==="lockdown"||E.type==="surge")&&s.turn>=E.end){ E.done=1; if(E.type==="lockdown"){ for(const i of E.doors||[]) s.tiles[i].locked=false; say(s,"\"Lockdown lifted.\" The maglocks release with a clunk.","good"); } else { s.power=true; fx(s,{type:"power"}); say(s,"The backup generators catch. Lights stutter back on.","good"); } } }
+  function chargeTick(s){ if(!s.charges||!s.charges.length) return; for(const c of s.charges){ if(--c.t>0) continue; const t=tileAt(s,c.x,c.y); ATK=c.by;
+      if(t.t==="door"){ t.open=true; t.broken=true; t.locked=false; } fx(s,{type:"explode",x:c.x,y:c.y}); noise(s,c.x,c.y,16); say(s,"The breaching charge goes off. The door is gone.","warn"); blast(s,c.x,c.y,{r:1.6,dmg:[8,14]}); ATK=null; }
+    s.charges=s.charges.filter(c=>c.t>0); }
   // ---- faction jobs on this station ----
   function farTiles(s,min){ const p0=players(s)[0], out=[]; for(let i=0;i<s.tiles.length;i++){ const x=i%s.W, y=(i/s.W)|0; if(s.tiles[i].t==="floor"&&!entAt(s,x,y)&&(!p0||Math.hypot(x-p0.x,y-p0.y)>min)) out.push([x,y]); } return out; }
   function setupJobs(s,jobs,tier){ s.jobs=[]; const used=new Set();
@@ -341,6 +374,7 @@ const Sim = (() => {
     if(e.kind==="player"){ s.cause=cause; e.cause=cause; const c0=CTX; CTX=e.id; say(s,`You die. ${cause}`,"bad"); CTX=c0; }
     if(e.jobTarget){ const J=(s.jobs||[]).find(q=>q.id===e.jobTarget); if(J&&!J.done){ J.done=true; say(s,`${e.name} is dead. Contract target eliminated.`,"good"); } }
     if(e.kind==="husk"&&isPid(s,ATK)){ s.huskKills=(s.huskKills|0)+1; for(const J of s.jobs||[]) if(J.type==="purge"&&!J.done){ J.prog++; if(J.prog>=J.n){ J.done=true; say(s,`That's ${J.n}. The purge contract is done. Get out alive to collect.`,"good"); } } }
+    if(e.kind!=="player"&&isPid(s,ATK)){ const P=s.ents.find(q=>q.id===ATK); P.tally=P.tally||{}; const key=e.kind==="husk"?(e.type||"husk"):e.kind; P.tally.k=P.tally.k||{}; P.tally.k[key]=(P.tally.k[key]|0)+1; if(e.jobTarget) P.tally.k.leader=(P.tally.k.leader|0)+1; }
     if(e.kind!=="player"&&isPid(s,ATK)) gainXP(s,ATK,e.kind==="husk"?(XP_KILL[e.type||"husk"]||6):e.kind==="bot"?10:18);
     else if(e.kind==="raider"){ const C=crewOf(s,e), m=crewMates(s,e)[0]; e.surr=false;
       if(anyPlayerSees(s,e.x,e.y)) say(s,`${e.name} of the ${FACTIONS[e.fac].name} goes down. Search the body with F.`,isPid(s,ATK)?"good":"info");
@@ -381,6 +415,7 @@ const Sim = (() => {
       case "wait": ok=true; break;
       case "shoot": ok=doShoot(s,p,a.x,a.y); break;
       case "melee": ok=doStrike(s,p,a.x,a.y); break;
+      case "hack": ok=doHack(s,p,a.opt); break;
       case "interact": ok=doInteract(s,p); break;
       case "pickup": ok=doPickup(s,p); break;
       case "use": ok=doUse(s,p,a.index); break;
@@ -436,7 +471,15 @@ const Sim = (() => {
     else say(s,`You brace a pry bar in the seam and heave… (${t.pry}/3)`,"info");
     return true;
   }
+  // an enemy that hasn't noticed you, struck from behind, dies quietly
+  function unaware(s,h,p){ if(h.kind==="husk") return !h.aware&&h.type!=="matriarch"; if(h.kind==="raider") return !h.last&&!(crewOf(s,h)&&crewOf(s,h).att==="hostile"&&rSees(s,h,p)); return false; }
+  function behind(h,p){ const f=h.face||[0,1]; return f[0]*(p.x-h.x)+f[1]*(p.y-h.y)<=0; }
   function melee(s,p,h){
+    if(p.kind==="player"&&(h.kind==="husk"||h.kind==="raider")&&unaware(s,h,p)&&behind(h,p)){ face(p,h.x-p.x,h.y-p.y); fx(s,{type:"takedown",x:h.x,y:h.y,id:p.id});
+      const wn=p.melee?nm(p.melee).toLowerCase():"bare hands", d=(ST(p.melee)||WRENCH).dmg[1]*4+10;
+      say(s,h.kind==="husk"?`You come up behind the ${HT(h).name} and drive your ${wn} into the base of its skull.`:`You grab ${h.name} from behind. Your ${wn} does the rest.`,"good");
+      p.tally=p.tally||{}; p.tally.takedowns=(p.tally.takedowns|0)+1; gainXP(s,p.id,10);
+      damage(s,h,"head",d,.6,"Silenced from behind."); if(h.alive) damage(s,h,"torso",d,.6,"Silenced from behind."); return true; }
     const st=ST(p.melee)||WRENCH, pen=(p.hp.rarm<=0?.3:0)+(p.hp.larm<=0?.1:0), wn=p.melee?nm(p.melee):(gun(p)?"gun butt":"fists");
     fx(s,{type:"melee",x:h.x,y:h.y,id:p.id});
     const strike=(t)=>{ if(chance(s,.82+(st.acc||0)-pen)){ const l=pickLimb(s), d=ri(s,st.dmg[0],st.dmg[1]); say(s,`You hit ${t.kind==="raider"?t.name+"'s":label(t)+"'s"} ${LNAME[l]} with your ${wn}.`,"info"); damage(s,t,l,d,st.bleed??.25,"beaten"); if(st.stun&&t.alive) t.stun=Math.max(t.stun|0,st.stun); return true; } say(s,`Your ${wn} swing misses.`,"info"); return false; };
@@ -448,6 +491,15 @@ const Sim = (() => {
   function doStrike(s,p,tx,ty){ const t=entAt(s,tx,ty); if(!t||t===p||Math.max(Math.abs(tx-p.x),Math.abs(ty-p.y))!==1){ say(s,"Nothing in reach to hit.","info"); return false; }
     if(t.kind==="player"){ say(s,"That's your crewmate.","info"); return false; } if(t.kind==="raider"&&t.surr){ say(s,`${t.name} has their hands up.`,"info"); return false; }
     face(p,tx-p.x,ty-p.y); return melee(s,p,t); }
+  function doHack(s,p,opt){ if(s.mode!=="raid") return false; const near=[p.face||[0,-1],...N4].some(([dx,dy])=>{ const t=tileAt(s,p.x+dx,p.y+dy); return t.t==="prop"&&t.kind==="desk"; });
+    if(!near){ say(s,"You need to be at a terminal.","info"); return false; } s.hacked=s.hacked||{}; if(s.hacked[opt]){ say(s,"Already done from this station's network.","info"); return false; }
+    if(!s.power&&opt!=="map"){ say(s,"No power: the security network is dead. Only the cached map is readable.","warn"); return false; }
+    s.hacked[opt]=1; p.busy=Math.max(p.busy,1); p.tally=p.tally||{}; p.tally.hacks=(p.tally.hacks|0)+1; gainXP(s,p.id,4); fx(s,{type:"robot",x:p.x,y:p.y});
+    if(opt==="map"){ for(const q of players(s)) for(let i=0;i<s.tiles.length;i++) if(s.tiles[i].t!=="space") q.seen[i]=1; say(s,"You pull the station schematics off the terminal. Every deck is on your map now.","good"); }
+    else if(opt==="turrets"){ let n=0; for(const b of s.ents) if(b.kind==="bot"&&b.alive&&!(b.owner&&String(b.owner).startsWith("p:"))){ b.hackedOff=true; b.off=1; n++; } say(s,n?`Security override accepted. ${n} turret${n>1?"s and drones":""} shut down.`:"No security units on this network.","good"); }
+    else if(opt==="vault"){ let n=0; for(const t of s.tiles) if(t.t==="door"&&t.locked){ t.locked=false; n++; } say(s,n?"Maglocks released. The vault door's status light turns green.":"No maglocks on this network.","good"); }
+    else return false;
+    return true; }
   function hitChance(s,p,tx,ty){
     const st=ST(gun(p))||{acc:0,fall:.035}, d=Math.hypot(tx-p.x,ty-p.y);
     const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<8||p.water<8)) c-=.05;
@@ -580,9 +632,15 @@ const Sim = (() => {
     if(s.mode==="ship"&&tileAt(s,p.x,p.y).t==="seat"){ fx(s,{type:"terminal",kind:"navtable",pid:p.id}); return false; }
     for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="terminal"){ face(p,dx,dy); fx(s,{type:"terminal",kind:t.kind,pid:p.id}); return false; } }
     if(s.mode==="ship") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="prop"){ face(p,dx,dy); fx(s,{type:"flavor",kind:t.kind,pid:p.id,x:p.x+dx,y:p.y+dy}); return false; } }
+    // a security terminal (desk console): opens the hacking screen
+    if(s.mode==="raid") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const t=tileAt(s,p.x+dx,p.y+dy); if(t.t==="prop"&&t.kind==="desk"){ face(p,dx,dy); fx(s,{type:"hackterm",pid:p.id}); return false; } }
+    // a loose wall panel hiding a cache
+    if(s.mode==="raid") for(const [dx,dy] of [p.face||[0,-1],...N4]){ const x=p.x+dx,y=p.y+dy,t=tileAt(s,x,y); if(t.t==="wall"&&t.cache){ face(p,dx,dy); const got=t.cache; delete t.cache; t.pried=true; p.busy=Math.max(p.busy,1); noise(s,p.x,p.y,4); fx(s,{type:"search",x,y,kind:"panel"});
+        for(const it of got) spawnItem(s,it,p.x,p.y); p.tally=p.tally||{}; p.tally.caches=(p.tally.caches|0)+1; gainXP(s,p.id,5);
+        say(s,`You work the loose panel off the wall. Someone's stash: ${got.map(nm).join(", ")}. It's at your feet.`,"good"); return true; } }
     // search lockers, crates and the like
     for(const [dx,dy] of [p.face||[0,-1],...N4]){ const x=p.x+dx,y=p.y+dy,t=tileAt(s,x,y); if(t.t!=="prop"||!CONTAINERS.has(t.kind)||t.searched) continue;
-      face(p,dx,dy); t.searched=true; gainXP(s,p.id,1);
+      face(p,dx,dy); t.searched=true; gainXP(s,p.id,1); p.tally=p.tally||{}; p.tally.searches=(p.tally.searches|0)+1;
       if(p.perks&&p.perks.scavenger&&chance(s,.3*p.perks.scavenger)){ t.loot=t.loot||[]; t.loot.push(Items.roll(()=>rand(s),2,chance(s,.5)?"val":"any")); }
       const nm2={locker:"locker",crate:"crate",footlocker:"footlocker",ammocrate:"ammo crate",medcab:"medical cabinet",shelf:"shelf",strongbox:"strongbox",pallet:"pallet",gunrack:"gun rack",fridge:"cold locker"}[t.kind];
       if(t.kind==="strongbox"){ p.busy=Math.max(p.busy,1); noise(s,p.x,p.y,6); }
@@ -641,6 +699,10 @@ const Sim = (() => {
     }
     if(it.d==="o2"){ p.o2=Math.min(p.o2max,p.o2+50); p.inv.splice(i,1); say(s,"You clip the canister into your suit. +50 O₂.","air"); return true; }
     if(it.d==="stim"){ p.blood=Math.min(100,p.blood+25); p.stimT=10; p.inv.splice(i,1); say(s,"The stim hits like a hammer. Pain is a rumour for ten turns.","good"); return true; }
+    if(it.d==="breach"){ const dirs=[p.face||[0,-1],...N4]; for(const [dx,dy] of dirs){ const x=p.x+dx,y=p.y+dy,t=tileAt(s,x,y); if(t.t==="door"&&!t.open){ s.charges=s.charges||[]; s.charges.push({x,y,t:2,by:p.id}); p.inv.splice(i,1); face(p,dx,dy); fx(s,{type:"plant",x,y}); say(s,"You slap the breaching charge on the door and step back. Two turns.","warn"); return true; } }
+      say(s,"Face a closed door to plant a breaching charge.","info"); return false; }
+    if(it.d==="sentry"){ const dirs=[p.face||[0,1],...N4,[1,1],[-1,1],[1,-1],[-1,-1]]; for(const [dx,dy] of dirs){ const x=p.x+dx,y=p.y+dy; if(free(s,x,y)){ const b=addBot(s,x,y,"turret","p:"+p.id); b.batt=30; b.name="field sentry"; b.face=[dx||1,0]; p.inv.splice(i,1); fx(s,{type:"robot",x,y}); say(s,"You thump the field sentry down. It unfolds, spins up and starts scanning. 30 turns of battery.","good"); return true; } }
+      say(s,"No room to set the sentry down here.","info"); return false; }
     if(it.d==="keycard"){ say(s,"Captain's keycard. Opens the vault while station power is on.","info"); return false; }
     say(s,`${nm(it)}. Worth about ${Items.value(it)} cr to the right buyer.`,"info"); return false;
   }
@@ -657,7 +719,7 @@ const Sim = (() => {
 
   // ---------- world resolution ----------
   function endTurn(s){
-    atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s);
+    atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s);
     for(const p of players(s)) if(p.alive&&p.downed&&--p.downT<=0){ CTX=p.id; kill(s,p,"Bled out before help arrived."); }
     CTX=null;
     s.turn++;
@@ -1251,11 +1313,15 @@ const Sim = (() => {
 
   function wound(s,p,limb,dmg,o){ if(typeof injure==="function") injure(s,p,limb,dmg,o); }
   // ---- turrets and drones ----
-  function botHostile(s,b,e){ if(!e.alive||e===b) return false; if(e.kind==="husk") return true; if(e.kind==="bot") return false;
+  function botHostile(s,b,e){ if(!e.alive||e===b) return false; if(e.kind==="husk") return true;
+    if(b.owner&&String(b.owner).startsWith("p:")){ if(e.kind==="player") return false; if(e.kind==="bot") return !(e.owner&&String(e.owner).startsWith("p:"))&&!e.off&&!e.hackedOff&&botHostile(s,e,players(s)[0]||e); if(e.kind==="raider") return !e.surr&&!!(crewOf(s,e)&&crewOf(s,e).att==="hostile"); return false; }
+    if(e.kind==="bot") return !!(e.owner&&String(e.owner).startsWith("p:"))&&botHostile(s,b,players(s)[0]||e);
     if(e.kind==="player"){ if(!b.owner) return true; const rp=(s.factionRep||{})[b.owner]|0; return rp<0||!!(s.crews&&Object.values(s.crews).some(C=>C.fac===b.owner&&C.att==="hostile"&&!C.hired)); }
     if(e.kind==="raider") return e.fac!==b.owner&&(!b.owner||(FACTIONS[b.owner].foes||[]).includes(e.fac)||(crewOf(s,e)&&crewOf(s,e).att==="hostile"&&!b.owner)); return false; }
   function bots(s){ for(const b of s.ents){ if(b.kind!=="bot"||!b.alive) continue; const B=BTYPES[b.type];
-      if(!s.power){ if(!b.off){ b.off=1; if(anyPlayerSees(s,b.x,b.y)) say(s,`The ${b.name} powers down.`,"info"); } continue; }
+      if(b.hackedOff){ b.off=1; continue; }
+      if(b.batt!=null){ if(--b.batt<=0){ b.alive=false; b.spent=true; fx(s,{type:"robot",x:b.x,y:b.y}); if(anyPlayerSees(s,b.x,b.y)) say(s,"The field sentry's battery dies with a falling whine.","info"); continue; } }
+      else if(!s.power){ if(!b.off){ b.off=1; if(anyPlayerSees(s,b.x,b.y)) say(s,`The ${b.name} powers down.`,"info"); } continue; }
       if(b.off){ b.off=0; fx(s,{type:"robot",x:b.x,y:b.y}); if(anyPlayerSees(s,b.x,b.y)) say(s,`The ${b.name} whirs back to life.`,"warn"); }
       if(b.stun>0){ b.stun--; continue; }
       const ts=s.ents.filter(e=>botHostile(s,b,e)&&Math.hypot(e.x-b.x,e.y-b.y)<=B.range+.5&&los(s,b.x,b.y,e.x,e.y)).sort((a,c)=>Math.hypot(a.x-b.x,a.y-b.y)-Math.hypot(c.x-b.x,c.y-b.y));
@@ -1277,6 +1343,11 @@ const Sim = (() => {
         if(hf>=15&&e.food<15) say(s,"Your stomach knots. You should eat something.","warn"); if(hw>=15&&e.water<15) say(s,"Your mouth is dry. You should drink something.","warn");
         if((e.food<=0||e.water<=0)&&s.turn%5===0){ e.blood-=1; if(s.turn%15===0) say(s,e.water<=0?"Dehydration is shutting you down.":"You're starving. Your strength is going.","bad"); if(e.blood<=0){ kill(s,e,e.water<=0?"Died of thirst in the dark.":"Starved in the dark."); continue; } }
         else if(e.food>=60&&e.water>=60&&s.turn%8===0&&!LIMBS.some(l=>e.bleed[l])&&e.blood<100) e.blood=Math.min(100,e.blood+1); }
+      if(s.rad&&s.rad.length&&(e.kind==="player"||e.kind==="raider")){ const on=s.rad.includes(idx(s,e.x,e.y));
+        if(on){ let pr=0; const a=e.armor&&e.armor.d, h=e.head&&e.head.d; if(a==="hazard") pr+=.8; else if(a==="hardsuit"||a==="ossuary"||a==="aegis") pr+=.5; if(h==="gasmask"||h==="sallet"||h==="eva"||h==="deathmask"||h==="halohelm") pr+=.3; if(e.syn) pr+=.6;
+          e.rad=(e.rad||0)+Math.max(0,1-pr); if(e.kind==="player"&&!e.flags.radWarn){ e.flags.radWarn=1; say(s,pr>=.8?"Your Geiger counter crackles. The suit is holding the radiation back.":"Your Geiger counter shrieks. This room is hot. Get out or get a hazard suit.","bad"); }
+          if(e.rad>=5){ e.rad-=5; e.blood-=3; if(e.kind==="player") say(s,"Radiation sickness: your gums bleed and your vision swims.","bad"); if(e.blood<=0){ kill(s,e,"Cooked by radiation."); continue; } } }
+        else if(e.rad>0) e.rad=Math.max(0,e.rad-.25); }
       if(e.acid>0){ e.acid--; damage(s,e,pickLimb(s),ri(s,1,2),0,"Dissolved by spitter acid."); if(!e.alive) continue; if(e.kind==="player"&&e.acid===0) say(s,"The acid finally stops burning.","info"); }
       if(e.kind==="bot") continue;
       const bl=LIMBS.filter(l=>e.bleed[l]);
@@ -1307,7 +1378,7 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
+    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); mix((s.charges||[]).length); if(s.ev) mix(s.ev.type+s.ev.on+(s.ev.done?1:0)); for(const e of s.ents) if(e.rad) mix("r"+e.id+Math.round(e.rad*4)); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 

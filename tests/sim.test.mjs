@@ -354,4 +354,47 @@ test("sight is fair: raiders see no further than you, except with sniper rifles 
   p.w1 = { d: "longbore", r: 0 }; assert.ok(Sim.canSee(s, p, p.x + 5, p.y), "and it works for you too");
 });
 
+const LO = { w1: { d: "pistol", r: 0 }, melee: { d: "knife", r: 0 }, ammo: { pistol: 30 }, inv: [{ d: "breach", r: 0 }, { d: "sentry", r: 0 }] };
+const lone = (seed) => { const s = Sim.newGame(seed, LO, { gen: { tier: 1 } }), p = playerOf(s); for (const e of s.ents) if (e.kind !== "player") e.alive = false; s.ev = null; s.rad = []; return { s, p }; };
+const husk = (id, x, y, face) => ({ id, kind: "husk", type: "husk", name: "husk", x, y, hp: { head: 14, torso: 34, larm: 18, rarm: 18, lleg: 22, rleg: 22 }, max: { head: 14, torso: 34, larm: 18, rarm: 18, lleg: 22, rleg: 22 }, bleed: {}, blood: 60, alive: true, aware: false, face });
+const besideTile = (s, pred) => { for (let i = 0; i < s.tiles.length; i++) if (pred(s.tiles[i])) { const x = i % s.W, y = (i / s.W) | 0; const n = N4.map(([a, b]) => [x + a, y + b]).find(([u, v]) => Sim.walk(Sim.tileAt(s, u, v)) && !Sim.entAt(s, u, v)); if (n) return { x, y, n }; } return null; };
+
+test("silent takedowns: an unaware enemy dies in one strike from behind", () => {
+  const { s, p } = lone(77); const sp = N4.map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)));
+  s.ents.push(husk("hq", sp[0], sp[1], [sp[0] - p.x, sp[1] - p.y]));
+  Sim.act(s, "p1", { type: "melee", x: sp[0], y: sp[1] }); assert.ok(!s.ents.find((e) => e.id === "hq").alive, "takedown kills"); assert.equal(p.tally.takedowns, 1);
+});
+
+test("breaching charge blows a closed door open; field sentry deploys and runs down its battery", () => {
+  const { s, p } = lone(78); const d = besideTile(s, (t) => t.t === "door" && !t.open && !t.vault); assert.ok(d, "a door");
+  p.x = d.n[0]; p.y = d.n[1]; p.face = [d.x - p.x, d.y - p.y]; assert.ok(Sim.act(s, "p1", { type: "use", index: 0 }));
+  assert.ok(s.charges.length === 1); for (let i = 0; i < 3; i++) Sim.act(s, "p1", { type: "wait" });
+  const t = Sim.tileAt(s, d.x, d.y); assert.ok(t.open && t.broken, "door blown"); p.hp.torso = p.max.torso;
+  const si = p.inv.findIndex((i) => i.d === "sentry"); assert.ok(Sim.act(s, "p1", { type: "use", index: si }));
+  const b = s.ents.find((e) => e.kind === "bot" && e.owner && String(e.owner).startsWith("p:")) || s.ents.find((e) => e.kind === "bot" && e.batt);
+  assert.ok(b, "sentry placed"); const b0 = b.batt; Sim.act(s, "p1", { type: "wait" }); assert.ok(b.batt < b0, "battery drains");
+});
+
+test("security terminals hack once per station; hidden caches pry open", () => {
+  const { s, p } = lone(79); const d = besideTile(s, (t) => t.t === "prop" && t.kind === "desk");
+  if (d) { p.x = d.n[0]; p.y = d.n[1]; const before = p.seen.filter(Boolean).length; assert.ok(Sim.act(s, "p1", { type: "hack", opt: "map" })); assert.ok(p.seen.filter(Boolean).length > before, "map downloaded");
+    assert.ok(!Sim.act(s, "p1", { type: "hack", opt: "map" }), "only once"); }
+  let g = null, q; for (let k = 0; k < 20 && !g; k++) { ({ s: g, p: q } = lone(500 + k)); if (!besideTile(g, (t) => t.t === "wall" && t.cache)) g = null; }
+  assert.ok(g, "some station has a cache"); const c = besideTile(g, (t) => t.t === "wall" && t.cache); q.x = c.n[0]; q.y = c.n[1]; q.face = [c.x - q.x, c.y - q.y];
+  const n0 = g.items.length; Sim.act(g, "p1", { type: "interact", x: c.x, y: c.y }); assert.ok(Sim.tileAt(g, c.x, c.y).pried, "pried"); assert.ok(g.items.length > n0, "loot spills out");
+});
+
+test("stations seed data logs, radiation rooms and events; every event plays out", () => {
+  let logs = 0, rad = 0, ev = 0; for (let k = 0; k < 30; k++) { const s = Sim.newGame(3000 + k, LO, { gen: { tier: 1 + (k % 3), kind: ["mining", "hive", "relay", ""][k % 4] } });
+    logs += s.tiles.filter((t) => t.loot && t.loot.some((i) => i.d === "datalog")).length + s.items.filter((i) => i.d === "datalog").length; if (s.rad.length) rad++; if (s.ev) ev++; }
+  assert.ok(logs > 10 && rad > 2 && ev > 4, `logs ${logs} rad ${rad} ev ${ev}`);
+  for (const type of ["meltdown", "horde", "lockdown", "surge"]) { const g = Sim.newGame(91, null, { gen: { tier: 2 } }); g.ev = { type, at: 2, on: 0 }; const q = playerOf(g);
+    for (const l in q.hp) q.hp[l] = q.max[l] = 9999; for (let i = 0; i < 70 && g.status === "playing"; i++) Sim.act(g, "p1", { type: "wait" }); assert.ok(g.ev.on || g.status !== "playing", type + " fired"); }
+});
+
+test("radiation doses unprotected raiders and a hazard suit cuts it", () => {
+  const dose = (armor) => { const { s, p } = lone(80); if (armor) p.armor = { d: armor, r: 0 }; s.rad = [Sim.idx(s, p.x, p.y)]; const b0 = p.blood; for (let i = 0; i < 12; i++) Sim.act(s, "p1", { type: "wait" }); return (b0 - p.blood) * 5 + (p.rad || 0); };
+  const bare = dose(null); assert.ok(bare > 0, "dosed"); const suit = dose("hazard"); assert.ok(suit < bare, `suit ${suit} < bare ${bare}`);
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);
