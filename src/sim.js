@@ -100,6 +100,7 @@ const Sim = (() => {
     stalker:{name:"stalker",hp:.55,dr:0,spd:2,dmg:[3,6],acc:.74,infect:.3},
     brute:{name:"brute",hp:2.3,dr:.3,spd:.5,dmg:[9,16],acc:.62,door:3,stun:.45,frac:.4},
     spitter:{name:"spitter",hp:.8,dr:0,spd:1,dmg:[2,5],acc:.55,range:6,acid:[3,6]},
+    bloater:{name:"bloater",hp:1.7,dr:0,spd:.5,dmg:[5,9],acc:.6,infect:.2},
     nest:{name:"nest",hp:1.6,dr:0,spd:0,dmg:[0,0],acc:0,nest:1},
     matriarch:{name:"Matriarch",hp:5,dr:.25,spd:1,dmg:[10,18],acc:.72,door:4,boss:1,frac:.3,infect:.3},
   };
@@ -230,7 +231,7 @@ const Sim = (() => {
       w1:cp(lo.w1),w2:cp(lo.w2),melee:cp(lo.melee),head:G0.head,armor,legs:G0.legs,acc:G0.acc,light:G0.light,pack,act:1,ammo,mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),cap,look:lo.look||null,stimT:0,
       food:lo.food==null?80:Math.max(0,Math.min(100,+lo.food)),water:lo.water==null?80:Math.max(0,Math.min(100,+lo.water)),
       inv:(lo.inv||[]).slice(0,cap+((lo.perks&&lo.perks.mule)|0)).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
-    const P=s.ents[s.ents.length-1]; P.cap=capOf(P); P.secCap=Math.max(0,lo.secCap==null?2:lo.secCap|0); P.brig=!!lo.brig; P.mast=lo.mast&&typeof lo.mast==="object"?{...lo.mast}:{}; P.imp=lo.implants&&typeof lo.implants==="object"?{...lo.implants}:{}; if(P.imp.lungs){ P.o2max+=30; P.o2+=30; } if(lo.morale) P.morale=1; if(lo.remains&&lo.remains.items) P.remainsLo=lo.remains;
+    const P=s.ents[s.ents.length-1]; P.cap=capOf(P); P.secCap=Math.max(0,lo.secCap==null?2:lo.secCap|0); P.brig=!!lo.brig; P.mast=lo.mast&&typeof lo.mast==="object"?{...lo.mast}:{}; P.imp=lo.implants&&typeof lo.implants==="object"?{...lo.implants}:{}; if(P.imp.lungs){ P.o2max+=30; P.o2+=30; } if(lo.morale) P.morale=1; if(lo.coffee) P.coffee=1; if(lo.remains&&lo.remains.items) P.remainsLo=lo.remains;
   }
   // ---- extras that make each station worth exploring: hidden caches, lore, radiation, and something going wrong ----
   function furnishExtras(s,tier,kind){
@@ -357,7 +358,7 @@ const Sim = (() => {
   }
   function addBot(s,x,y,type,owner){ const B=BTYPES[type]; const b={id:"b"+(s.nextId++),kind:"bot",type,name:B.name,owner:owner||null,x,y,hp:{...B.hp},max:{...B.hp},bleed:{},blood:100,alive:true,busy:0,face:[0,1],syn:true,seen:{},home:{x,y}}; s.ents.push(b); return b; }
   // pick what each husk spawn becomes: tougher variants on harder stations, stalkers in packs
-  function huskType(s,tier,kind){ const w=tier>=3?[["husk",42],["stalker",24],["spitter",16],["brute",18]]:tier===2?[["husk",58],["stalker",20],["spitter",12],["brute",10]]:[["husk",80],["stalker",14],["spitter",6]];
+  function huskType(s,tier,kind){ const w=tier>=3?[["husk",42],["stalker",24],["spitter",16],["brute",18],["bloater",9]]:tier===2?[["husk",58],["stalker",20],["spitter",12],["brute",10],["bloater",7]]:[["husk",80],["stalker",14],["spitter",6],["bloater",4]];
     if(kind==="hospital"||kind==="research") w.forEach(x=>{ if(x[0]==="spitter") x[1]*=2.2; }); if(kind==="colony") w.forEach(x=>{ if(x[0]==="husk") x[1]*=1.5; }); if(kind==="mining") w.forEach(x=>{ if(x[0]==="brute") x[1]*=1.8; if(x[0]==="stalker") x[1]*=1.2; });
     let t=w.reduce((a,x)=>a+x[1],0)*rand(s); for(const [k,v] of w){ if((t-=v)<0) return k; } return "husk"; }
   function populate(s,G,tier,kind){
@@ -466,7 +467,7 @@ const Sim = (() => {
     if(e.kind==="player"){ s.cause=cause; e.cause=cause; const lh=(e.hits||[]).slice(-1)[0]; e.killer=lh?lh.by:String(cause||""); const c0=CTX; CTX=e.id; say(s,`You die. ${cause}`,"bad"); CTX=c0; }
     if(e.jobTarget){ const J=(s.jobs||[]).find(q=>q.id===e.jobTarget); if(J&&!J.done){ J.done=true; say(s,`${e.name} is dead. Contract target eliminated.`,"good"); } }
     if(e.kind==="husk"&&isPid(s,ATK)){ s.huskKills=(s.huskKills|0)+1; for(const J of s.jobs||[]) if(J.type==="purge"&&!J.done){ J.prog++; if(J.prog>=J.n){ J.done=true; say(s,`That's ${J.n}. The purge contract is done. Get out alive to collect.`,"good"); } } }
-    if(e.kind!=="player"&&isPid(s,ATK)){ const P=s.ents.find(q=>q.id===ATK); P.tally=P.tally||{}; const key=e.kind==="husk"?(e.type||"husk"):e.kind; P.tally.k=P.tally.k||{}; P.tally.k[key]=(P.tally.k[key]|0)+1; if(e.jobTarget) P.tally.k.leader=(P.tally.k.leader|0)+1; if(e.mut) P.tally.k.elite=(P.tally.k.elite|0)+1; P.tally.wk=P.tally.wk||{}; const wc=KCLS||"explosive"; P.tally.wk[wc]=(P.tally.wk[wc]|0)+1; }
+    if(e.kind!=="player"&&isPid(s,ATK)){ const P=s.ents.find(q=>q.id===ATK); P.tally=P.tally||{}; const key=e.kind==="husk"?(e.type||"husk"):e.kind; P.tally.k=P.tally.k||{}; P.tally.k[key]=(P.tally.k[key]|0)+1; if(e.jobTarget) P.tally.k.leader=(P.tally.k.leader|0)+1; if(e.mut) P.tally.k.elite=(P.tally.k.elite|0)+1; if(e.kind==="husk"&&e.type==="nest"){} else { P.streak=s.turn-(P.lastKillT|0)<=3?(P.streak|0)+1:1; P.lastKillT=s.turn; if(P.streak>=2){ const nmS=["","","Double kill","Triple kill","Rampage","Massacre"][Math.min(5,P.streak)], bx=P.streak*5; gainXP(s,P.id,bx); P.tally.best=Math.max(P.tally.best|0,P.streak); fx(s,{type:"streak",id:P.id,n:P.streak,x:P.x,y:P.y}); const c0=CTX; CTX=P.id; say(s,`${nmS}! +${bx} XP`,"good"); CTX=c0; } } P.tally.wk=P.tally.wk||{}; const wc=KCLS||"explosive"; P.tally.wk[wc]=(P.tally.wk[wc]|0)+1; }
     if(e.kind!=="player"&&isPid(s,ATK)) gainXP(s,ATK,(e.kind==="husk"?(XP_KILL[e.type||"husk"]||6):e.kind==="bot"?10:18)*(e.mut?2:1));
     if(e.kind==="raider"){ const C=crewOf(s,e), m=crewMates(s,e)[0]; e.surr=false;
       if(anyPlayerSees(s,e.x,e.y)) say(s,`${e.name} of the ${FACTIONS[e.fac].name} goes down. Search the body with F.`,isPid(s,ATK)?"good":"info");
@@ -475,6 +476,7 @@ const Sim = (() => {
     else if(e.kind==="bot"&&e.type==="custodian"){ fx(s,{type:"explode",x:e.x,y:e.y,big:1}); for(const c of ["weapon","armor","val","val","throw"]) spawnItem(s,Items.roll(()=>rand(s),4,c),e.x,e.y); spawnItem(s,{d:"core",r:0,n:3},e.x,e.y); spawnItem(s,{d:"custcore",r:0},e.x,e.y); s.marks=[]; if(isPid(s,ATK)){ const P=s.ents.find(q=>q.id===ATK); P.tally=P.tally||{}; P.tally.k=P.tally.k||{}; P.tally.k.custodian=(P.tally.k.custodian|0)+1; gainXP(s,ATK,140); } say(s,"The Custodian staggers, sparks pouring from its chest, and crashes to the deck. Its eye dims to nothing.","good"); }
     else if(e.kind==="bot"){ fx(s,{type:"explode",x:e.x,y:e.y,small:1}); spawnItem(s,{d:chance(s,.5)?"circ":"parts",r:0,n:1},e.x,e.y); if(anyPlayerSees(s,e.x,e.y)) say(s,`The ${e.name} sparks, shudders and dies.`,"good"); }
     else { const T0=HT(e);
+      if(e.type==="bloater"){ s.gas=s.gas||[]; for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ if(Math.hypot(dx,dy)>2.2) continue; const i=idx(s,e.x+dx,e.y+dy), t=s.tiles[i]; if(t&&(walk(t)||t.t==="door"&&t.open)&&!s.gas.includes(i)) s.gas.push(i); } s.gasEnd=Math.max(s.gasEnd|0,s.turn+20); fx(s,{type:"explode",x:e.x,y:e.y,small:1}); if(anyPlayerSees(s,e.x,e.y)) say(s,"The bloater ruptures with a wet bang. A cloud of green rot rolls out. Don't breathe it.","warn"); }
       if(e.type==="nest"){ spawnItem(s,{d:"mutagen",r:0},e.x,e.y); spawnItem(s,Items.roll(()=>rand(s),(s.tierN|0)+1,pickS(s,["val","weapon","med","armor"])),e.x,e.y); if(anyPlayerSees(s,e.x,e.y)) say(s,"The nest ruptures in a gush of black fluid. Whatever was growing in it won't hatch now.","good"); fx(s,{type:"roar",x:e.x,y:e.y}); return; }
       if(e.mut){ spawnItem(s,{d:"mutagen",r:0},e.x,e.y); if(chance(s,.6)) spawnItem(s,Items.roll(()=>rand(s),2,pickS(s,["val","ammo","med","weapon"])),e.x,e.y);
         if(e.mut==="volatile"){ if(anyPlayerSees(s,e.x,e.y)) say(s,"The volatile husk's swollen body ruptures in a spray of burning gas!","warn"); const k0=KCLS; KCLS="explosive"; blast(s,e.x,e.y,{r:1.6,dmg:[8,16]}); KCLS=k0; } }
@@ -609,7 +611,7 @@ const Sim = (() => {
     const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<8||p.water<8)) c-=.05;
     if(st.close&&d<3) c-=st.close;
     c-= p.hp.rarm<=0?.35:(1-p.hp.rarm/p.max.rarm)*.15;
-    if(p.perks) c+=.04*(p.perks.marksman|0); if(p.mast&&st.cls) c+=.025*(p.mast[st.cls]|0); if(p.imp&&p.imp.reflex) c+=.04; if(p.frac){ if(p.frac.rarm) c-=.12; if(p.frac.larm) c-=.06; } if((p.inf|0)>=25) c-=.08;
+    if(p.perks) c+=.04*(p.perks.marksman|0); if(p.mast&&st.cls) c+=.025*(p.mast[st.cls]|0); if(p.imp&&p.imp.reflex) c+=.04; if(p.coffee&&s.turn<=80) c+=.03; if(p.frac){ if(p.frac.rarm) c-=.12; if(p.frac.larm) c-=.06; } if((p.inf|0)>=25) c-=.08;
     c-= p.hp.larm<=0?.12:0;
     if(p.blood<50) c-=.15;
     if(!s.power&&d>3&&!st.dark&&!G.dark) c-=.1;
@@ -842,7 +844,7 @@ const Sim = (() => {
 
   // ---------- world resolution ----------
   function endTurn(s){
-    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); trapTick(s); nemTick(s); marksTick(s); sideTick(s);
+    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); if(s.gasEnd&&s.turn>=s.gasEnd&&s.gas&&s.gas.length&&!(s.ev&&s.ev.type==="gas"&&s.ev.on&&!s.ev.done)){ s.gas=s.gas.slice(0,Math.max(0,s.gas.length-5)); if(!s.gas.length) s.gasEnd=0; } trapTick(s); nemTick(s); marksTick(s); sideTick(s);
     for(const p of players(s)) if(p.alive&&p.downed&&--p.downT<=0){ CTX=p.id; kill(s,p,"Bled out before help arrived."); }
     CTX=null;
     s.turn++;
@@ -1250,7 +1252,7 @@ const Sim = (() => {
     for(const p of players(s)) p.seen[idx(s,r.x,r.y)]=1;
     s.log.push({t:s.turn,msg:`${r.name} of the ${FACTIONS[H.fac].name} checks their ${nm(r.w1)} and falls in behind you.`,kind:"good",pid:null}); }
   function gainXP(s,pid,n){ const p=s.ents.find(e=>e.id===pid&&e.kind==="player"); if(p) p.xp=(p.xp|0)+n; }
-  const XP_KILL={husk:6,stalker:5,spitter:8,brute:14,matriarch:120,nest:25};
+  const XP_KILL={bloater:12,husk:6,stalker:5,spitter:8,brute:14,matriarch:120,nest:25};
   // fractures and infections: they stay with you until treated (or the medbay sees you)
   function injure(s,p,limb,dmg,o){ if(!p||p.kind!=="player"||!p.alive) return; const ST2=p.perks||{};
     if(o.frac&&limb!=="head"&&limb!=="torso"&&!(p.frac&&p.frac[limb])&&(dmg>=8||p.hp[limb]<p.max[limb]*.4)&&chance(s,o.frac*(ST2.steady?.5:1))){ p.frac=p.frac||{}; p.frac[limb]=1; fx(s,{type:"bash",x:p.x,y:p.y}); const c0=CTX; CTX=p.id; say(s,`Something snaps. Your ${LNAME[limb]} is broken.${limb.endsWith("leg")?" You can barely walk on it.":" Your aim is shot."} A splint would set it.`,"bad"); CTX=c0; }

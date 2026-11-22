@@ -10,7 +10,7 @@ let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all",
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:500,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
-  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,mastery:{},daily:null,morale:0,catGift:0,implants:{},nemesis:null,arcade:{best:0,day:0},wanted:null,seenPro:0,
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,mastery:{},daily:null,morale:0,catGift:0,implants:{},nemesis:null,arcade:{best:0,day:0},wanted:null,seenPro:0,coffee:0,mail:"",
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -26,6 +26,9 @@ function fixProfile(p){ const d=newProfile(); d.ship.opKey=todayKey(); if(!p) re
   p.life=p.life&&typeof p.life==="object"?p.life:{}; p.codex=p.codex&&typeof p.codex==="object"?p.codex:{}; p.medals=p.medals&&typeof p.medals==="object"?p.medals:{}; p.mastery=p.mastery&&typeof p.mastery==="object"?p.mastery:{}; p.implants=p.implants&&typeof p.implants==="object"?p.implants:{}; p.arcade=p.arcade&&typeof p.arcade==="object"?p.arcade:{best:0,day:0};
   p.rep=p.rep&&typeof p.rep==="object"?p.rep:{}; p.xp=p.xp|0; p.perks=p.perks&&typeof p.perks==="object"?p.perks:{}; p.injury=p.injury||{frac:{},inf:0}; if(p.hire&&!(p.hire.fac in Sim.FACTIONS)) p.hire=null;
   p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); p.ship.opKey=todayKey(); return p; }
+function checkMail(){ const k=todayKey(); if(!profile||profile.mail===k) return; profile.mail=k; const pool=[["bandage","medkit","ration"],["ammo_pistol","ammo_rifle","ammo_shell"],["apkit","hpkit","tripmine"],["o2","stim","waterflask"]], got=[];
+  for(const P of pool){ const d=P[Math.floor(Math.random()*P.length)]; if(!Items.def(d)) continue; const D=Items.def(d), it=mk({d}); if(D.k==="ammo"){ const t=D.ammo; profile.ammo[t]=(profile.ammo[t]|0)+Items.AMMO[t].stack; got.push(Items.AMMO[t].name); } else { World.grant(profile,it); got.push(Items.name(it)); } }
+  profile.credits+=50; save(); setTimeout(()=>toast(`Concord mail: a daily care package is in your stash. ${got.join(", ")} and 50 cr.`),1200); }
 function todayKey(){ return new Date().toISOString().slice(0,10).replace(/-/g,""); }
 // weapon mastery: kills with each class of weapon earn levels that make you better with it
 const MAST_T=[0,10,30,70,150,300], MAST_N=["Untrained","Trained","Seasoned","Veteran","Expert","Master"], MAST_C=[["pistol","Pistols"],["smg","SMGs"],["rifle","Rifles"],["shotgun","Shotguns"],["sniper","Sniper rifles"],["launcher","Launchers"],["melee","Melee"],["explosive","Explosives"]];
@@ -142,7 +145,7 @@ const FLAVOR={
   fridge:[["The fridge hums. Inside: rations, a jar of something, and a note that says DON'T.","You take a cold flask out, think better of it, put it back."],"raids the galley fridge"],
 };
 let flavorCD=0;
-function onFlavor(kind){ if(kind==="arcade"&&!(typeof inSquad==="function"&&inSquad()&&false)){ openPanel("arcade"); return; }
+function onFlavor(kind){ if(kind==="coffee"){ const d=ship().day|0; if(profile.coffee!==d){ profile.coffee=d; save(); toast("Black, scalding, perfect. Caffeinated: +3% to hit for the first 80 turns of your next raid."); return; } } if(kind==="arcade"&&!(typeof inSquad==="function"&&inSquad()&&false)){ openPanel("arcade"); return; }
   const F=FLAVOR[kind]; if(!F) return; const lines=F[0]; toast(lines[(Math.random()*lines.length)|0]);
   if(typeof inSquad==="function"&&inSquad()&&Number.isFinite(arguments[1])) emit({t:"fx",kind,x:arguments[1],y:arguments[2]});
   if(F[1]&&typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>3000){ flavorCD=Date.now(); emit({t:"chat",m:F[1]}); }
@@ -667,7 +670,7 @@ function viewLogbook(){ const B=bountyWeek(), daysLeft=7-((ship().day|0)%7), tab
       return `<div class="medal ${has?"got":""}"><i>${has?"✦":"✧"}</i><div><b>${m.t}</b><span>${m.d}</span>${has?`<button class="plain" data-act="title:${m.id}" ${profile.title===m.id?"disabled":""}>${profile.title===m.id?"Wearing":"Wear title: "+m.title}</button>`:""}</div></div>`; }).join("")}</div>${profile.title?`<button class="plain" data-act="title:none">Remove title</button>`:""}`; }
   if(logTab==="codex"){ const L=Items.LOGS, got=L.filter(l=>profile.codex[l.id]); body=`<p class="risk">${got.length}/${L.length} logs recovered. Data logs turn up in lockers, shelves and crates; extract with them (or seal them in your pouch) to file them here.</p>`+
       (got.length?got.map(l=>`<details class="codex"><summary>${esc(l.t)}</summary><p>${esc(l.x)}</p></details>`).join(""):`<p class="risk">Nothing yet.</p>`); }
-  if(logTab==="stats") body=viewRecords0();
+  if(logTab==="stats") body=`<div class="bar-row" style="margin-bottom:8px"><input id="ship-nm" maxlength="24" value="${esc(ship().name||"Ninefold Lark")}" style="flex:1;min-width:0" aria-label="Ship name"><button data-act="rename">Rename ship</button></div>`+viewRecords0();
   if(logTab==="mastery") body=`<p class="risk">Every kill with a class of weapon counts toward mastering it, even on raids you don't survive. Levels at ${MAST_T.slice(1).join(", ")} kills.</p>`+MAST_C.map(([c,n])=>{ const k=profile.mastery[c]|0, l=mastLvl(k), nx=MAST_T[l+1], pc=nx?Math.round((k-MAST_T[l])/(nx-MAST_T[l])*100):100;
       return `<div class="cm-row"><div class="cm-t"><b>${n} · ${MAST_N[l]}</b><span>${k} kill${k===1?"":"s"}${nx?` · ${nx-k} to ${MAST_N[l+1]}`:" · mastered"} · ${mastBonus(c,l)}</span><div class="meter" style="height:5px;margin-top:3px"><i style="width:${pc}%"></i></div></div></div>`; }).join("");
   return `<section class="panel h-card"><div class="chips">${tabs.map(([k,n])=>`<button data-act="logtab:${k}" aria-pressed="${logTab===k}">${n}</button>`).join("")}</div><div style="margin-top:8px">${body}</div></section>`; }
@@ -846,6 +849,7 @@ $("p-body").addEventListener("click",e=>{
     case "dropjob": { if(inSquad()&&!Net.host) break; profile.ship.jobs=(profile.ship.jobs||[]).filter(q=>q.id!==x); toast("Job dropped."); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "hack": send({type:"hack",opt:x}); closePanel(); return;
     case "logtab": logTab=x; break;
+    case "rename": { if(inSquad()&&!Net.host){ toast("Only the squad leader can rename the ship."); break; } const v=String(($("ship-nm")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,24); if(v){ profile.ship.name=v; save(); if(inSquad()) hostBroadcastShip(false); toast(`She's the ${v} now.`); if(S&&S.mode==="ship") renderShipHud(); } break; }
     case "implant": { const I=IMPLANTS[x]; if(!I||profile.implants[x]||Object.keys(profile.implants).length>=IMP_MAX||!canPay(I.cost)) break; for(const [m,n] of Object.entries(I.cost)){ if(m==="credits") profile.credits-=n; else profile.mats[m]-=n; } profile.implants[x]=ship().day|0; toast(`The surgeon closes you up. ${I.name} fitted.`); if(typeof Snd!=="undefined") Snd.play("heal"); if(Object.keys(profile.implants).length>=IMP_MAX) awardMedal("chrome"); save(); break; }
     case "unimplant": if(profile.implants[x]){ delete profile.implants[x]; toast("Implant removed."); save(); } break;
     case "enc": resolveEncounter(+x); break;
@@ -903,7 +907,7 @@ function refreshLook(){ if(inSquad()&&Net.ready) setReady(false); if(S&&S.mode==
 
 // ---------- scene changes ----------
 function shipLoadout(){ const r=kitResolved(); return {w1:strip(r.w1||r.w2),head:strip(r.head),armor:strip(r.armor),legs:strip(r.legs),acc:strip(r.acc),light:strip(r.light),pack:strip(r.pack),ammo:{},inv:[],look:{...profile.look}}; }
-function boardShipCrew(crew){ if(profile&&profile.ship) profile.ship.opKey=todayKey();
+function boardShipCrew(crew){ setTimeout(()=>{ try{ checkMail(); }catch(e){} },0); if(profile&&profile.ship) profile.ship.opKey=todayKey();
   const raidOver=S&&S.mode==="raid"; if(raidOver&&!Net.settled) settlePersonal();
   PID=crewKey();
   crew=crew.map(c=>c.id===PID?{...c,loadout:shipLoadout()}:c);
@@ -921,7 +925,7 @@ function boardShip(){
 function remainsHere(){ const R0=profile.remains; if(!R0) return null; if((ship().day|0)-(R0.day|0)>6){ profile.remains=null; save(); return null; } return R0.site===ship().loc?{items:R0.items.slice(0,14),ammo:R0.ammo||{},days:(ship().day|0)-(R0.day|0)}:null; }
 const GIFT_SG="sg1";
 function loadoutFromKit(r){ const lo0=loadoutFromKit0(r); if(!(profile.gifts||{})[GIFT_SG]){ const sg={d:"pump",r:1}; if(!lo0.w2) lo0.w2=sg; else if(!lo0.w1) lo0.w1=sg; else lo0.inv=[sg,...lo0.inv]; lo0.ammo={...lo0.ammo,shell:((lo0.ammo||{}).shell|0)+2*Items.AMMO.shell.stack}; lo0.gift=GIFT_SG; } return lo0; }
-function loadoutFromKit0(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},mast:mastLevels(),implants:{...profile.implants},morale:profile.morale===(ship().day|0)?1:0,injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
+function loadoutFromKit0(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},mast:mastLevels(),implants:{...profile.implants},morale:profile.morale===(ship().day|0)?1:0,coffee:profile.coffee===(ship().day|0)?1:0,injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
 function consumeKit(lo){ if(lo.gift){ profile.gifts={...(profile.gifts||{}),[lo.gift]:1}; }
   profile.insured=null; if(profile.insure&&!lo.starter){ profile.insured=[...KIT_SLOTS.map(s=>lo[s]),...(lo.inv||[])].filter(it=>it&&!it.iss).map(it=>({...it})); } profile.insure=false;
   profile.stats.raids++; profile.active={kit:lo.starter?"starter":"custom",site:ship().loc,at:Date.now()};

@@ -1369,6 +1369,7 @@ function processFx(){
       case "alarm": shake=Math.max(shake,3); evFlash=1; break;
       case "takedown": splat(cpx(f.x),cpx(f.y)+6,16); if(f.id) atkT[f.id]=now; shake=Math.max(shake,2); break;
       case "noise": { const X=cpx(f.x), Y=cpx(f.y), pp=me(); if(pp&&Math.hypot(f.x-pp.x,f.y-pp.y)<=f.r+10&&(VIS[Sim.idx(S,f.x,f.y)]||Math.hypot(f.x-pp.x,f.y-pp.y)<=f.r)) rings.push({x:X,y:Y,t:0,dur:.75,col:f.x===pp.x&&f.y===pp.y?"230,225,205":"255,170,80",r0:4,r1:f.r*TS}); break; }
+      case "streak": if(f.id===PID){ FLOATS.push({x:cpx(f.x),y:cpx(f.y)-14,t0:now,txt:["","","DOUBLE KILL","TRIPLE KILL","RAMPAGE","MASSACRE"][Math.min(5,f.n)],big:1}); shake=Math.max(shake,2); } break;
       case "lazarus": rings.push({x:cpx(f.x),y:cpx(f.y),t:0,dur:.6,col:"140,255,170",r0:2,r1:60}); shake=Math.max(shake,4); if(f.id===PID){ hurtFlash=0; } break;
       case "pet": heartT[f.id]=now; if(f.pid===PID&&typeof onPet==="function") onPet(); break;
       case "vent": if(f.id&&rp[f.id]){ rp[f.id].x=f.x*TS; rp[f.id].y=f.y*TS; } break;
@@ -1463,7 +1464,7 @@ function castShadow(g,e,spr,x,y,left){ if(S.mode==="ship") return; const L=light
   let b=BLACKS.get(spr); if(!b){ b=blackOf(spr); BLACKS.set(spr,b); }
   g.save(); g.globalAlpha=Math.min(.55,.2+L.v*.4); g.translate(x+12,y+22); g.transform(left?-1:1,0,-dx*k*(left?-1:1),-dy*k,0,0); g.drawImage(b,-12,-30); g.restore(); }
 // husk variants: the same body, tinted and scaled, with their own features drawn on top
-const HV={stalker:{sc:.86,tint:"rgba(70,10,24,.42)"},brute:{sc:1.32,tint:"rgba(80,78,64,.38)"},spitter:{sc:1,tint:"rgba(40,90,20,.36)"},matriarch:{sc:1.8,tint:"rgba(50,6,30,.5)"}};
+const HV={bloater:{sc:1.22,tint:"rgba(70,110,30,.45)"},stalker:{sc:.86,tint:"rgba(70,10,24,.42)"},brute:{sc:1.32,tint:"rgba(80,78,64,.38)"},spitter:{sc:1,tint:"rgba(40,90,20,.36)"},matriarch:{sc:1.8,tint:"rgba(50,6,30,.5)"}};
 const TINTED=new Map();
 function tinted(spr,type){ const V=HV[type]; if(!V) return spr; let m=TINTED.get(spr); if(!m){ m={}; TINTED.set(spr,m); } if(m[type]) return m[type];
   const c=cvsRaw(spr.width,spr.height), g=c.getContext("2d"); g.drawImage(spr,0,0,c.width,c.height); g.globalCompositeOperation="source-atop"; g.fillStyle=V.tint; g.fillRect(0,0,c.width,c.height); c._q=spr._q; c.lw=spr.lw; c.lh=spr.lh; return m[type]=c; }
@@ -2034,7 +2035,7 @@ function describe(x,y){
   if(t.t==="floor"||t.t==="extract"||(t.t==="door"&&t.open)) sub=`${Math.round(S.P[i])} kPa`;
   if(VIS[i]){ const e=Sim.entAt(S,x,y); if(e&&e.kind==="raider"){ const at=attOf(e), F=Sim.FACTIONS[e.fac]; s=`<b style="color:${ATT_COL[at]}">${esc(e.name)}</b> · ${F.name}`; sub=`${e.surr?"Surrendered · F to search":at[0].toUpperCase()+at.slice(1)} · ${Items.name(Sim.gun(e)||e.melee||{d:"knife"})} · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; }
     else if(e&&e.kind==="bot"){ const hos=Sim.botHostile(S,e,p); s=`<b style="color:${hos?"#e0482f":"#7cc46a"}">${e.type==="turret"?"Turret":"Security drone"}</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub=!S.power?"Offline (no station power)":hos?"Hostile · cut the power to shut it down":"Friendly to you"; }
-    else if(e&&e.kind==="husk"&&e.type&&e.type!=="husk"){ const T0=Sim.HTYPES[e.type], hurt=Sim.LIMBS.filter(l=>e.hp[l]<e.max[l]).length; s=`<b>${T0.name[0].toUpperCase()+T0.name.slice(1)}</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub={stalker:"Fast, fragile, hunts in packs",brute:"Armoured. Smashes doors. Hits hard enough to floor you",spitter:"Spits burning acid from range",matriarch:"The nest's queen. Her roar staggers and calls stalkers"}[e.type]+(hurt?" · wounded":""); }
+    else if(e&&e.kind==="husk"&&e.type&&e.type!=="husk"){ const T0=Sim.HTYPES[e.type], hurt=Sim.LIMBS.filter(l=>e.hp[l]<e.max[l]).length; s=`<b>${T0.name[0].toUpperCase()+T0.name.slice(1)}</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub={bloater:"Slow and swollen. Bursts into a toxic cloud when it dies: kill it from range",stalker:"Fast, fragile, hunts in packs",brute:"Armoured. Smashes doors. Hits hard enough to floor you",spitter:"Spits burning acid from range",matriarch:"The nest's queen. Her roar staggers and calls stalkers"}[e.type]+(hurt?" · wounded":""); }
     else if(e&&e.kind==="husk"){ const hurt=Sim.LIMBS.filter(l=>e.hp[l]<e.max[l]).length; s=`<b>Husk</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub=hurt?"Wounded":"Unharmed"; }
     if(e&&e.kind==="husk"&&e.mut){ s=s.replace("<b>",`<b style="color:rgb(${MUTCOL[e.mut]})">${Sim.MUTS[e.mut].n} `); sub=`Mutated: ${Sim.MUTS[e.mut].d}${sub?" · "+sub:""}`; }
     if(e&&e.type==="nest"){ s=`<b style="color:#c8603a">Husk nest</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub="Births stalkers while anything living is near. Fire works wonders"; }

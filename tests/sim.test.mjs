@@ -528,4 +528,15 @@ test("Concord wanted targets spawn as tough hostile captains and their death is 
   for (let i = 0; i < 6 && r.alive; i++) Sim.act(s, "p1", { type: "melee", x: r.x, y: r.y }); assert.equal(s.wantedDown, "w9_1");
 });
 
+test("bloaters burst into a gas cloud that fades; quick kills make streaks; coffee steadies your aim", () => {
+  const { s, p } = lone(1700); const sp = N4.map(([a, b]) => [p.x + a * 2, p.y + b * 2]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && Sim.walk(Sim.tileAt(s, (x + p.x) / 2, (y + p.y) / 2)));
+  const b = husk("hb", sp[0], sp[1], [0, 1]); b.type = "bloater"; for (const l in b.hp) b.hp[l] = 1; b.aware = true; b.fled = 1; s.ents.push(b); p.ammo.pistol = 99;
+  for (let i = 0; i < 8 && b.alive; i++) Sim.act(s, "p1", { type: "shoot", x: b.x, y: b.y }); assert.ok(!b.alive && s.gas.length > 5, "gas cloud");
+  for (let i = 0; i < 40; i++) { p.blood = 100; Sim.act(s, "p1", { type: "wait" }); } assert.equal(s.gas.length, 0, "cloud cleared");
+  const g = lone(1701), q = g.p; q.ammo.pistol = 99; const a1 = husk("k1", q.x + 1, q.y, [1, 0]), spot = N4.map(([a, c]) => [q.x + a, q.y + c]).filter(([x, y]) => Sim.walk(Sim.tileAt(g.s, x, y)) && !Sim.entAt(g.s, x, y));
+  const [k1, k2] = [husk("k1", spot[0][0], spot[0][1], [0, 1]), husk("k2", spot[1][0], spot[1][1], [0, 1])]; for (const h of [k1, k2]) { for (const l in h.hp) h.hp[l] = 1; h.aware = true; h.fled = 1; g.s.ents.push(h); }
+  for (let i = 0; i < 10 && (k1.alive || k2.alive); i++) { const t = k1.alive ? k1 : k2; Sim.act(g.s, "p1", { type: "melee", x: t.x, y: t.y }); } assert.ok(q.tally.best >= 2 || !(k1.alive || k2.alive), "streak");
+  const A = Sim.newGame(5, { ...LO }, { map: "ks9" }), Bc = Sim.newGame(5, { ...LO, coffee: 1 }, { map: "ks9" }); assert.ok(Sim.hitChance(Bc, playerOf(Bc), playerOf(Bc).x + 6, playerOf(Bc).y) > Sim.hitChance(A, playerOf(A), playerOf(A).x + 6, playerOf(A).y) || Sim.hitChance(A, playerOf(A), playerOf(A).x + 6, playerOf(A).y) >= .95, "coffee");
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);
