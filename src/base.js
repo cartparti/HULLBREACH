@@ -10,7 +10,7 @@ let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all",
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:500,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
-  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,mastery:{},daily:null,morale:0,catGift:0,
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -19,13 +19,23 @@ function migrate(p){ const d=newProfile();
     if(q.kind==="valuable"||q.kind==="val"){ const i=Math.max(0,Items.VALS.findIndex(v=>v[0]===q.name)); return {d:"val"+i,r:0,v:q.value||Items.VALS[i][1]}; } return null; };
   d.credits=p.credits|0; d.stats={...d.stats,...(p.stats||{})}; d.ship=p.ship||d.ship; d.welcomed=!!p.welcomed;
   d.stash=(p.stash||[]).map(conv).filter(Boolean).map(mk); d.ammo={pistol:(p.rounds|0)}; return d; }
-function fixProfile(p){ const d=newProfile(); if(!p) return d; if(p.v===1) p=migrate(p); if(p.v!==SAVE_V) return d;
+function fixProfile(p){ const d=newProfile(); d.ship.opKey=todayKey(); if(!p) return d; if(p.v===1) p=migrate(p); if(p.v!==SAVE_V) return d;
   p.stats={...d.stats,...(p.stats||{})}; p.kit={...d.kit,...(p.kit||{})}; if(!Array.isArray(p.kit.inv)) p.kit.inv=[]; p.kit.ammo=p.kit.ammo||{};
   p.stash=Array.isArray(p.stash)?p.stash.filter(q=>q&&Items.def(q.d)):[]; for(const q of p.stash) if(!q.uid) Object.assign(q,mk(q));
   p.ammo=p.ammo||{}; p.mats=p.mats||{}; if(p.food==null) p.food=80; if(p.water==null) p.water=80; if(!p.gotLight){ p.gotLight=1; p.stash.push(mk({d:"flashlight"})); } p.look={...d.look,...(p.look||{})}; if(p.look.fh==null){ const old=+p.look.f|0; p.look.fh=[0,1,3,5,0,0][old]||0; p.look.fm=[0,0,0,0,1,2][old]||0; } p.unlocks={cloak:[],visor:[],crest:[],...(p.unlocks||{})};
-  p.life=p.life&&typeof p.life==="object"?p.life:{}; p.codex=p.codex&&typeof p.codex==="object"?p.codex:{}; p.medals=p.medals&&typeof p.medals==="object"?p.medals:{};
+  p.life=p.life&&typeof p.life==="object"?p.life:{}; p.codex=p.codex&&typeof p.codex==="object"?p.codex:{}; p.medals=p.medals&&typeof p.medals==="object"?p.medals:{}; p.mastery=p.mastery&&typeof p.mastery==="object"?p.mastery:{};
   p.rep=p.rep&&typeof p.rep==="object"?p.rep:{}; p.xp=p.xp|0; p.perks=p.perks&&typeof p.perks==="object"?p.perks:{}; p.injury=p.injury||{frac:{},inf:0}; if(p.hire&&!(p.hire.fac in Sim.FACTIONS)) p.hire=null;
-  p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); return p; }
+  p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); p.ship.opKey=todayKey(); return p; }
+function todayKey(){ return new Date().toISOString().slice(0,10).replace(/-/g,""); }
+// weapon mastery: kills with each class of weapon earn levels that make you better with it
+const MAST_T=[0,10,30,70,150,300], MAST_N=["Untrained","Trained","Seasoned","Veteran","Expert","Master"], MAST_C=[["pistol","Pistols"],["smg","SMGs"],["rifle","Rifles"],["shotgun","Shotguns"],["sniper","Sniper rifles"],["launcher","Launchers"],["melee","Melee"],["explosive","Explosives"]];
+const mastLvl=n=>{ let l=0; for(let i=0;i<MAST_T.length;i++) if((n|0)>=MAST_T[i]) l=i; return l; };
+function mastLevels(){ const o={}; for(const [c] of MAST_C){ const l=mastLvl(profile.mastery[c]); if(l) o[c]=l; } return o; }
+function mastBonus(c,l){ if(!l) return "No bonus yet."; if(c==="melee") return `+${l} damage on every strike.`; if(c==="explosive") return "Bragging rights. (Explosives don't aim.)"; return `+${(l*2.5).toFixed(1)}% to hit${l>=5?", +15% damage":""}.`; }
+// Rivet the ship's cat: a scratch behind the ears once a day lifts the crew (+10% XP next raid), and sometimes it brings you a present
+function onPet(){ const d=ship().day|0; const first=profile.morale!==d; profile.morale=d; let msg=first?"Rivet purrs like a failing reactor. You feel better about the next run. (+10% XP on your next raid)":["Rivet headbutts your hand and demands more.","Rivet rolls over. It's a trap. You fall for it anyway.","Rivet blinks slowly at you. That's love, apparently.","Rivet chirps and winds between your boots."][Math.floor(Math.random()*4)];
+  if(first&&profile.catGift!==d&&Math.random()<.35){ profile.catGift=d; const it=Items.roll(Math.random,1,["mat","val","food","ammo"][Math.floor(Math.random()*4)]); World.grant(profile,it); msg+=` Rivet drops a ${Items.name(it).toLowerCase()} at your feet, very pleased with itself. (Put in your stash.)`; }
+  save(); if(typeof toast==="function") toast(msg); }
 const ship=()=>(typeof Net!=="undefined"&&Net.sq&&!Net.host&&Net.ship)?Net.ship:profile.ship, here=()=>World.loc(ship().loc);
 function shipScene(){ return here().scene; }
 
@@ -149,7 +159,7 @@ function renderShipHud(){
   $("s-loc").innerHTML=`<b>${L.name}</b><span>${sec.name} · ${docked?`<span class="dock">Docked</span>`:`<span class="warn">Holding beside a derelict</span>`}</span><span>${cs?`${cs} active contract${cs>1?"s":""}`:"No active contracts"}${World.siteContract(sh,L.id)?" · <span class=\"dock\">contract target</span>":""}</span>`;
   $("s-res").innerHTML=`<span>Credits</span><span style="color:var(--brass)">${profile.credits}</span><span>Fuel</span><span style="color:${sh.fuel<2?"var(--blood2)":"inherit"}">${sh.fuel}/${sh.fuelMax}</span><span>Day</span><span>${sh.day}</span><span>Food</span><span style="color:${profile.food<25?"var(--blood2)":"inherit"}">${Math.round(profile.food)}</span><span>Water</span><span style="color:${profile.water<25?"var(--blood2)":"inherit"}">${Math.round(profile.water)}</span><span>Crew</span><span>${inSquad()?Net.roster.length:1}/4${inSquad()?" · "+Net.code.toUpperCase():""}</span>`;
   $("s-mode").textContent=mode==="pc"?"Touch mode":"Mouse & keys";
-  const seat=Sim.tileAt(S,me().x,me().y).t==="seat", k=seat?"navtable":adjacentTerminal(), fx2=k?null:adjacentFixture(), hint=k?TERM_HINT[k]:fx2?PROP_NAME[fx2]:"";
+  const seat=Sim.tileAt(S,me().x,me().y).t==="seat", k=seat?"navtable":adjacentTerminal(), fx2=k?null:adjacentFixture(), hint=S.ents.some(e=>e.kind==="pet"&&Math.max(Math.abs(e.x-me().x),Math.abs(e.y-me().y))<=1)?"Rivet · the ship's cat · give a scratch":k?TERM_HINT[k]:fx2?PROP_NAME[fx2]:"";
   $("s-prompt").innerHTML=hint&&!warp?(mode==="pc"?`<span class="key">F</span>${hint}`:`Tap USE · ${hint}`):"";
 }
 
@@ -367,7 +377,7 @@ function viewHelm(){
   for(const [a,b] of {arm:[["ninefold","spire"],["ninefold","lazarus"],["spire","fennick"]],veil:[["haven","spindle"],["haven","exchange"],["spindle","exchange"]],embers:[["bastion","vorne"],["bastion","garrison"],["vorne","garrison"]]}[reg]){ const A=World.loc(a),B=World.loc(b); lanes.push(`<line x1="${A.x}" y1="${Y(A.y)}" x2="${B.x}" y2="${Y(B.y)}" stroke="#6f9b8c" stroke-width=".3" stroke-dasharray="1.2 1"/>`); }
   const secs=World.SECTORS.filter(s=>s.region===reg).map(s=>`<circle cx="${s.x}" cy="${Y(s.y)}" r="21" fill="${s.color}" opacity=".05"/><text class="sec" x="${s.x-14}" y="${Math.max(5,Y(s.y)-16)}" style="fill:${s.color}">${s.name}</text>`).join("");
   const KN2={relay:"comms relay",mining:"mining barge",hospital:"hospital ship",fortress:"Reaver fortress",hive:"Choir hive",outpost:"Marshal outpost",research:"research platform",freighter:"freighter",colony:"colony ship"};
-  const services=sel.type==="derelict"?`${sel.signal?"Signal":"Derelict"} · ${KN2[sel.site.kind]||"station"}${sel.site.size?`, ${sel.site.size}`:""} · threat ${"▲".repeat(sel.site.tier||1)}${sel.signal?` · fades in ${Math.max(0,sel.expires-(sh.day|0))} days`:""}`:[sel.npcs.map(n=>World.NPCS[n].role+": "+World.NPCS[n].name).join(" · "),sel.fuel?`Fuel ${sel.fuel} cr`:""].filter(Boolean).join(" · ");
+  const services=sel.type==="derelict"?`${sel.signal?"Signal":"Derelict"} · ${KN2[sel.site.kind]||"station"}${sel.site.size?`, ${sel.site.size}`:""} · threat ${"▲".repeat(sel.site.tier||1)}${sel.daily?" · daily op: a new one every day (UTC)":sel.signal?` · fades in ${Math.max(0,sel.expires-(sh.day|0))} days`:""}`:[sel.npcs.map(n=>World.NPCS[n].role+": "+World.NPCS[n].name).join(" · "),sel.fuel?`Fuel ${sel.fuel} cr`:""].filter(Boolean).join(" · ");
   const canJump=cost>0&&sh.fuel>=cost;
   const sug=typeof Net!=="undefined"&&Net.suggest&&Date.now()-Net.suggest.at<180000&&Net.suggest.to!==cur.id?Net.suggest:null;
   const sugHTML=sug&&isHost()?`<div class="panel contract-row" style="grid-column:1/-1;border-color:${colorOf(sug.k)}"><div><b>${esc(nameOf(sug.k))} suggests ${World.loc(sug.to).name}</b><br><span>${World.travelCost(sh,sug.to)} fuel · ${World.SECTORS.find(s=>s.id===World.loc(sug.to).sector).name}</span></div><button class="plain" data-act="sel:${sug.to}">Show</button></div>`:"";
@@ -599,6 +609,8 @@ function viewSkills(){ const xp=profile.xp|0, L=levelOf(xp), a=xpFor(L), b=xpFor
     <div class="panel h-card span12"><div class="h-eyebrow">Injuries</div>${inj.length?`<p>${inj.join(" · ")}. These come with you into the next raid until they're treated.</p><div class="bar-row">${Object.keys(I.frac||{}).length?`<button class="plain" data-act="treat:splint" ${has("splint")?"":"disabled"}>Splint from stash</button>`:""}${I.inf?`<button class="plain" data-act="treat:antibiotic" ${has("antibiotic")?"":"disabled"}>Antibiotics from stash</button>`:""}</div><p class="risk">A medbay upgrade on the ship treats these automatically when you get back.</p>`:`<p class="risk">None. You're fit to fly.</p>`}</div></section>`; }
 // ---------- logbook: weekly bounties, medals with titles, the codex ----------
 const BOUNTIES=[
+  {id:"elite",t:"Mutant cull",d:"Kill {n} mutated husks",n:3,k:"elite",cr:500,xp:110},{id:"disarm",t:"Sapper",d:"Disarm {n} tripwires",n:3,s:"disarms",cr:350,xp:80},
+  {id:"vent",t:"Rat runs",d:"Crawl through {n} vents",n:4,s:"vents",cr:300,xp:60},{id:"daily",t:"Op runner",d:"Complete {n} Daily Ops",n:2,x:"daily",cr:600,xp:140},
   {id:"stalker",t:"Thin the packs",d:"Kill {n} stalkers",n:8,k:"stalker",cr:350,xp:70},{id:"brute",t:"Big game",d:"Kill {n} brutes",n:3,k:"brute",cr:450,xp:90},
   {id:"spitter",t:"Acid test",d:"Kill {n} spitters",n:5,k:"spitter",cr:350,xp:70},{id:"husk",t:"Pest control",d:"Kill {n} husks",n:25,k:"husk",cr:300,xp:60},
   {id:"raider",t:"Hostile takeover",d:"Kill {n} raiders",n:5,k:"raider",cr:500,xp:100},{id:"bot",t:"Scrap metal",d:"Destroy {n} turrets or drones",n:4,k:"bot",cr:400,xp:80},
@@ -615,11 +627,13 @@ const MEDALS=[
   {id:"caches",t:"Treasure Hunter",title:"Treasure Hunter",d:"Find 10 hidden caches."},{id:"archive",t:"Archivist",title:"Archivist",d:"Collect 12 data logs."},
   {id:"warden",t:"Warden",title:"Warden",d:"Bring home 3 prisoners."},{id:"ally",t:"Diplomat",title:"Diplomat",d:"Become Allied with any faction."},
   {id:"choir",t:"Song Breaker",title:"Song Breaker",d:"Finish a job against the Iron Choir."},{id:"throne",t:"Iron Heart",title:"Thronebreaker",d:"Get out of the Throne of Iron alive."},
+  {id:"mutant",t:"Mutant Hunter",title:"Mutant Hunter",d:"Kill 10 mutated husks."},{id:"sapper",t:"Sapper",title:"Sapper",d:"Disarm 10 tripwires."},
+  {id:"dailies",t:"Op Runner",title:"Op Runner",d:"Complete 5 Daily Ops."},{id:"master",t:"Weapon Master",title:"Master",d:"Reach Master with any weapon class."},
   {id:"melt",t:"Out of the Fire",title:"Daredevil",d:"Extract during a reactor meltdown."},{id:"legend",t:"Legend",title:"Legend",d:"Own a legendary item."},
 ];
 function bountyWeek(){ const wk=Math.floor((ship().day|0)/7); let B=profile.bounty; if(!B||B.week!==wk){ let h=(wk*2654435761+1013904223)>>>0; const pool=BOUNTIES.slice(), list=[]; while(list.length<3&&pool.length){ h=(h*1103515245+12345)>>>0; const b=pool.splice(h%pool.length,1)[0]; list.push({id:b.id,prog:0,claimed:false}); } B=profile.bounty={week:wk,list}; } return B; }
 let logTab="bounties";
-function viewLogbook(){ const B=bountyWeek(), daysLeft=7-((ship().day|0)%7), tabs=[["bounties","Bounties"],["medals","Medals"],["codex","Codex"],["stats","Service record"]];
+function viewLogbook(){ const B=bountyWeek(), daysLeft=7-((ship().day|0)%7), tabs=[["bounties","Bounties"],["medals","Medals"],["mastery","Mastery"],["codex","Codex"],["stats","Service record"]];
   let body="";
   if(logTab==="bounties") body=`<p class="risk">New bounties every 7 days (${daysLeft} day${daysLeft>1?"s":""} left). Progress only counts on raids you get out of alive.</p>`+B.list.map(q=>{ const b=BOUNTIES.find(x=>x.id===q.id); if(!b) return ""; const done=q.prog>=b.n;
       return `<div class="cm-row"><div class="cm-t"><b>${b.t}</b><span>${b.d.replace("{n}",b.n)} · ${Math.min(q.prog,b.n)}/${b.n}</span><div class="meter" style="height:5px;margin-top:3px"><i style="width:${Math.min(100,q.prog/b.n*100)}%;background:var(--brass)"></i></div></div>${q.claimed?`<span class="risk good">Claimed</span>`:done?`<button class="plain" data-act="bclaim:${q.id}">Claim ${b.cr} cr</button>`:`<span class="risk">${b.cr} cr · ${b.xp} XP</span>`}</div>`; }).join("");
@@ -628,6 +642,8 @@ function viewLogbook(){ const B=bountyWeek(), daysLeft=7-((ship().day|0)%7), tab
   if(logTab==="codex"){ const L=Items.LOGS, got=L.filter(l=>profile.codex[l.id]); body=`<p class="risk">${got.length}/${L.length} logs recovered. Data logs turn up in lockers, shelves and crates; extract with them (or seal them in your pouch) to file them here.</p>`+
       (got.length?got.map(l=>`<details class="codex"><summary>${esc(l.t)}</summary><p>${esc(l.x)}</p></details>`).join(""):`<p class="risk">Nothing yet.</p>`); }
   if(logTab==="stats") body=viewRecords0();
+  if(logTab==="mastery") body=`<p class="risk">Every kill with a class of weapon counts toward mastering it, even on raids you don't survive. Levels at ${MAST_T.slice(1).join(", ")} kills.</p>`+MAST_C.map(([c,n])=>{ const k=profile.mastery[c]|0, l=mastLvl(k), nx=MAST_T[l+1], pc=nx?Math.round((k-MAST_T[l])/(nx-MAST_T[l])*100):100;
+      return `<div class="cm-row"><div class="cm-t"><b>${n} · ${MAST_N[l]}</b><span>${k} kill${k===1?"":"s"}${nx?` · ${nx-k} to ${MAST_N[l+1]}`:" · mastered"} · ${mastBonus(c,l)}</span><div class="meter" style="height:5px;margin-top:3px"><i style="width:${pc}%"></i></div></div></div>`; }).join("");
   return `<section class="panel h-card"><div class="chips">${tabs.map(([k,n])=>`<button data-act="logtab:${k}" aria-pressed="${logTab===k}">${n}</button>`).join("")}</div><div style="margin-top:8px">${body}</div></section>`; }
 const titleOf=()=>{ const m=MEDALS.find(x=>x.id===profile.title); return m?m.title:null; };
 function viewRecords0(){ const s=profile.stats, rate=s.raids?Math.round(s.extracts/s.raids*100):0;
@@ -715,6 +731,18 @@ function viewCrew(){
     <div class="panel h-card span5"><div class="h-eyebrow">${Net.host?"You lead this squad":"Crew member"}</div><p>${Net.host?"You fly the ship and launch raids. If you leave, the squad ends.":"The leader flies the ship and launches raids. Your stash and credits stay your own."}</p>
       <button class="plain" data-act="sqleave">${armed.sqleave?"Confirm":Net.host?"Disband squad":"Leave squad"}</button></div></section>`;
 }
+function deathTip(c,p){ c=String(c).toLowerCase();
+  if(/bled|blood/.test(c)) return "Bleeding kills slowly but surely. Carry bandages and stop a bleed the moment you see it.";
+  if(/vacuum|suffocat|air|breath/.test(c)) return "Watch your O₂ and the air pressure. Spare canisters, and stay away from breaches.";
+  if(/radiation/.test(c)) return "A hazard suit cuts radiation by 80%. Gas masks and heavy armour help a little.";
+  if(/acid|spitter/.test(c)) return "Spitters hit from range and burn. Close the gap or break line of sight.";
+  if(/fever|infection/.test(c)) return "Infections come from husk claws. Antibiotics, the medbay upgrade, or just don't get scratched.";
+  if(/reactor|core|meltdown/.test(c)) return "When the klaxon goes, run for the shuttle. Nothing aboard is worth the core.";
+  if(/matriarch/.test(c)) return "The Matriarch hits harder than anything else. Fight her at range, in a doorway, with friends.";
+  if(/brute/.test(c)) return "Brutes are slow. Kite them and never let them corner you.";
+  if(/shot|raider|round/.test(c)||(p.killer&&/\(/.test(p.killer))) return "Raiders only see as far as you do. Sneak (C), use cover and doors, and pick fights on your terms.";
+  if(/fire|burn|flame/.test(c)) return "Fire spreads through anything that burns. A hazard suit shrugs off most of it.";
+  return "Sneak (C) past what you can't fight, and keep a medkit for emergencies."; }
 function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to report.</p>";
   const li=x=>typeof x==="string"?`<li>${esc(x)}</li>`:`<li style="color:${x.c}">${esc(x.n)}</li>`;
   return `<section class="panel h-card report ${Lr.win?"":"lose"}"><h3>${Lr.win?`Extracted from ${Lr.site}`:`Lost on ${Lr.site}`}</h3>
@@ -724,6 +752,9 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
       :`<p>${Lr.cause||"You did not come back."} ${Lr.kit==="custom"?"Your custom kit is gone.":"You went in on the starter kit, so your stash is untouched."}</p>`}
     ${Lr.xp?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
     ${Lr.failed&&Lr.failed.length?`<div class="h-eyebrow" style="color:var(--blood2)">Failed</div>${Lr.failed.map(f=>`<p class="risk bad">${esc(f.title)}: ${esc(f.who)} ${f.rep?`pulled the job. Standing ${f.rep}.`:`pulled the contract and kept a ${f.fee} cr cancellation fee. They won't offer it again for ${f.days} days.`}</p>`).join("")}`:""}
+    ${Lr.recap?`<div class="recap"><div class="h-eyebrow" style="color:var(--blood2)">What happened</div><p><b>Killed by ${esc(Lr.recap.killer||"something in the dark")}</b> on turn ${Lr.recap.turns}. You put down ${Lr.recap.kills} and dealt ${Lr.recap.dealt} damage.</p>${Lr.recap.hits.length?`<ol class="hits">${Lr.recap.hits.map(h=>`<li><span>T${h.t}</span> ${esc(h.by)} · ${esc(Sim.LNAME[h.l]||h.l)} <b>−${h.d}</b></li>`).join("")}</ol>`:""}<p class="risk">${esc(Lr.recap.tip)}</p></div>`:""}
+    ${Lr.daily?`<p class="risk good"><b>Daily Op complete: ${esc(Lr.daily.name)}.</b> Supply crate: ${Lr.daily.items.map(x=>`<b style="color:${x.c}">${esc(x.n)}</b>`).join(", ")}, ${Lr.daily.cr} cr and ${Lr.daily.xp} XP.</p>`:""}
+    ${Lr.mast&&Lr.mast.length?Lr.mast.map(m=>`<p class="risk good">${esc(m.c)} mastery: <b>${esc(m.lvl)}</b>. ${esc(m.bonus)}</p>`).join(""):""}
     ${Lr.medals&&Lr.medals.length?`<p class="risk good">Medal${Lr.medals.length>1?"s":""} earned: <b>${Lr.medals.map(esc).join(", ")}</b>. Wear the title from the Logbook.</p>`:""}
     ${Lr.logs&&Lr.logs.length?`<p class="risk good">Filed in your codex: ${Lr.logs.map(esc).join(", ")}.</p>`:""}
     ${Lr.jobs&&Lr.jobs.length?`<p class="risk good">${Lr.jobs.map(j=>`Job done: ${esc(j.title)} · ${j.reward} cr from the ${esc(Sim.FACTIONS[j.fac].name)}`).join(". ")}.</p>`:""}
@@ -833,7 +864,7 @@ function refreshLook(){ if(inSquad()&&Net.ready) setReady(false); if(S&&S.mode==
 
 // ---------- scene changes ----------
 function shipLoadout(){ const r=kitResolved(); return {w1:strip(r.w1||r.w2),head:strip(r.head),armor:strip(r.armor),legs:strip(r.legs),acc:strip(r.acc),light:strip(r.light),pack:strip(r.pack),ammo:{},inv:[],look:{...profile.look}}; }
-function boardShipCrew(crew){
+function boardShipCrew(crew){ if(profile&&profile.ship) profile.ship.opKey=todayKey();
   const raidOver=S&&S.mode==="raid"; if(raidOver&&!Net.settled) settlePersonal();
   PID=crewKey();
   crew=crew.map(c=>c.id===PID?{...c,loadout:shipLoadout()}:c);
@@ -851,7 +882,7 @@ function boardShip(){
 function remainsHere(){ const R0=profile.remains; if(!R0) return null; if((ship().day|0)-(R0.day|0)>6){ profile.remains=null; save(); return null; } return R0.site===ship().loc?{items:R0.items.slice(0,14),ammo:R0.ammo||{},days:(ship().day|0)-(R0.day|0)}:null; }
 const GIFT_SG="sg1";
 function loadoutFromKit(r){ const lo0=loadoutFromKit0(r); if(!(profile.gifts||{})[GIFT_SG]){ const sg={d:"pump",r:1}; if(!lo0.w2) lo0.w2=sg; else if(!lo0.w1) lo0.w1=sg; else lo0.inv=[sg,...lo0.inv]; lo0.ammo={...lo0.ammo,shell:((lo0.ammo||{}).shell|0)+2*Items.AMMO.shell.stack}; lo0.gift=GIFT_SG; } return lo0; }
-function loadoutFromKit0(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
+function loadoutFromKit0(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},mast:mastLevels(),morale:profile.morale===(ship().day|0)?1:0,injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
 function consumeKit(lo){ if(lo.gift){ profile.gifts={...(profile.gifts||{}),[lo.gift]:1}; }
   profile.insured=null; if(profile.insure&&!lo.starter){ profile.insured=[...KIT_SLOTS.map(s=>lo[s]),...(lo.inv||[])].filter(it=>it&&!it.iss).map(it=>({...it})); } profile.insure=false;
   profile.stats.raids++; profile.active={kit:lo.starter?"starter":"custom",site:ship().loc,at:Date.now()};
@@ -930,20 +961,29 @@ function settlePersonal(){
   } else profile.stats.deaths++;
   // data logs you got out with (or sealed in the pouch) go into the codex
   rep.logs=[]; for(const it of p.inv) if(it.d==="datalog"&&it.lg&&(win||it.sec)&&!profile.codex[it.lg]){ profile.codex[it.lg]=ship().day|0; const L=Items.LOGS.find(l=>l.id===it.lg); if(L) rep.logs.push(L.t); p.xp=(p.xp|0)+15; }
+  // the Daily Op: the first extraction of the day pays out
+  if(win&&L.daily&&profile.daily!==L.daily){ profile.daily=L.daily; profile.life.dailies=(profile.life.dailies|0)+1; const cr=700; profile.credits+=cr; p.xp=(p.xp|0)+150;
+    const got=[]; let it=null; for(let n=0;n<10&&(!it||Items.rarOf(it)<2||!Items.slotOf(it));n++) it=Items.roll(Math.random,3,["weapon","armor"][n%2]); if(it){ World.grant(profile,it); got.push({n:Items.name(it),c:rc(it)}); }
+    const t2=mk({d:["sentry","weldtorch","tripmine","breach"][Math.floor(Math.random()*4)]}); World.grant(profile,t2); got.push({n:Items.name(t2),c:rc(t2)}); rep.daily={cr,xp:150,items:got,name:L.name}; }
+  // weapon mastery: every kill counts, even on a raid you don't survive
+  rep.mast=[]; { const WK=(p.tally&&p.tally.wk)||{}; for(const [c,n] of Object.entries(WK)){ const b=mastLvl(profile.mastery[c]); profile.mastery[c]=(profile.mastery[c]|0)+n; const a=mastLvl(profile.mastery[c]); if(a>b){ const C=MAST_C.find(q=>q[0]===c); rep.mast.push({c:C?C[1]:c,lvl:MAST_N[a],bonus:mastBonus(c,a)}); } } }
+  // what killed you
+  if(!win&&!p.flags.abandoned){ const K0=(p.tally&&p.tally.k)||{}; rep.recap={killer:p.killer||p.cause||"",hits:(p.hits||[]).slice(-6),turns:S.turn|0,kills:Object.entries(K0).filter(([k])=>k!=="leader"&&k!=="elite").reduce((a,[,v])=>a+v,0),dealt:(p.tally&&p.tally.dealt)|0,tip:deathTip(p.cause||S.cause||"",p)}; }
   // lifetime tallies, the week's bounties and medals
   { const T=p.tally||{}, K=T.k||{}, LF=profile.life; LF.k=LF.k||{}; const haul=Sim.lootValue(p);
-    if(win){ for(const [k2,v] of Object.entries(K)) LF.k[k2]=(LF.k[k2]|0)+v; for(const k2 of ["takedowns","caches","hacks","searches"]) LF[k2]=(LF[k2]|0)+(T[k2]|0);
+    if(win){ for(const [k2,v] of Object.entries(K)) LF.k[k2]=(LF.k[k2]|0)+v; for(const k2 of ["takedowns","caches","hacks","searches","disarms","vents"]) LF[k2]=(LF[k2]|0)+(T[k2]|0);
       if(L.signal) LF.signals=(LF.signals|0)+1; LF.prisoners=(LF.prisoners|0)+(rep.prisoners||[]).length; LF.jobs=(LF.jobs|0)+(rep.jobs||[]).length; if((rep.jobs||[]).some(j=>j.type==="sabotage"||j.tgt==="choir")) LF.choirJob=1;
-      const B=bountyWeek(); for(const q of B.list){ const b=BOUNTIES.find(z=>z.id===q.id); if(!b||q.claimed) continue; if(b.k) q.prog+=K[b.k]|0; if(b.s) q.prog+=T[b.s]|0; if(b.x==="haul"&&haul>=1500) q.prog+=1; if(b.x==="signal"&&L.signal) q.prog+=1; if(b.x==="job") q.prog+=(rep.jobs||[]).length; } }
+      const B=bountyWeek(); for(const q of B.list){ const b=BOUNTIES.find(z=>z.id===q.id); if(!b||q.claimed) continue; if(b.k) q.prog+=K[b.k]|0; if(b.s) q.prog+=T[b.s]|0; if(b.x==="haul"&&haul>=1500) q.prog+=1; if(b.x==="signal"&&L.signal) q.prog+=1; if(b.x==="job") q.prog+=(rep.jobs||[]).length; if(b.x==="daily"&&rep.daily) q.prog+=1; } }
     const reg=World.regionOf(L); LF.regions={...(LF.regions||{}),[reg]:1};
     const has=id=>profile.medals[id], earn=[]; const give=id=>{ if(!has(id)){ profile.medals[id]=ship().day|0; earn.push(MEDALS.find(m=>m.id===id).t); } };
     if(win){ if(profile.stats.extracts>=0) give("first"); if(profile.stats.extracts>=10) give("ten"); if((K.matriarch|0)>0) give("queen"); if(haul>=2000) give("rich"); if(L.id==="throne") give("throne"); if(S.ev&&S.ev.type==="meltdown"&&S.ev.on) give("melt"); }
     if((LF.takedowns|0)>=10) give("ghost"); if(Object.keys(LF.regions).length>=3) give("wander"); if((LF.signals|0)>=5) give("signals"); if((LF.hacks|0)>=5) give("net"); if((LF.caches|0)>=10) give("caches");
     if(Object.keys(profile.codex).length>=12) give("archive"); if((LF.prisoners|0)>=3) give("warden"); if(Object.values(profile.rep||{}).some(v=>v>=50)) give("ally"); if(LF.choirJob) give("choir");
+    if((LF.k.elite|0)>=10) give("mutant"); if((LF.disarms|0)>=10) give("sapper"); if((LF.dailies|0)>=5) give("dailies"); if(Object.values(profile.mastery).some(v=>(v|0)>=MAST_T[5])) give("master");
     if([...profile.stash,...(win?p.inv:[])].some(it=>Items.rarOf(it)>=4)) give("legend");
     rep.medals=earn; }
   // experience: kept in full when you get out, half when you don't
-  { const before=levelOf(profile.xp), base=(p.xp|0)+(win?40:0)+(rep.contract?60:0), got=win?base:Math.floor(base/2); profile.xp=(profile.xp|0)+got; rep.xp={got,full:base,level:levelOf(profile.xp),up:levelOf(profile.xp)>before}; }
+  { const before=levelOf(profile.xp), base=Math.round(((p.xp|0)+(win?40:0)+(rep.contract?60:0))*(p.morale?1.1:1)), got=win?base:Math.floor(base/2); profile.xp=(profile.xp|0)+got; rep.xp={got,full:base,level:levelOf(profile.xp),up:levelOf(profile.xp)>before}; }
   // injuries come home with you, unless the ship's medbay patches you up
   { const md=(ship().up&&ship().up.medbay)|0; const fr=win?{...(p.frac||{})}:{}, inf=win?(p.inf|0):0; profile.injury={frac:md>=1?{}:fr,inf:md>=2?0:inf}; rep.treated=md&&(Object.keys(fr).length||inf)?true:false; }
   // standing with the factions you met, and the Marshals' bounty on raiders

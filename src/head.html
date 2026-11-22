@@ -276,6 +276,15 @@ body[data-mode="touch"] .tut{top:auto;bottom:calc(env(safe-area-inset-bottom,0px
 body[data-mode="touch"] .obj{top:calc(env(safe-area-inset-top,0px) + 176px);width:min(260px,calc(100% - 32px));font-size:12px}
 body[data-mode="touch"] .obj.closed{width:auto}
 body[data-scene="ship"] .obj{display:none!important}
+.tmap{position:fixed;inset:0;z-index:60;background:rgba(4,3,3,.82);display:flex;align-items:center;justify-content:center;padding:12px}
+.tmap[hidden]{display:none}
+.tm-box{background:#0c0a09;border:1px solid #5a2a20;box-shadow:0 0 0 1px #000,0 10px 40px rgba(0,0,0,.7);padding:10px 12px;max-width:100%;max-height:100%;display:flex;flex-direction:column;gap:8px}
+.tm-head{display:flex;align-items:center;gap:12px}.tm-head b{font-family:var(--f-display);font-size:22px;color:#f2e8d0}.tm-sub{flex:1;font-size:12px;color:#8a8070}
+.tm-scroll{overflow:auto;max-width:100%;max-height:calc(100vh - 150px);touch-action:pan-x pan-y}.tm-scroll canvas{display:block;image-rendering:pixelated;cursor:crosshair}
+.tm-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:#a89c88}.tm-leg i{display:inline-block;width:9px;height:9px;margin-right:5px;vertical-align:-1px}
+.recap{border:1px solid #5a1a12;background:rgba(60,8,4,.25);padding:8px 10px;margin:8px 0}.recap ol.hits{margin:4px 0 6px;padding-left:0;list-style:none;font-size:12px}.recap ol.hits li{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}.recap ol.hits span{display:inline-block;width:42px;color:#8a8070;font-family:var(--f-num)}.recap ol.hits b{color:#ff6a4a;float:right}
+body[data-mode="touch"] .tm-sub{display:none}
+#b-sneak.on,#t-sneak.on{color:#9affa8;border-color:#3a7a4a}
 .evb{position:fixed;z-index:31;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);padding:6px 16px;background:rgba(40,4,2,.92);border:1px solid #e0482f;color:#ffd0c0;font:700 14px var(--f-num);letter-spacing:.12em;text-transform:uppercase;animation:evb 1s infinite}
 @keyframes evb{50%{border-color:#ff8a60;box-shadow:0 0 18px rgba(255,60,30,.5)}}
 body[data-mode="touch"] .evb{top:calc(env(safe-area-inset-top,0px) + 222px);font-size:11px;white-space:nowrap;padding:4px 10px}
@@ -500,7 +509,7 @@ body[data-mode="touch"] .t-vit::before,body[data-mode="touch"] .t-vit::after{dis
 .mm em{font-style:normal;font-family:var(--f-num);font-size:11px;text-align:right;color:var(--bone)}
 .t-ammo{display:flex;gap:8px;align-items:baseline;font-size:11px;color:var(--ash)}
 .t-ammo b{font-family:var(--f-num);font-size:14px;color:var(--bone);font-weight:400}
-body[data-mode="touch"] .t-menu{display:flex;flex-direction:column;gap:3px}
+body[data-mode="touch"] .t-menu{display:grid;grid-template-columns:1fr 1fr;gap:3px;align-content:start}
 body[data-mode="touch"] .t-menu button{height:24px;padding:0 9px;font-size:15px;background:rgba(20,6,5,.8)}
 body[data-mode="touch"] .t-ticker{font-size:11px;padding:2px 6px;background:rgba(8,3,3,.55);border:0;border-left:2px solid #6a160e}
 body[data-mode="touch"] .t-ticker div:first-child{display:none}
@@ -636,6 +645,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
 </div>
 <div class="hub-toast" id="h-toast" role="status" hidden></div>
 <div class="evb" id="evb" hidden></div>
+<div class="tmap" id="tmap" hidden><div class="tm-box"><div class="tm-head"><b>Tactical map</b><span class="tm-sub">What you've explored. Hacked schematics fill in the rest.</span><button id="tmap-x" class="plain">Close <span class="key">N</span></button></div><div class="tm-scroll"><canvas id="tmap-c"></canvas></div><div class="tm-leg"></div></div></div>
 <div class="obj" id="obj" hidden><button class="obj-h" id="obj-h" aria-expanded="true"><b>Objectives</b><span id="obj-n"></span><i id="obj-tg">▾</i></button><div id="obj-body"></div></div>
 <div class="tut" id="tut" hidden><div class="tut-h"><b id="tut-title">Field training</b><button id="tut-skip" class="plain">Skip</button></div><div id="tut-body"></div></div>
 <div class="viewport" id="vp">
@@ -655,7 +665,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
     <div class="panel mission">
       <div class="m-head"><span class="m-eye">Mission</span><b id="r-site">Relay KS-9</b></div>
       <div class="contract" id="contract"></div>
-      <div class="btns"><button id="b-air" class="plain" title="Show air pressure and wind (T)"><span class="key">T</span>Air</button><button id="b-help" class="plain" title="Controls">?</button><button id="b-new" class="plain">Abandon</button></div>
+      <div class="btns"><button id="b-air" class="plain" title="Show air pressure and wind (T)"><span class="key">T</span>Air</button><button id="b-map" class="plain" title="Tactical map (N)"><span class="key">N</span>Map</button><button id="b-sneak" class="plain" title="Sneak: harder to spot, slower (C)"><span class="key">C</span>Sneak</button><button id="b-help" class="plain" title="Controls">?</button><button id="b-new" class="plain">Abandon</button></div>
     </div>
     <div class="panel crew-cards" id="crew-cards" hidden></div>
   </div>
@@ -678,7 +688,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
   </div>
   <div class="panel help pc-only" id="help" hidden>
     <b>Controls</b><span><span class="key">WASD</span> move · <span class="key">Click</span> walk or shoot</span><span><span class="key">F</span> use · <span class="key">G</span> grab · <span class="key">X</span> fire · <span class="key">␣</span> wait</span>
-    <span><span class="key">1-9</span> items · <span class="key">R</span> swap · <span class="key">L</span> light · <span class="key">I</span> kit</span><span><span class="key">T</span> air map · <span class="key">Q</span> extract</span><span class="sq-only"><span class="key">Z</span> ping · <span class="key">Enter</span> chat · right-click item to give</span>
+    <span><span class="key">1-9</span> items · <span class="key">R</span> swap · <span class="key">L</span> light · <span class="key">I</span> kit</span><span><span class="key">T</span> air map · <span class="key">Q</span> extract</span><span><span class="key">V</span> strike · <span class="key">C</span> sneak · <span class="key">N</span> tactical map</span><span class="sq-only"><span class="key">Z</span> ping · <span class="key">Enter</span> chat · right-click item to give</span>
   </div>
   <div class="tip pc-only raid-only" id="tip" hidden></div>
   <!-- Ship HUD -->
@@ -701,7 +711,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
     <div class="t-row">
       <div class="t-mon"><div class="fig" id="tfig"></div></div>
       <div class="t-vit" id="tvit"></div>
-      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-obj" aria-label="Objectives">Goals</button><button id="t-chat" class="sq-only talk" aria-label="Talk">Talk</button></div>
+      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-obj" aria-label="Objectives">Goals</button><button id="t-map" aria-label="Map">Map</button><button id="t-sneak" aria-label="Sneak">Sneak</button><button id="t-chat" class="sq-only talk" aria-label="Talk">Talk</button></div>
     </div>
     <div class="t-ticker" id="tick" role="button" aria-label="Open comms log"></div>
     <div class="t-crew" id="tcrew" hidden></div>

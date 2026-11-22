@@ -134,8 +134,18 @@ const World = (() => {
     const cond=[mods.power===false?"No power.":"Power still on.",mods.fires?"Fires aboard.":"",mods.huskAdd?"Heavy life signs.":"",size==="large"?"A big station.":size==="small"?"A small wreck: a quick run.":""].filter(Boolean).join(" ");
     return {id,sector,name:nm,type:"derelict",signal:true,x:S.x+sl[0],y:S.y+sl[1],scene:{kind:"hulk",glow:SIGGLOW[kind]},expires:(epoch+2)*EPOCH,
       desc:`Signal picked up: ${SIGDESC[kind]} ${cond}`,site:{tier,kind,size,mods}}; }
-  const loc=id=>{ if(typeof id==="string"&&id.startsWith("sig~")){ const [,sec,ep,i]=id.split("~"); return signal(sec,+ep,+i); } return LOCS.find(l=>l.id===id); };
-  function signals(ship){ const e=Math.floor((ship.day|0)/EPOCH), out=[], gone=new Set(ship.cleared||[]); for(const S of SECTORS) for(const ep of [e-1,e]) for(let i=0,n=1+(hashS(S.id+"~"+ep)%2);i<n;i++){ if(ep<0) continue; const g=signal(S.id,ep,i); if(g&&!gone.has(g.id)) out.push(g); } return out; }
+  // ---- the Daily Op: one brutal station a day, the same for every crew (keyed by the real-world UTC date) ----
+  const OPNAMES=["Black Litany","Red Vigil","Iron Requiem","Ashen Choir","Hollow Crown","Grave Tide","Pale Furnace","Bitter Saint","Sunken Psalm","Carrion Star","Mourning Engine","Last Lantern","Dead Orbit","Weeping Forge"];
+  const OPMODS=[["Mutation outbreak","elite"],["Blackout","dark"],["Reactor failing","melt"],["The horde is coming","horde"],["Security lockdown","lock"],["Heavy life signs","swarm"],["Burning decks","fire"]];
+  function dailyOp(key){ key=String(key||""); if(!/^\d{8}$/.test(key)) return null; const id=`op~${key}`; let h=hashS(id); const R=()=>{ h=(h+0x6D2B79F5)>>>0; let t=h; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; };
+    const S=SECTORS[Math.floor(R()*SECTORS.length)], kinds=["relay","mining","freighter","colony","research","outpost","hospital","hive"], kind=kinds[Math.floor(R()*kinds.length)], tier=R()<.45?2:3, size=R()<.5?"large":"medium";
+    const picks=[], pool=OPMODS.slice(); picks.push(pool.splice(0,1)[0]); while(picks.length<3){ picks.push(pool.splice(Math.floor(R()*pool.length),1)[0]); }
+    const mods={elite:2.5,loot:1.7,huskAdd:1}; for(const [,m] of picks){ if(m==="dark") mods.power=false; if(m==="melt") mods.ev="meltdown"; if(m==="horde"&&!mods.ev) mods.ev="horde"; if(m==="lock"&&!mods.ev) mods.ev="lockdown"; if(m==="swarm") mods.huskAdd=4; if(m==="fire") mods.fires=3; }
+    const sl=SLOTS[Math.floor(R()*SLOTS.length)], nm=OPNAMES[Math.floor(R()*OPNAMES.length)], N=SIGNAME[kind];
+    return {id,sector:S.id,name:`Op ${nm}`,type:"derelict",signal:true,daily:key,x:Math.max(5,Math.min(95,S.x+Math.round(sl[0]*.6))),y:Math.max(7,Math.min(93,S.y+Math.round(sl[1]*.6))),scene:{kind:"hulk",glow:"#ffd060"},
+      desc:`DAILY OP. ${/^[aeiou]/i.test(N[0][0])?"An":"A"} ${N[0][0].toLowerCase()} gone very wrong, the same for every crew today. ${picks.map(q=>q[0]).join(". ")}. First extraction today pays a supply crate, credits and XP.`,mods:picks.map(q=>q[0]),site:{tier,kind,size,mods}}; }
+  const loc=id=>{ if(typeof id==="string"&&id.startsWith("op~")) return dailyOp(id.slice(3)); if(typeof id==="string"&&id.startsWith("sig~")){ const [,sec,ep,i]=id.split("~"); return signal(sec,+ep,+i); } return LOCS.find(l=>l.id===id); };
+  function signals(ship){ const e=Math.floor((ship.day|0)/EPOCH), out=[], gone=new Set(ship.cleared||[]); for(const S of SECTORS) for(const ep of [e-1,e]) for(let i=0,n=1+(hashS(S.id+"~"+ep)%2);i<n;i++){ if(ep<0) continue; const g=signal(S.id,ep,i); if(g&&!gone.has(g.id)) out.push(g); } if(ship.opKey){ const o=dailyOp(ship.opKey); if(o&&!gone.has(o.id)) out.push(o); } return out; }
   const allLocs=ship=>[...LOCS,...signals(ship)];
   // ---- the sector war: who holds what, and the Iron Choir's slow advance ----
   const CONTROL={haven:"unbound",kappa:"choir",glasswing:null,spindle:"guild",kessler:"guild",ilex:null,exchange:"vanta",gilded:"blacksun",bastion:"marshal",ardent:"reaver",vorne:"saint",lament:"saint",garrison:"hollow",throne:"choir",ninefold:"marshal",ossuary:"guild",ks9:null,tithe:"guild",vesper:"marshal",spire:"saint",mercy:"saint",theta:"choir",lazarus:"blacksun",fennick:"blacksun",pyre:"blacksun",maw:"reaver"};
@@ -175,7 +185,7 @@ const World = (() => {
     const P=actor.profile, L=loc(ship.loc);
     switch(a.type){
       case "travel": { const c=travelCost(ship,a.to); if(!loc(a.to)||!c) return {ok:false,msg:"Already here."};
-        if(String(a.to).startsWith("sig~")&&!signals(ship).some(g=>g.id===a.to)) return {ok:false,msg:"That signal has faded."};
+        if((String(a.to).startsWith("sig~")||String(a.to).startsWith("op~"))&&!signals(ship).some(g=>g.id===a.to)) return {ok:false,msg:"That signal has faded."};
         if(ship.fuel<c) return {ok:false,msg:`Not enough fuel. That jump needs ${c}.`};
         ship.fuel-=c; ship.loc=a.to; ship.day+=c; warTick(ship,c); return {ok:true,msg:`Jumped to ${loc(a.to).name}.`}; }
       case "tow": { if(ship.fuel>=1) return {ok:false,msg:"You still have fuel."}; ship.loc="ninefold"; ship.day+=4; warTick(ship,4); return {ok:true,msg:"A Ninefold tug hauls you home. Four days lost."}; }
@@ -214,5 +224,5 @@ const World = (() => {
     P.stash.push(mkItem(spec)); }
   let uidN=0; const uid=()=>"i"+Date.now().toString(36)+(uidN++).toString(36)+Math.random().toString(36).slice(2,5);
   function mkItem(it){ const o={uid:uid(),d:it.d,r:it.r|0}; if(it.l) o.l=it.l; if(it.v) o.v=it.v; if(it.m) o.m=it.m; return o; }
-  return {REGIONS,regionOf,signals,allLocs,EPOCH,CONTROL,war,controlOf,warTick,pushChoir,news,jobsFor,SECTORS,LOCS,NPCS,CONTRACTS,CONS,loc,newShip,travelCost,siteContract,act,settleRaid,itemInfo,mkItem,grant};
+  return {dailyOp,REGIONS,regionOf,signals,allLocs,EPOCH,CONTROL,war,controlOf,warTick,pushChoir,news,jobsFor,SECTORS,LOCS,NPCS,CONTRACTS,CONS,loc,newShip,travelCost,siteContract,act,settleRaid,itemInfo,mkItem,grant};
 })();

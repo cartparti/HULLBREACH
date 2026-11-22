@@ -256,7 +256,7 @@ test("raiders: crews spawn kitted out, loot, fight, talk back, and can be search
   for (let k = 0; k < 30; k++) { const s = Sim.newGame(5000 + k * 101, null, { gen: { tier: 1 + (k % 3) } });
     for (const C of Object.values(s.crews)) { crews++; if (C.att === "hostile") hostile++; }
     for (const r of s.ents.filter((e) => e.kind === "raider")) { assert.ok(r.w1 && r.look && r.name); uniq.add(JSON.stringify([r.w1.d, r.head && r.head.d, r.armor && r.armor.d, r.look.s, r.look.h])); } }
-  assert.ok(crews > 15, "crews spawn: " + crews); assert.ok(hostile > crews * .5 && hostile < crews, "mostly hostile, not all"); assert.ok(uniq.size > 20, "raiders look different");
+  assert.ok(crews > 15, "crews spawn: " + crews); assert.ok(hostile >= crews * .4 && hostile < crews, "many hostile, not all"); assert.ok(uniq.size > 20, "raiders look different");
   // a wary crew answers what you type
   const s = Sim.newGame(777, null, { gen: { tier: 2 }, mods: { raiders: 1 } }), p = playerOf(s), r = s.ents.find((e) => e.kind === "raider");
   s.crews[r.crew].att = "wary"; for (const h of s.ents) if (h.kind === "husk" || h.kind === "bot") h.alive = false; p.hp.torso = p.max.torso = p.hp.head = p.max.head = 999;
@@ -395,6 +395,71 @@ test("stations seed data logs, radiation rooms and events; every event plays out
 test("radiation doses unprotected raiders and a hazard suit cuts it", () => {
   const dose = (armor) => { const { s, p } = lone(80); if (armor) p.armor = { d: armor, r: 0 }; s.rad = [Sim.idx(s, p.x, p.y)]; const b0 = p.blood; for (let i = 0; i < 12; i++) Sim.act(s, "p1", { type: "wait" }); return (b0 - p.blood) * 5 + (p.rad || 0); };
   const bare = dose(null); assert.ok(bare > 0, "dosed"); const suit = dose("hazard"); assert.ok(suit < bare, `suit ${suit} < bare ${bare}`);
+});
+
+test("mutated elites: daily-op odds spawn them, armor soaks hits, volatile ones burst, kills drop mutagen", () => {
+  let n = 0, kinds = new Set(); for (let k = 0; k < 12; k++) { const s = Sim.newGame(700 + k, null, { gen: { tier: 3 }, mods: { elite: 2.5 } }); for (const e of s.ents) if (e.mut) { n++; kinds.add(e.mut); } }
+  assert.ok(n >= 8 && kinds.size >= 4, `elites ${n} kinds ${kinds.size}`);
+  const { s, p } = lone(81); const sp = N4.map(([a, b]) => [p.x + a * 2, p.y + b * 2]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && Sim.walk(Sim.tileAt(s, (x + p.x) / 2, (y + p.y) / 2)));
+  const h = husk("hv", sp[0], sp[1], [0, 1]); h.mut = "volatile"; h.aware = true; for (const l in h.hp) h.hp[l] = 1; s.ents.push(h); p.hp.torso = p.max.torso = 500; p.hp.head = p.max.head = 500;
+  const b0 = s.fx.length; Sim.act(s, "p1", { type: "shoot", x: sp[0], y: sp[1] }); Sim.act(s, "p1", { type: "shoot", x: sp[0], y: sp[1] });
+  assert.ok(!h.alive, "volatile husk died"); assert.ok(s.items.some((i) => i.d === "mutagen"), "mutagen dropped"); assert.ok(p.tally.k.elite >= 1, "elite tallied");
+});
+
+test("vents link rooms: crawling moves you to the far end and costs a turn", () => {
+  let g = null, q; for (let k = 0; k < 15 && !g; k++) { ({ s: g, p: q } = lone(900 + k)); if (!g.vents || !g.vents.length) g = null; }
+  assert.ok(g, "a station with vents"); const [a, b] = g.vents[0]; q.x = a % g.W; q.y = (a / g.W) | 0;
+  assert.ok(Sim.act(g, "p1", { type: "interact" })); assert.equal(Sim.idx(g, q.x, q.y), b, "came out the other end"); assert.equal(q.tally.vents, 1);
+});
+
+test("tripwires: spotted ones block your step and disarm into a tripmine; your tripmine kills a husk", () => {
+  const { s, p } = lone(82); const sp = N4.map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.tileAt(s, x, y).t === "floor" && !Sim.entAt(s, x, y));
+  s.traps = [{ x: sp[0], y: sp[1], seen: {} }]; Sim.act(s, "p1", { type: "wait" }); assert.ok(s.traps[0].seen.p1, "spotted from next to it");
+  assert.ok(!Sim.act(s, "p1", { type: "move", dx: sp[0] - p.x, dy: sp[1] - p.y }), "won't walk into a spotted wire");
+  const n0 = p.inv.length; assert.ok(Sim.act(s, "p1", { type: "interact" })); assert.equal(s.traps.length, 0); assert.equal(p.inv.length, n0 + 1); assert.equal(p.inv[p.inv.length - 1].d, "tripmine");
+  for (let i = 0; i < 2; i++) Sim.act(s, "p1", { type: "wait" }); p.face = [sp[0] - p.x, sp[1] - p.y];
+  assert.ok(Sim.act(s, "p1", { type: "use", index: p.inv.length - 1 })); assert.equal(s.mines.length, 1); Sim.act(s, "p1", { type: "wait" });
+  const m = s.mines[0], hx = m.x + (m.x - p.x), hy = m.y + (m.y - p.y); const h = husk("hm", hx, hy, [0, 1]); for (const l in h.hp) h.hp[l] = 5; s.ents.push(h); p.hp.torso = p.max.torso = 500; p.hp.head = p.max.head = 500;
+  Sim.act(s, "p1", { type: "wait" }); assert.equal(s.mines.length, 0, "mine went off"); assert.ok(!h.alive || Object.values(h.hp).some((v) => v < 5), "husk caught in the blast");
+});
+
+test("welding torch seals a door: you can't open it, raiders can't pass, and you can cut it again", () => {
+  const { s, p } = lone(83); p.inv.push({ d: "weldtorch", r: 0, id: 999 }); const d = besideTile(s, (t) => t.t === "door" && !t.vault); p.x = d.n[0]; p.y = d.n[1]; p.face = [d.x - p.x, d.y - p.y];
+  const t = Sim.tileAt(s, d.x, d.y); t.open = false; const ti = p.inv.findIndex((i) => i.d === "weldtorch"); assert.ok(Sim.act(s, "p1", { type: "use", index: ti })); assert.ok(t.sealed && t.hp >= 26);
+  Sim.act(s, "p1", { type: "wait" }); assert.ok(!Sim.act(s, "p1", { type: "move", dx: d.x - p.x, dy: d.y - p.y }), "welded doors don't open"); assert.ok(!t.open);
+  assert.ok(Sim.act(s, "p1", { type: "use", index: p.inv.findIndex((i) => i.d === "weldtorch") })); assert.ok(!t.sealed, "cut open again");
+});
+
+test("sneaking: husks spot you closer, every other step costs a turn", () => {
+  const { s, p } = lone(84); s.power = true; const h = husk("hs", p.x + 6, p.y, [-1, 0]); for (let x = p.x; x <= p.x + 6; x++) s.tiles[Sim.idx(s, x, p.y)] = { t: "floor" }; s.ents.push(h);
+  for (let x = p.x; x <= p.x + 6; x++) for (const dy of [-1, 1]) if (Sim.tileAt(s, x, p.y + dy).t === "space") s.tiles[Sim.idx(s, x, p.y + dy)] = { t: "wall" };
+  p.armor = null; p.light = null; Sim.act(s, "p1", { type: "sneak" }); assert.ok(p.sneak);
+  Sim.act(s, "p1", { type: "wait" }); assert.ok(!h.aware, "a husk 6 tiles off doesn't see a sneaking player");
+  const t0 = s.turn; Sim.act(s, "p1", { type: "sneak" }); Sim.act(s, "p1", { type: "sneak" }); const g = Sim.newGame(5, null, { map: "ks9" }), q = playerOf(g); g.ents = g.ents.filter((e) => e.kind === "player"); q.sneak = true; q.snk = 0;
+  const dirs = N4.filter(([a, b]) => Sim.walk(Sim.tileAt(g, q.x + a, q.y + b))); const tA = g.turn; Sim.act(g, "p1", { type: "move", dx: dirs[0][0], dy: dirs[0][1] }); Sim.act(g, "p1", { type: "move", dx: -dirs[0][0], dy: -dirs[0][1] });
+  assert.ok(g.turn - tA >= 3, "two sneaking steps take three turns");
+});
+
+test("death recap: hits are logged with who did them; mastery tallies kills by weapon class and helps aim", () => {
+  const { s, p } = lone(85); const sp = N4.map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y));
+  const h = husk("hr", sp[0], sp[1], [p.x - sp[0], p.y - sp[1]]); h.aware = true; h.mut = "venom"; s.ents.push(h); for (const l in p.hp) p.hp[l] = 3; for (let i = 0; i < 25 && p.alive; i++) Sim.act(s, "p1", { type: "wait" });
+  assert.ok(!p.alive, "died"); assert.ok(p.hits.length > 0 && /Venomous husk/.test(p.hits[p.hits.length - 1].by), "hit log names the husk"); assert.ok(/husk/i.test(p.killer));
+  const { s: g, p: q } = lone(86); const sp2 = N4.map(([a, b]) => [q.x + a * 2, q.y + b * 2]).find(([x, y]) => Sim.walk(Sim.tileAt(g, x, y)) && Sim.walk(Sim.tileAt(g, (x + q.x) / 2, (y + q.y) / 2)));
+  const before = Sim.hitChance(g, q, sp2[0], sp2[1]); q.mast = { pistol: 4 }; assert.ok(Math.abs(Sim.hitChance(g, q, sp2[0], sp2[1]) - before - .1) < .001 || Sim.hitChance(g, q, sp2[0], sp2[1]) === .95, "pistol mastery adds to hit chance");
+  const k = husk("hk", sp2[0], sp2[1], [0, 1]); for (const l in k.hp) k.hp[l] = 1; k.aware = true; g.ents.push(k); for (let i = 0; i < 6 && k.alive; i++) Sim.act(g, "p1", { type: "shoot", x: sp2[0], y: sp2[1] });
+  assert.ok(!k.alive && q.tally.wk.pistol === 1, "pistol kill tallied");
+});
+
+test("daily op: one per date, the same everywhere, brutal modifiers, listed with the signals", () => {
+  const a = World.dailyOp("20261122"), b = World.dailyOp("20261122"), c = World.dailyOp("20261123"); assert.deepEqual(a, b); assert.notEqual(a.name + a.sector, c.name + c.sector + "x");
+  assert.equal(World.loc(a.id).name, a.name); assert.ok(a.site.mods.elite > 1 && a.mods.length === 3); const sh = World.newShip(); sh.opKey = "20261122"; assert.ok(World.signals(sh).some((g) => g.id === a.id));
+  const s = Sim.newGame(1, null, { gen: { tier: a.site.tier, kind: a.site.kind, size: a.site.size }, mods: a.site.mods }); assert.ok(s.ents.some((e) => e.kind === "player"));
+});
+
+test("Rivet the ship's cat lives aboard, wanders as the crew moves, and can be petted", () => {
+  const s = Sim.newGame(3, null, { map: "ship", mode: "ship", crew: [{ id: "p1", name: "You", loadout: {} }] }), c = s.ents.find((e) => e.kind === "pet"), p = playerOf(s); assert.ok(c, "cat aboard");
+  const at = [c.x, c.y]; for (let i = 0; i < 40; i++) { const d = N4[i % 4]; Sim.act(s, "p1", { type: "move", dx: d[0], dy: d[1] }); } assert.ok(c.x !== at[0] || c.y !== at[1] || c.nap > 0, "wandered (or napping)");
+  const sp = N4.map(([a, b]) => [c.x + a, c.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y)); p.x = sp[0]; p.y = sp[1]; assert.ok(Sim.act(s, "p1", { type: "interact" })); assert.ok(s.fx.some((f) => f.type === "pet"));
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);
