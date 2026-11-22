@@ -402,7 +402,7 @@ test("mutated elites: daily-op odds spawn them, armor soaks hits, volatile ones 
   assert.ok(n >= 8 && kinds.size >= 4, `elites ${n} kinds ${kinds.size}`);
   const { s, p } = lone(81); const sp = N4.map(([a, b]) => [p.x + a * 2, p.y + b * 2]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && Sim.walk(Sim.tileAt(s, (x + p.x) / 2, (y + p.y) / 2)));
   const h = husk("hv", sp[0], sp[1], [0, 1]); h.mut = "volatile"; h.aware = true; for (const l in h.hp) h.hp[l] = 1; s.ents.push(h); p.hp.torso = p.max.torso = 500; p.hp.head = p.max.head = 500;
-  const b0 = s.fx.length; Sim.act(s, "p1", { type: "shoot", x: sp[0], y: sp[1] }); Sim.act(s, "p1", { type: "shoot", x: sp[0], y: sp[1] });
+  for (let i = 0; i < 6 && h.alive; i++) { h.flee = 0; h.fled = 1; Sim.act(s, "p1", { type: "shoot", x: h.x, y: h.y }); }
   assert.ok(!h.alive, "volatile husk died"); assert.ok(s.items.some((i) => i.d === "mutagen"), "mutagen dropped"); assert.ok(p.tally.k.elite >= 1, "elite tallied");
 });
 
@@ -460,6 +460,50 @@ test("Rivet the ship's cat lives aboard, wanders as the crew moves, and can be p
   const s = Sim.newGame(3, null, { map: "ship", mode: "ship", crew: [{ id: "p1", name: "You", loadout: {} }] }), c = s.ents.find((e) => e.kind === "pet"), p = playerOf(s); assert.ok(c, "cat aboard");
   const at = [c.x, c.y]; for (let i = 0; i < 40; i++) { const d = N4[i % 4]; Sim.act(s, "p1", { type: "move", dx: d[0], dy: d[1] }); } assert.ok(c.x !== at[0] || c.y !== at[1] || c.nap > 0, "wandered (or napping)");
   const sp = N4.map(([a, b]) => [c.x + a, c.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y)); p.x = sp[0]; p.y = sp[1]; assert.ok(Sim.act(s, "p1", { type: "interact" })); assert.ok(s.fx.some((f) => f.type === "pet"));
+});
+
+test("husk nests: placed on stations, birth stalkers when you're near, burst into mutagen when destroyed", () => {
+  let g = null; for (let k = 0; k < 10 && !g; k++) { const s0 = Sim.newGame(1200 + k, LO, { gen: { tier: 2, kind: "hive" }, mods: { nests: 1 } }); if (s0.ents.some((e) => e.type === "nest")) g = s0; }
+  assert.ok(g, "a nest spawned"); const n = g.ents.find((e) => e.type === "nest"), p = playerOf(g); for (const e of g.ents) if (e.kind !== "player" && e !== n) e.alive = false; g.ev = null; g.traps = []; g.rad = [];
+  const sp = [[2, 0], [-2, 0], [0, 2], [0, -2], [3, 0], [0, 3]].map(([a, b]) => [n.x + a, n.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(g, x, y)) && !Sim.entAt(g, x, y)); p.x = sp[0]; p.y = sp[1];
+  for (const l in p.hp) p.hp[l] = p.max[l] = 999; n.t = 20; Sim.act(g, "p1", { type: "wait" }); assert.ok(g.ents.some((e) => e.alive && e.mom === n.id), "a stalker crawled out");
+  for (const e of g.ents) if (e.mom === n.id) e.alive = false; n.hp.torso = 1; for (let i = 0; i < 8 && n.alive; i++) Sim.act(g, "p1", { type: "shoot", x: n.x, y: n.y });
+  assert.ok(!n.alive, "nest destroyed"); assert.ok(g.items.some((i) => i.d === "mutagen")); assert.equal(p.tally.k.nest, 1);
+});
+
+test("special rounds: a kit loads 12 shots that run out; the Lazarus injector saves you exactly once", () => {
+  const { s, p } = lone(87); p.inv.push({ d: "apkit", r: 0, id: 901 }); assert.ok(Sim.act(s, "p1", { type: "use", index: p.inv.length - 1 })); assert.deepEqual(p.spec, { t: "ap", n: 12 });
+  const sp = N4.map(([a, b]) => [p.x + a * 2, p.y + b * 2]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && Sim.walk(Sim.tileAt(s, (x + p.x) / 2, (y + p.y) / 2)));
+  const h = husk("ha", sp[0], sp[1], [0, 1]); h.type = "brute"; for (const l in h.hp) h.hp[l] = h.max[l] = 999; h.stun = 99; s.ents.push(h); p.ammo.pistol = 99;
+  for (let i = 0; i < 40 && p.spec; i++) { h.blood = 999; h.bleed = {}; h.alive = true; Sim.act(s, "p1", { type: "shoot", x: h.x, y: h.y }); } assert.equal(p.spec, null, "kit used up");
+  const { s: g, p: q } = lone(88); q.inv.push({ d: "lazarus", r: 0, id: 902 }); q.hp.torso = 1; Sim.act(g, "p1", { type: "wait" });
+  const kill = () => { for (let i = 0; i < 3; i++) Sim.act(g, "p1", { type: "wait" }); };
+  const bleedOut = () => { const l0 = q.lazarus | 0; for (let i = 0; i < 12 && q.alive && (q.lazarus | 0) === l0; i++) { q.blood = Math.min(q.blood, 2); q.bleed = { torso: 1, larm: 1, rarm: 1 }; Sim.act(g, "p1", { type: "wait" }); } };
+  bleedOut(); assert.ok(q.alive && q.lazarus === 1, "Lazarus brought you back"); assert.ok(!q.inv.some((i) => i.d === "lazarus")); bleedOut(); assert.ok(!q.alive, "but only once");
+});
+
+test("nemesis: they spawn hostile, wearing your gear, carrying what they took; killing them is recorded", () => {
+  const N = { name: "Vask the Gutter", fac: "reaver", lvl: 2, w1: { d: "pump", r: 1 }, items: [{ d: "medkit", r: 0 }, { d: "longbore", r: 1 }] };
+  const s = Sim.newGame(77, LO, { gen: { tier: 2 }, factions: { rep: {}, nemesis: N } }), r = s.ents.find((e) => e.nemesis);
+  assert.ok(r && r.name === "Vask the Gutter" && r.w1.d === "pump" && r.inv.some((i) => i.d === "longbore"), "nemesis spawned with your gear"); assert.equal(s.crews[r.crew].att, "hostile");
+  assert.ok(r.max.torso > 52, "tougher than a normal raider"); const p = playerOf(s); for (const e of s.ents) if (e.kind !== "player" && e !== r) e.alive = false;
+  const sp = N4.map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y)); r.x = sp[0]; r.y = sp[1]; for (const l in r.hp) r.hp[l] = 1; r.stun = 9;
+  for (let i = 0; i < 6 && r.alive; i++) Sim.act(s, "p1", { type: "melee", x: r.x, y: r.y }); assert.ok(!r.alive && s.nemesisDown === "p1", "you killed your nemesis");
+});
+
+test("new events: boarders take the pad, toxic gas spreads and chokes, a supply pod lands full of loot", () => {
+  const run = (type, n) => { const g = Sim.newGame(91, LO, { gen: { tier: 2 } }); g.ev = { type, at: 2, on: 0 }; const q = playerOf(g); for (const l in q.hp) q.hp[l] = q.max[l] = 9999; q.blood = 100; for (let i = 0; i < n && g.status === "playing"; i++) { q.blood = Math.max(q.blood, 60); Sim.act(g, "p1", { type: "wait" }); } return g; };
+  const b = run("boarding", 4); assert.ok(b.crews.cb && b.crews.cb.att === "hostile" && b.ents.some((e) => e.crew === "cb"), "boarders");
+  const gs = run("gas", 30); assert.ok(gs.gas.length > 9, "gas spread: " + gs.gas.length);
+  const q = playerOf(gs); q.x = gs.gas[0] % gs.W; q.y = (gs.gas[0] / gs.W) | 0; q.head = null; q.armor = null; const b0 = q.blood = 80; Sim.act(gs, "p1", { type: "wait" }); assert.ok(q.blood < b0 || !gs.gas.includes(Sim.idx(gs, q.x, q.y)), "gas hurts");
+  const d = run("drop", 4), pod = d.tiles.find((t) => t.kind === "pod"); assert.ok(pod && pod.loot.length === 4, "pod with loot");
+});
+
+test("implants: ocular sees further, lung sacs add oxygen", () => {
+  const a = Sim.newGame(5, { ...LO, implants: {} }, { map: "ks9" }), b = Sim.newGame(5, { ...LO, implants: { ocular: 1, lungs: 1 } }, { map: "ks9" }); const pa = playerOf(a), pb = playerOf(b);
+  assert.equal(pb.o2max, pa.o2max + 30); pa.x = pb.x = 20; pa.y = pb.y = 13; a.power = b.power = false; for (const s0 of [a, b]) for (const t of s0.tiles) if (t.t === "door") t.open = true;
+  const far = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [20 + dx * 5, 13 + dy * 5]).find(([x, y]) => Sim.los(b, 20, 13, x, y) && Sim.walk(Sim.tileAt(b, x, y)));
+  if (far) { assert.ok(!Sim.canSee(a, pa, far[0], far[1]) && Sim.canSee(b, pb, far[0], far[1]), "the implant sees 5 tiles in the dark"); }
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

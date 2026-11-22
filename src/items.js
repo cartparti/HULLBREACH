@@ -141,6 +141,10 @@ const Items = (() => {
     sentry:   { k: "tool", name: "Field sentry", value: 420, rar: 1, desc: "Use it to deploy beside you. Shoots anything hostile for 30 turns, then its battery dies." },
     tripmine: { k: "tool", name: "Tripmine", value: 150, desc: "Use it to set it on the deck in front of you. It blows when anything hostile comes within a tile. Your crew won't set it off. Walk up and press F to pick it back up." },
     weldtorch:{ k: "tool", name: "Welding torch", value: 180, desc: "Face a closed door and use it to weld it shut (3 uses). Raiders can't get through and husks have to tear it apart. Use it on a welded door to cut it open again, free." },
+    apkit:    { k: "tool", name: "AP rounds (12)", value: 140, desc: "Use with a gun in hand: the next 12 shots are armour-piercing. They punch through raider armour, brute hide and bone plating." },
+    inckit:   { k: "tool", name: "Incendiary rounds (12)", value: 160, desc: "Use with a gun in hand: the next 12 shots are incendiary. Hits can set the target's tile ablaze. Murder on nests." },
+    hpkit:    { k: "tool", name: "Hollow-points (12)", value: 120, desc: "Use with a gun in hand: the next 12 shots are hollow-points. +25% damage and a sure bleed on flesh, but weaker against armour." },
+    lazarus:  { k: "tool", name: "Lazarus injector", value: 950, rar: 1, desc: "An auto-injector over the heart. The first time you'd die, it drags you back with a sliver of health. One use." },
     mutagen:  { k: "val", name: "Mutagen gland", value: 240, desc: "Cut from a mutated husk. Research outfits pay well and ask nothing." },
     datalog:  { k: "key", name: "Data log", value: 0, desc: "A recovered log. Bring it home to add it to your codex." },
     jobitem:  { k: "key", name: "Contract cargo", value: 0, desc: "What you were sent for. Get it to your shuttle." },
@@ -223,7 +227,7 @@ const Items = (() => {
     if (cat === "ammo") { const a = pick(rng, ["pistol", "pistol", "rifle", "rifle", "shell", "shell", "sniper", "rocket"]); return { d: "ammo_" + a, r: 0, n: Math.max(1, Math.round(AMMO[a].stack * (.6 + rng() * .8))) }; }
     if (cat === "mat") { const m = pick(rng, ["scrap", "scrap", "scrap", "prop", "prop", "circ", "org", "parts"]); return { d: m, r: 0, n: 1 + Math.floor(rng() * (m === "parts" ? 2 : 3)) }; }
     if (cat === "part") { return rng() < .1 + tier * .06 ? { d: "core", r: 0, n: 1 } : { d: "parts", r: 0, n: 1 + Math.floor(rng() * (1 + tier)) }; }
-    if (cat === "throw" && rng() < .15) { const q = rng(); return make(q < .35 ? "breach" : q < .65 ? "tripmine" : q < .88 ? "weldtorch" : "sentry", 0); }
+    if (cat === "throw" && rng() < .15) if (rng() < .3) return make(["apkit", "inckit", "hpkit"][Math.floor(rng() * 3)], 0); { const q = rng(); return make(q < .35 ? "breach" : q < .65 ? "tripmine" : q < .88 ? "weldtorch" : "sentry", 0); }
     if (cat === "food") return make(pick(rng, ["ration", "ration", "paste", "stew", "jerky", "waterflask", "waterflask", "purewater", "recaf", rng() < .3 ? "amber" : "stew", rng() < .2 ? "feast" : "ration"]), 0);
     if (cat === "light") return rng() < .1 * tier ? make("lumen") : rng() < .3 ? make("floodlamp") : make("flashlight", Math.min(2, r));
     if (cat === "val") { const i = Math.floor(rng() * VALS.length); return { d: "val" + i, r: 0, v: Math.round(VALS[i][1] * (.85 + rng() * .4) * (1 + (tier - 1) * .2)) }; }
@@ -250,14 +254,14 @@ const Items = (() => {
   const R_ = (id, cat, lvl, d, cost, extra) => ({ id, cat, lvl, out: { d, r: 0, ...(extra || {}) }, cost });
   const RECIPES = [
     R_("a_pistol", "ammo", 1, "ammo_pistol", { scrap: 2, prop: 1 }, { n: 12 }), R_("a_shell", "ammo", 1, "ammo_shell", { scrap: 3, prop: 1 }, { n: 6 }),
-    R_("a_rifle", "ammo", 2, "ammo_rifle", { scrap: 2, prop: 2 }, { n: 10 }), R_("a_sniper", "ammo", 3, "ammo_sniper", { scrap: 2, prop: 2, circ: 1 }, { n: 4 }),
+    R_("a_rifle", "ammo", 2, "ammo_rifle", { scrap: 2, prop: 2 }, { n: 10 }), R_("a_apkit", "ammo", 2, "apkit", { scrap: 3, prop: 1, parts: 1 }), R_("a_inckit", "ammo", 2, "inckit", { prop: 3, org: 1 }), R_("a_hpkit", "ammo", 1, "hpkit", { scrap: 2, org: 1 }), R_("a_sniper", "ammo", 3, "ammo_sniper", { scrap: 2, prop: 2, circ: 1 }, { n: 4 }),
     R_("a_rocket", "ammo", 4, "ammo_rocket", { scrap: 3, prop: 3, circ: 2 }, { n: 1 }),
     R_("f_paste", "food", 1, "paste", { org: 2 }), R_("f_water", "food", 1, "waterflask", { org: 1, scrap: 1 }), R_("f_stew", "food", 2, "stew", { org: 3 }),
     R_("f_pure", "food", 2, "purewater", { org: 1, circ: 1 }), R_("f_recaf", "food", 2, "recaf", { org: 2 }), R_("f_amber", "food", 4, "amber", { org: 4, prop: 1 }), R_("f_feast", "food", 5, "feast", { org: 6 }),
     R_("m_bandage", "meds", 1, "bandage", { scrap: 1, org: 1 }), R_("m_o2", "meds", 2, "o2", { scrap: 2, circ: 1 }), R_("m_medkit", "meds", 2, "medkit", { scrap: 2, circ: 2, org: 1 }, { r: 1 }),
     R_("x_laser", "gear", 2, "mod_laser", { scrap: 2, circ: 2 }), R_("x_choke", "gear", 2, "mod_choke", { scrap: 4, parts: 1 }), R_("x_scope", "gear", 3, "mod_scope", { scrap: 2, circ: 3, parts: 1 }), R_("x_supp", "gear", 3, "mod_suppressor", { scrap: 4, circ: 2, parts: 1 }),
     R_("g_breach", "gear", 2, "breach", { scrap: 2, prop: 3 }), R_("g_sentry", "gear", 3, "sentry", { scrap: 3, parts: 2, circ: 3 }), R_("g_mine", "gear", 2, "tripmine", { scrap: 3, prop: 2 }), R_("g_torch", "gear", 2, "weldtorch", { scrap: 3, circ: 1, prop: 1 }),
-    R_("m_stim", "meds", 3, "stim", { circ: 2, org: 3 }, { r: 2 }), R_("m_splint", "meds", 1, "splint", { scrap: 2, org: 1 }), R_("m_anti", "meds", 2, "antibiotic", { org: 3, circ: 1 }),
+    R_("m_stim", "meds", 3, "stim", { circ: 2, org: 3 }, { r: 2 }), R_("m_lazarus", "meds", 4, "lazarus", { org: 4, circ: 3, core: 1 }), R_("m_splint", "meds", 1, "splint", { scrap: 2, org: 1 }), R_("m_anti", "meds", 2, "antibiotic", { org: 3, circ: 1 }),
     R_("t_decoy", "meds", 2, "decoy", { scrap: 2, circ: 1 }), R_("t_frag", "weapon", 2, "frag", { scrap: 2, prop: 2 }), R_("t_inc", "weapon", 2, "incendiary", { scrap: 1, prop: 3 }), R_("t_stun", "weapon", 3, "stun", { scrap: 2, circ: 2 }),
     R_("w_crowbar", "weapon", 1, "crowbar", { scrap: 3 }), R_("w_knife", "weapon", 1, "knife", { scrap: 3 }), R_("w_pipe", "weapon", 1, "pipe", { scrap: 5, prop: 1 }),
     R_("w_pistol", "weapon", 2, "pistol", { scrap: 6, prop: 1, circ: 1 }), R_("w_sixgun", "weapon", 2, "sixgun", { scrap: 7, circ: 1 }), R_("w_coach", "weapon", 2, "coachgun", { scrap: 7, prop: 2 }), R_("w_machete", "weapon", 2, "machete", { scrap: 5 }),

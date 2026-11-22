@@ -10,7 +10,7 @@ let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all",
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:500,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
-  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,mastery:{},daily:null,morale:0,catGift:0,
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,mastery:{},daily:null,morale:0,catGift:0,implants:{},nemesis:null,arcade:{best:0,day:0},
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -23,7 +23,7 @@ function fixProfile(p){ const d=newProfile(); d.ship.opKey=todayKey(); if(!p) re
   p.stats={...d.stats,...(p.stats||{})}; p.kit={...d.kit,...(p.kit||{})}; if(!Array.isArray(p.kit.inv)) p.kit.inv=[]; p.kit.ammo=p.kit.ammo||{};
   p.stash=Array.isArray(p.stash)?p.stash.filter(q=>q&&Items.def(q.d)):[]; for(const q of p.stash) if(!q.uid) Object.assign(q,mk(q));
   p.ammo=p.ammo||{}; p.mats=p.mats||{}; if(p.food==null) p.food=80; if(p.water==null) p.water=80; if(!p.gotLight){ p.gotLight=1; p.stash.push(mk({d:"flashlight"})); } p.look={...d.look,...(p.look||{})}; if(p.look.fh==null){ const old=+p.look.f|0; p.look.fh=[0,1,3,5,0,0][old]||0; p.look.fm=[0,0,0,0,1,2][old]||0; } p.unlocks={cloak:[],visor:[],crest:[],...(p.unlocks||{})};
-  p.life=p.life&&typeof p.life==="object"?p.life:{}; p.codex=p.codex&&typeof p.codex==="object"?p.codex:{}; p.medals=p.medals&&typeof p.medals==="object"?p.medals:{}; p.mastery=p.mastery&&typeof p.mastery==="object"?p.mastery:{};
+  p.life=p.life&&typeof p.life==="object"?p.life:{}; p.codex=p.codex&&typeof p.codex==="object"?p.codex:{}; p.medals=p.medals&&typeof p.medals==="object"?p.medals:{}; p.mastery=p.mastery&&typeof p.mastery==="object"?p.mastery:{}; p.implants=p.implants&&typeof p.implants==="object"?p.implants:{}; p.arcade=p.arcade&&typeof p.arcade==="object"?p.arcade:{best:0,day:0};
   p.rep=p.rep&&typeof p.rep==="object"?p.rep:{}; p.xp=p.xp|0; p.perks=p.perks&&typeof p.perks==="object"?p.perks:{}; p.injury=p.injury||{frac:{},inf:0}; if(p.hire&&!(p.hire.fac in Sim.FACTIONS)) p.hire=null;
   p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); p.ship.opKey=todayKey(); return p; }
 function todayKey(){ return new Date().toISOString().slice(0,10).replace(/-/g,""); }
@@ -142,7 +142,7 @@ const FLAVOR={
   fridge:[["The fridge hums. Inside: rations, a jar of something, and a note that says DON'T.","You take a cold flask out, think better of it, put it back."],"raids the galley fridge"],
 };
 let flavorCD=0;
-function onFlavor(kind){
+function onFlavor(kind){ if(kind==="arcade"&&!(typeof inSquad==="function"&&inSquad()&&false)){ openPanel("arcade"); return; }
   const F=FLAVOR[kind]; if(!F) return; const lines=F[0]; toast(lines[(Math.random()*lines.length)|0]);
   if(typeof inSquad==="function"&&inSquad()&&Number.isFinite(arguments[1])) emit({t:"fx",kind,x:arguments[1],y:arguments[2]});
   if(F[1]&&typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>3000){ flavorCD=Date.now(); emit({t:"chat",m:F[1]}); }
@@ -180,6 +180,8 @@ const PANELS={
   body:{eye:()=>{ const b=lootBody(); return b?(b.kind==="remains"?"Recovery":Sim.FACTIONS[b.fac].name):"Search"; },title:()=>{ const b=lootBody(); return b?(b.kind==="remains"?"Your old body":b.alive?`${b.name} · hands up`:`${b.name}'s body`):"Gone"; },view:viewBody},
   comms:{eye:"Bridge · hologram comms",title:()=>commsFac?`Channel open · ${Sim.FACTIONS[commsFac].name}`:"Hail a faction",view:viewComms},
   hack:{eye:"Security terminal",title:()=>"Station network",view:viewHack},
+  encounter:{eye:"In transit",title:()=>ENC&&ENC.title||"Contact",view:viewEncounter},
+  arcade:{eye:"Break room",title:()=>"VOID RUNNER",view:viewArcade},
   debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
 };
 // ---------- searching a dead (or surrendered) raider ----------
@@ -213,12 +215,12 @@ const GREET={
 // what each outfit sells: [item, rarity, min standing]
 const FSHOP={
   reaver:[["pipe",1,0],["sixgun",1,0],["scrapvest",1,0],["pauldron",0,0],["welder",1,20],["cape",0,0],["machete",1,0],["ripsaw",1,30]],
-  blacksun:[["wasp",1,-10],["hound",1,0],["cannon",1,-10],["gasmask",1,0],["brigandine",1,10],["scarf",0,-10],["stim",0,-10],["kestrel",1,25]],
-  saint:[["medcoat",1,0],["hazard",1,10],["censer",0,0],["medkit",0,0],["pump",1,10],["maul",1,0]],
-  guild:[["breach",0,-10],["harness",0,-10],["hardhat",1,-10],["cargo",0,-10],["toolbelt",0,-10],["oxytank",0,0],["carbine",0,0],["field",0,0],["floodlamp",0,10]],
+  blacksun:[["inckit",0,-10],["wasp",1,-10],["hound",1,0],["cannon",1,-10],["gasmask",1,0],["brigandine",1,10],["scarf",0,-10],["stim",0,-10],["kestrel",1,25]],
+  saint:[["lazarus",0,20],["medcoat",1,0],["hazard",1,10],["censer",0,0],["medkit",0,0],["pump",1,10],["maul",1,0]],
+  guild:[["apkit",0,-10],["breach",0,-10],["harness",0,-10],["hardhat",1,-10],["cargo",0,-10],["toolbelt",0,-10],["oxytank",0,0],["carbine",0,0],["field",0,0],["floodlamp",0,10]],
   vanta:[["hardsuit",0,0],["eva",0,-10],["pilothelm",0,10],["bullpup",1,0],["warden",0,10],["medkit",0,-10],["stim",0,0],["hauler",0,20],["magboots",1,20],["lumen",0,40]],
   hollow:[["sentry",0,0],["carrier",1,0],["sallet",1,10],["greaves",1,10],["longbore",1,20],["lamp",0,0]],
-  marshal:[["breach",0,0],["flak",1,0],["flakhelm",1,0],["kneepads",1,0],["warden",0,10],["medkit",0,0]],
+  marshal:[["hpkit",0,-10],["apkit",0,0],["breach",0,0],["flak",1,0],["flakhelm",1,0],["kneepads",1,0],["warden",0,10],["medkit",0,0]],
   choir:[["exo",0,0],["hardlegs",0,10],["drone",0,0],["kestrel",1,20],["rivet",2,30],["pilothelm",2,40]],
   unbound:[["drone",0,0],["toolbelt",0,-10],["floodlamp",0,0],["medkit",0,0],["harness",1,10],["hornet",1,0]],
 };
@@ -449,12 +451,14 @@ const SHIPUP={
   pouch:{name:"Secure pouch",max:1,cost:[{scrap:6,parts:2,credits:300}],desc:["A third secure slot: one more item that comes home even if you don't."]},
   scanner:{name:"Scanner array",max:1,cost:[{circ:4,parts:2,credits:500}],desc:["Sweeps a derelict before you board: power, creatures, the Matriarch, turrets and which crews are aboard."]},
   brig:{name:"Brig",max:1,cost:[{scrap:8,parts:3,credits:450}],desc:["Lets you bind surrendered raiders and bring them home for a ransom or a Marshal bounty."]},
+  hydro:{name:"Hydroponics bay",max:2,cost:[{org:4,circ:2,scrap:4,credits:350},{org:6,parts:2,circ:3,credits:700}],desc:["Racks of grow-lights and hungry plants. You lose half as much food and water while travelling.","Bigger beds: travel costs almost nothing, and the harvest sometimes leaves fresh food or a herbal poultice in your stash."]},
   tanks:{name:"Fuel tanks",max:2,cost:[{scrap:5,parts:2,credits:250},{scrap:6,parts:3,credits:400}],desc:["+2 fuel capacity.","+2 more fuel capacity."]},
 };
 const upLvl=k=>((ship().up||{})[k])|0;
 let fabTab="weapon";
 function eatDrink(food,water,heal){ profile.food=Math.max(0,Math.min(100,profile.food+(food||0))); profile.water=Math.max(0,Math.min(100,profile.water+(water||0))); }
-function travelHunger(days){ if(!profile) return; profile.food=Math.max(0,profile.food-1.5*days); profile.water=Math.max(0,profile.water-2*days); if(profile.food<15||profile.water<15) toast(profile.water<20?"You're parched. Get something to drink at the galley.":"You're starving. Get a meal at the galley."); save(); }
+function travelHunger(days){ if(!profile) return; const hy=upLvl("hydro"), f=hy>=2?.15:hy?.5:1; profile.food=Math.max(0,profile.food-1.5*days*f); profile.water=Math.max(0,profile.water-2*days*f);
+  if(hy>=2){ const got=[]; for(let d=0;d<days;d++) if(Math.random()<.3){ const it=mk({d:Math.random()<.35?"bandage":["ration","waterflask","ration"][Math.floor(Math.random()*3)]}); if(Items.def(it.d)){ World.grant(profile,it); got.push(Items.name(it)); } } if(got.length) setTimeout(()=>toast(`Hydroponics harvest: ${got.join(", ")} (in your stash).`),2600); } if(profile.food<15||profile.water<15) toast(profile.water<20?"You're parched. Get something to drink at the galley.":"You're starving. Get a meal at the galley."); save(); }
 function viewWorkbench(){
   const lv=fabLvl(), up=Items.FAB_UP[lv], canUp=!inSquad()||Net.host;
   const tabs=[["weapon","Weapons"],["armor","Armour"],["gear","Gear"],["meds","Meds"],["food","Food"],["ammo","Ammo"]];
@@ -601,7 +605,22 @@ const PERKS={
 const xpFor=l=>60*l*(l+1);
 const levelOf=xp=>{ let l=0; while(xpFor(l+1)<=(xp|0)) l++; return l; };
 const perkPoints=()=>levelOf(profile.xp)-Object.values(profile.perks||{}).reduce((a,n)=>a+(n|0),0);
-function viewSkills(){ const xp=profile.xp|0, L=levelOf(xp), a=xpFor(L), b=xpFor(L+1), pts=perkPoints(), I=profile.injury||{frac:{},inf:0};
+// cybernetic implants: permanent upgrades from the ship's surgeon. Three fit in one body
+const IMPLANTS={
+  ocular:{name:"Ocular implant",d:"See one tile further, lit or dark.",cost:{credits:900,circ:4,core:1}},
+  dermal:{name:"Dermal plating",d:"Sub-skin armour: 10% less damage from everything.",cost:{credits:1100,parts:4,scrap:6}},
+  lungs:{name:"Lung sacs",d:"+30 oxygen. Breathe longer on dead decks.",cost:{credits:700,org:4,circ:2}},
+  adrenal:{name:"Adrenal gland",d:"Stims last 15 turns instead of 10 and restore more blood.",cost:{credits:800,org:5,core:1}},
+  clot:{name:"Clotting factor",d:"Your blood seals wounds: bleeds often stop on their own.",cost:{credits:950,org:6,circ:2}},
+  reflex:{name:"Reflex booster",d:"+4% to hit, and husks miss you more often.",cost:{credits:1200,circ:5,core:1}},
+};
+const IMP_MAX=3;
+function viewImplants(){ const n=Object.keys(profile.implants).length;
+  return `<div class="panel h-card span12"><div class="h-eyebrow">Cybernetics · ${n}/${IMP_MAX} fitted</div><p class="risk">The ship's surgeon can wire up to three implants into you. They're permanent and come on every raid. Ripping one out is free but you don't get the parts back.</p><div class="h-grid">`+
+    Object.entries(IMPLANTS).map(([k,I])=>{ const has=!!profile.implants[k], ok=canPay(I.cost)&&n<IMP_MAX;
+      return `<div class="panel h-card span6 perk ${has?"got":""}"><div class="bar-row"><div class="grow"><b>${I.name}</b>${has?' <span style="color:var(--brass)">· fitted</span>':""}<p class="risk">${I.d}</p>${has?"":`<p class="risk">${costHTML(I.cost)}</p>`}</div>${has?`<button class="plain" data-act="unimplant:${k}">Remove</button>`:`<button data-act="implant:${k}" ${ok?"":"disabled"}>Install</button>`}</div></div>`; }).join("")+`</div></div>`; }
+function viewSkills(){ return viewSkills0().replace(/<\/section>\s*$/,viewImplants()+"</section>"); }
+function viewSkills0(){ const xp=profile.xp|0, L=levelOf(xp), a=xpFor(L), b=xpFor(L+1), pts=perkPoints(), I=profile.injury||{frac:{},inf:0};
   const inj=[...Object.keys(I.frac||{}).map(l=>`Broken ${Sim.LNAME[l]}`),...(I.inf?["Infected wound"]:[])];
   const has=d=>profile.stash.find(q=>q.d===d);
   return `<section class="h-grid"><div class="panel h-card span12"><div class="bar-row"><div class="grow"><div class="h-eyebrow">Level ${L}</div><div class="meter" style="height:8px;margin:6px 0"><i style="width:${Math.round((xp-a)/(b-a)*100)}%;background:var(--brass)"></i></div><p class="risk">${xp} XP · ${b-xp} to level ${L+1}. You earn XP for kills, searches, talking crews down, contracts and getting out alive. Dying keeps half.</p></div><div class="stat panel"><b>${pts}</b><span>perk point${pts===1?"":"s"}</span></div></div></div>
@@ -609,6 +628,7 @@ function viewSkills(){ const xp=profile.xp|0, L=levelOf(xp), a=xpFor(L), b=xpFor
     <div class="panel h-card span12"><div class="h-eyebrow">Injuries</div>${inj.length?`<p>${inj.join(" · ")}. These come with you into the next raid until they're treated.</p><div class="bar-row">${Object.keys(I.frac||{}).length?`<button class="plain" data-act="treat:splint" ${has("splint")?"":"disabled"}>Splint from stash</button>`:""}${I.inf?`<button class="plain" data-act="treat:antibiotic" ${has("antibiotic")?"":"disabled"}>Antibiotics from stash</button>`:""}</div><p class="risk">A medbay upgrade on the ship treats these automatically when you get back.</p>`:`<p class="risk">None. You're fit to fly.</p>`}</div></section>`; }
 // ---------- logbook: weekly bounties, medals with titles, the codex ----------
 const BOUNTIES=[
+  {id:"nest",t:"Burn them out",d:"Destroy {n} husk nests",n:2,k:"nest",cr:450,xp:100},
   {id:"elite",t:"Mutant cull",d:"Kill {n} mutated husks",n:3,k:"elite",cr:500,xp:110},{id:"disarm",t:"Sapper",d:"Disarm {n} tripwires",n:3,s:"disarms",cr:350,xp:80},
   {id:"vent",t:"Rat runs",d:"Crawl through {n} vents",n:4,s:"vents",cr:300,xp:60},{id:"daily",t:"Op runner",d:"Complete {n} Daily Ops",n:2,x:"daily",cr:600,xp:140},
   {id:"stalker",t:"Thin the packs",d:"Kill {n} stalkers",n:8,k:"stalker",cr:350,xp:70},{id:"brute",t:"Big game",d:"Kill {n} brutes",n:3,k:"brute",cr:450,xp:90},
@@ -627,6 +647,8 @@ const MEDALS=[
   {id:"caches",t:"Treasure Hunter",title:"Treasure Hunter",d:"Find 10 hidden caches."},{id:"archive",t:"Archivist",title:"Archivist",d:"Collect 12 data logs."},
   {id:"warden",t:"Warden",title:"Warden",d:"Bring home 3 prisoners."},{id:"ally",t:"Diplomat",title:"Diplomat",d:"Become Allied with any faction."},
   {id:"choir",t:"Song Breaker",title:"Song Breaker",d:"Finish a job against the Iron Choir."},{id:"throne",t:"Iron Heart",title:"Thronebreaker",d:"Get out of the Throne of Iron alive."},
+  {id:"vengeance",t:"Vengeance",title:"Avenger",d:"Kill your nemesis."},{id:"exterm",t:"Exterminator",title:"Exterminator",d:"Destroy 10 husk nests."},
+  {id:"chrome",t:"Chromed",title:"Chrome",d:"Fit three cybernetic implants."},{id:"arcade",t:"High Score",title:"Void Runner",d:"Score 1500 in VOID RUNNER."},
   {id:"mutant",t:"Mutant Hunter",title:"Mutant Hunter",d:"Kill 10 mutated husks."},{id:"sapper",t:"Sapper",title:"Sapper",d:"Disarm 10 tripwires."},
   {id:"dailies",t:"Op Runner",title:"Op Runner",d:"Complete 5 Daily Ops."},{id:"master",t:"Weapon Master",title:"Master",d:"Reach Master with any weapon class."},
   {id:"melt",t:"Out of the Fire",title:"Daredevil",d:"Extract during a reactor meltdown."},{id:"legend",t:"Legend",title:"Legend",d:"Own a legendary item."},
@@ -635,7 +657,7 @@ function bountyWeek(){ const wk=Math.floor((ship().day|0)/7); let B=profile.boun
 let logTab="bounties";
 function viewLogbook(){ const B=bountyWeek(), daysLeft=7-((ship().day|0)%7), tabs=[["bounties","Bounties"],["medals","Medals"],["mastery","Mastery"],["codex","Codex"],["stats","Service record"]];
   let body="";
-  if(logTab==="bounties") body=`<p class="risk">New bounties every 7 days (${daysLeft} day${daysLeft>1?"s":""} left). Progress only counts on raids you get out of alive.</p>`+B.list.map(q=>{ const b=BOUNTIES.find(x=>x.id===q.id); if(!b) return ""; const done=q.prog>=b.n;
+  if(logTab==="bounties") body=(profile.nemesis?`<div class="recap nem"><div class="h-eyebrow" style="color:var(--blood2)">Nemesis · level ${profile.nemesis.lvl}</div><p><b>${esc(profile.nemesis.name)}</b> of the ${esc(Sim.FACTIONS[profile.nemesis.fac].name)} is hunting you${profile.nemesis.items&&profile.nemesis.items.length?`, carrying your ${profile.nemesis.items.map(it=>esc(Items.name(it))).join(", ")}`:""}. They turn up on about 40% of your raids (every Daily Op).</p></div>`:"")+`<p class="risk">New bounties every 7 days (${daysLeft} day${daysLeft>1?"s":""} left). Progress only counts on raids you get out of alive.</p>`+B.list.map(q=>{ const b=BOUNTIES.find(x=>x.id===q.id); if(!b) return ""; const done=q.prog>=b.n;
       return `<div class="cm-row"><div class="cm-t"><b>${b.t}</b><span>${b.d.replace("{n}",b.n)} · ${Math.min(q.prog,b.n)}/${b.n}</span><div class="meter" style="height:5px;margin-top:3px"><i style="width:${Math.min(100,q.prog/b.n*100)}%;background:var(--brass)"></i></div></div>${q.claimed?`<span class="risk good">Claimed</span>`:done?`<button class="plain" data-act="bclaim:${q.id}">Claim ${b.cr} cr</button>`:`<span class="risk">${b.cr} cr · ${b.xp} XP</span>`}</div>`; }).join("");
   if(logTab==="medals"){ const got=MEDALS.filter(m=>profile.medals[m.id]).length; body=`<p class="risk">${got}/${MEDALS.length} medals. Each one unlocks a title to wear and hangs a trophy on your ship's corridor wall.</p><div class="medals">${MEDALS.map(m=>{ const has=profile.medals[m.id];
       return `<div class="medal ${has?"got":""}"><i>${has?"✦":"✧"}</i><div><b>${m.t}</b><span>${m.d}</span>${has?`<button class="plain" data-act="title:${m.id}" ${profile.title===m.id?"disabled":""}>${profile.title===m.id?"Wearing":"Wear title: "+m.title}</button>`:""}</div></div>`; }).join("")}</div>${profile.title?`<button class="plain" data-act="title:none">Remove title</button>`:""}`; }
@@ -731,6 +753,7 @@ function viewCrew(){
     <div class="panel h-card span5"><div class="h-eyebrow">${Net.host?"You lead this squad":"Crew member"}</div><p>${Net.host?"You fly the ship and launch raids. If you leave, the squad ends.":"The leader flies the ship and launches raids. Your stash and credits stay your own."}</p>
       <button class="plain" data-act="sqleave">${armed.sqleave?"Confirm":Net.host?"Disband squad":"Leave squad"}</button></div></section>`;
 }
+function awardMedal(id){ if(profile.medals[id]) return; const M=MEDALS.find(m=>m.id===id); if(!M) return; profile.medals[id]=ship().day|0; toast(`Medal earned: ${M.t}. Wear the title "${M.title}" from the Logbook.`); if(typeof Snd!=="undefined") Snd.play("levelup"); save(); }
 function deathTip(c,p){ c=String(c).toLowerCase();
   if(/bled|blood/.test(c)) return "Bleeding kills slowly but surely. Carry bandages and stop a bleed the moment you see it.";
   if(/vacuum|suffocat|air|breath/.test(c)) return "Watch your O₂ and the air pressure. Spare canisters, and stay away from breaches.";
@@ -753,6 +776,8 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
     ${Lr.xp?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
     ${Lr.failed&&Lr.failed.length?`<div class="h-eyebrow" style="color:var(--blood2)">Failed</div>${Lr.failed.map(f=>`<p class="risk bad">${esc(f.title)}: ${esc(f.who)} ${f.rep?`pulled the job. Standing ${f.rep}.`:`pulled the contract and kept a ${f.fee} cr cancellation fee. They won't offer it again for ${f.days} days.`}</p>`).join("")}`:""}
     ${Lr.recap?`<div class="recap"><div class="h-eyebrow" style="color:var(--blood2)">What happened</div><p><b>Killed by ${esc(Lr.recap.killer||"something in the dark")}</b> on turn ${Lr.recap.turns}. You put down ${Lr.recap.kills} and dealt ${Lr.recap.dealt} damage.</p>${Lr.recap.hits.length?`<ol class="hits">${Lr.recap.hits.map(h=>`<li><span>T${h.t}</span> ${esc(h.by)} · ${esc(Sim.LNAME[h.l]||h.l)} <b>−${h.d}</b></li>`).join("")}</ol>`:""}<p class="risk">${esc(Lr.recap.tip)}</p></div>`:""}
+    ${Lr.nemesis&&Lr.nemesis.made?`<div class="recap nem"><div class="h-eyebrow" style="color:var(--blood2)">${Lr.nemesis.lvl>1?"Your nemesis grows stronger":"A nemesis is born"}</div><p><b>${esc(Lr.nemesis.name)}</b> of the ${esc(Sim.FACTIONS[Lr.nemesis.fac].name)}${Lr.nemesis.lvl>1?` killed you again. They're level ${Lr.nemesis.lvl} now: tougher, better equipped, and they travel with friends.`:" killed you, and they'll remember it."}${Lr.nemesis.took.length?` They took your ${Lr.nemesis.took.map(esc).join(", ")}.`:""} They'll turn up on your raids. Kill them to take it all back.</p></div>`:""}
+    ${Lr.nemesis&&Lr.nemesis.killed?`<p class="risk good"><b>Vengeance.</b> ${esc(Lr.nemesis.name)} is dead. Whatever they took from you was on their body.</p>`:""}
     ${Lr.daily?`<p class="risk good"><b>Daily Op complete: ${esc(Lr.daily.name)}.</b> Supply crate: ${Lr.daily.items.map(x=>`<b style="color:${x.c}">${esc(x.n)}</b>`).join(", ")}, ${Lr.daily.cr} cr and ${Lr.daily.xp} XP.</p>`:""}
     ${Lr.mast&&Lr.mast.length?Lr.mast.map(m=>`<p class="risk good">${esc(m.c)} mastery: <b>${esc(m.lvl)}</b>. ${esc(m.bonus)}</p>`).join(""):""}
     ${Lr.medals&&Lr.medals.length?`<p class="risk good">Medal${Lr.medals.length>1?"s":""} earned: <b>${Lr.medals.map(esc).join(", ")}</b>. Wear the title from the Logbook.</p>`:""}
@@ -783,7 +808,7 @@ $("p-body").addEventListener("click",e=>{
     case "back": panelSub=null; break;
     case "region": mapRegion=x; break;
     case "sel": if(panelKind==="helm") mapSel=x; else stashSel=stashSel===x?null:x; break;
-    case "jump": { const days=World.travelCost(ship(),x), res=worldAct({type:"travel",to:x}); if(res.ok){ mapRegion=null; travelHunger(days); if(inSquad()) emit({t:"warp",d:days}); closePanel(); mapSel=null; warp={start:performance.now(),dur:2200,done:()=>{ toast(`Arrived at ${here().name}.`); renderShipHud(); }}; renderShipHud(); } break; }
+    case "jump": { const days=World.travelCost(ship(),x), res=worldAct({type:"travel",to:x}); if(res.ok){ mapRegion=null; travelHunger(days); if(inSquad()) emit({t:"warp",d:days}); closePanel(); mapSel=null; warp={start:performance.now(),dur:2200,done:()=>{ toast(`Arrived at ${here().name}.`); renderShipHud(); if(!inSquad()||Net.host) maybeEncounter(days); }}; renderShipHud(); } break; }
     case "suggest": { const L2=World.loc(x); if(!L2) break; emit({t:"suggest",to:x}); emit({t:"chat",m:`suggests a course to ${L2.name}`}); toast(`Suggested ${L2.name} to the squad leader.`); break; }
     case "tow": { const res=worldAct({type:"tow"}); if(res.ok){ travelHunger(4); closePanel(); warp={start:performance.now(),dur:2600,done:()=>renderShipHud()}; } break; }
     case "refuel": worldAct({type:"refuel"}); break;
@@ -815,6 +840,10 @@ $("p-body").addEventListener("click",e=>{
     case "dropjob": { if(inSquad()&&!Net.host) break; profile.ship.jobs=(profile.ship.jobs||[]).filter(q=>q.id!==x); toast("Job dropped."); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "hack": send({type:"hack",opt:x}); closePanel(); return;
     case "logtab": logTab=x; break;
+    case "implant": { const I=IMPLANTS[x]; if(!I||profile.implants[x]||Object.keys(profile.implants).length>=IMP_MAX||!canPay(I.cost)) break; for(const [m,n] of Object.entries(I.cost)){ if(m==="credits") profile.credits-=n; else profile.mats[m]-=n; } profile.implants[x]=ship().day|0; toast(`The surgeon closes you up. ${I.name} fitted.`); if(typeof Snd!=="undefined") Snd.play("heal"); if(Object.keys(profile.implants).length>=IMP_MAX) awardMedal("chrome"); save(); break; }
+    case "unimplant": if(profile.implants[x]){ delete profile.implants[x]; toast("Implant removed."); save(); } break;
+    case "enc": resolveEncounter(+x); break;
+    case "vr-start": vrStart(); return;
     case "bclaim": { const B=bountyWeek(), q=B.list.find(z=>z.id===x), b=BOUNTIES.find(z=>z.id===x); if(!q||!b||q.claimed||q.prog<b.n) break; q.claimed=true; profile.credits+=b.cr; profile.xp=(profile.xp|0)+b.xp; toast(`Bounty paid: ${b.cr} cr and ${b.xp} XP.`); if(typeof Snd!=="undefined") Snd.play("coin"); save(); break; }
     case "title": profile.title=x==="none"?null:x; save(); break;
     case "perk": if(perkPoints()>0&&PERKS[x]&&(profile.perks[x]|0)<PERKS[x].max){ profile.perks[x]=(profile.perks[x]|0)+1; save(); toast(`${PERKS[x].name} rank ${profile.perks[x]}.`); } break;
@@ -882,7 +911,7 @@ function boardShip(){
 function remainsHere(){ const R0=profile.remains; if(!R0) return null; if((ship().day|0)-(R0.day|0)>6){ profile.remains=null; save(); return null; } return R0.site===ship().loc?{items:R0.items.slice(0,14),ammo:R0.ammo||{},days:(ship().day|0)-(R0.day|0)}:null; }
 const GIFT_SG="sg1";
 function loadoutFromKit(r){ const lo0=loadoutFromKit0(r); if(!(profile.gifts||{})[GIFT_SG]){ const sg={d:"pump",r:1}; if(!lo0.w2) lo0.w2=sg; else if(!lo0.w1) lo0.w1=sg; else lo0.inv=[sg,...lo0.inv]; lo0.ammo={...lo0.ammo,shell:((lo0.ammo||{}).shell|0)+2*Items.AMMO.shell.stack}; lo0.gift=GIFT_SG; } return lo0; }
-function loadoutFromKit0(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},mast:mastLevels(),morale:profile.morale===(ship().day|0)?1:0,injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
+function loadoutFromKit0(r){ const lo={secCap:2+upLvl("pouch"),brig:upLvl("brig")>0,remains:remainsHere(),ammo:{...r.ammo},inv:r.inv.map(strip),look:{...profile.look},food:Math.round(profile.food),water:Math.round(profile.water),perks:{...profile.perks},mast:mastLevels(),implants:{...profile.implants},morale:profile.morale===(ship().day|0)?1:0,injury:{frac:{...(profile.injury.frac||{})},inf:profile.injury.inf|0}}; for(const s of KIT_SLOTS) lo[s]=strip(r[s]); if(r.free) lo.starter=1; return lo; }
 function consumeKit(lo){ if(lo.gift){ profile.gifts={...(profile.gifts||{}),[lo.gift]:1}; }
   profile.insured=null; if(profile.insure&&!lo.starter){ profile.insured=[...KIT_SLOTS.map(s=>lo[s]),...(lo.inv||[])].filter(it=>it&&!it.iss).map(it=>({...it})); } profile.insure=false;
   profile.stats.raids++; profile.active={kit:lo.starter?"starter":"custom",site:ship().loc,at:Date.now()};
@@ -902,7 +931,7 @@ function scanSite(L){ const sd=(ship().seeds||{})[L.id]; if(!sd) return null; co
   return scanCache[key]={power:g.power,husks:H,boss:!!g.boss,turrets:g.ents.filter(e=>e.kind==="bot"&&e.type==="turret").length,drones:g.ents.filter(e=>e.kind==="bot"&&e.type==="drone").length,crews,fires:Object.keys(g.fire).length}; }
 function raidOpts(L,fx){ const held=World.controlOf(ship(),L.id); return {jobs:(ship().jobs||[]).filter(j=>j.site===L.id),gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:held==="choir"?"hive":(L.site.kind||""),size:L.site.size||""},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
 // what the station's crews know about you: your standing, and a merc you've paid for (used once)
-function factionSetup(by){ return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null}; }
+function factionSetup(by){ const N=profile.nemesis, hunt=N&&Math.random()<(L0=>L0&&L0.daily?1:.4)(here()); return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null,nemesis:hunt?{...N}:null}; }
 function deploy(){
   const L=here(); if(L.type!=="derelict") return;
   if(inSquad()){ if(Net.host){ Net.ready=true; Net.readyLo=loadoutFromKit(kitResolved()); squadPresence(); hostLaunch(); } else setReady(!Net.ready); return; }
@@ -961,6 +990,13 @@ function settlePersonal(){
   } else profile.stats.deaths++;
   // data logs you got out with (or sealed in the pouch) go into the codex
   rep.logs=[]; for(const it of p.inv) if(it.d==="datalog"&&it.lg&&(win||it.sec)&&!profile.codex[it.lg]){ profile.codex[it.lg]=ship().day|0; const L=Items.LOGS.find(l=>l.id===it.lg); if(L) rep.logs.push(L.t); p.xp=(p.xp|0)+15; }
+  // your nemesis: killed, or made (or made stronger)
+  const nemDead=S.ents.find(e=>e.nemesis&&!e.alive&&!e.extracted);
+  if(nemDead&&profile.nemesis&&nemDead.name===profile.nemesis.name){ rep.nemesis={killed:1,name:profile.nemesis.name}; profile.nemesis=null; }
+  else if(!win&&p.nemSrc&&!p.flags.abandoned){ const N0=profile.nemesis, same=N0&&N0.name===p.nemSrc.name, took=(rep.kit==="starter"?[]:[...KIT_SLOTS.map(k=>p[k]),...p.inv]).filter(it=>it&&!it.iss&&!it.sec&&!it.job&&it.d!=="datalog"&&(Items.slotOf(it)||Items.value(it)>=150)).sort((a,b)=>Items.value(b)-Items.value(a)).slice(0,3).map(strip);
+    profile.nemesis={name:p.nemSrc.name,fac:p.nemSrc.fac,look:p.nemSrc.look,w1:p.nemSrc.w1,head:p.nemSrc.head,armor:p.nemSrc.armor,lvl:same?Math.min(5,(N0.lvl|0)+1):1,items:[...(same?N0.items||[]:[]),...took].slice(0,4),since:ship().day|0};
+    if(took.length&&profile.remains&&profile.remains.items){ const R0=profile.remains.items; for(const it of took){ const k=R0.findIndex(q=>q.d===it.d&&(q.r|0)===(it.r|0)); if(k>=0) R0.splice(k,1); } rep.remains=R0.length; if(!R0.length) profile.remains=null; }
+    rep.nemesis={made:1,name:p.nemSrc.name,fac:p.nemSrc.fac,lvl:profile.nemesis.lvl,took:took.map(it=>Items.name(it))}; }
   // the Daily Op: the first extraction of the day pays out
   if(win&&L.daily&&profile.daily!==L.daily){ profile.daily=L.daily; profile.life.dailies=(profile.life.dailies|0)+1; const cr=700; profile.credits+=cr; p.xp=(p.xp|0)+150;
     const got=[]; let it=null; for(let n=0;n<10&&(!it||Items.rarOf(it)<2||!Items.slotOf(it));n++) it=Items.roll(Math.random,3,["weapon","armor"][n%2]); if(it){ World.grant(profile,it); got.push({n:Items.name(it),c:rc(it)}); }
@@ -979,7 +1015,7 @@ function settlePersonal(){
     if(win){ if(profile.stats.extracts>=0) give("first"); if(profile.stats.extracts>=10) give("ten"); if((K.matriarch|0)>0) give("queen"); if(haul>=2000) give("rich"); if(L.id==="throne") give("throne"); if(S.ev&&S.ev.type==="meltdown"&&S.ev.on) give("melt"); }
     if((LF.takedowns|0)>=10) give("ghost"); if(Object.keys(LF.regions).length>=3) give("wander"); if((LF.signals|0)>=5) give("signals"); if((LF.hacks|0)>=5) give("net"); if((LF.caches|0)>=10) give("caches");
     if(Object.keys(profile.codex).length>=12) give("archive"); if((LF.prisoners|0)>=3) give("warden"); if(Object.values(profile.rep||{}).some(v=>v>=50)) give("ally"); if(LF.choirJob) give("choir");
-    if((LF.k.elite|0)>=10) give("mutant"); if((LF.disarms|0)>=10) give("sapper"); if((LF.dailies|0)>=5) give("dailies"); if(Object.values(profile.mastery).some(v=>(v|0)>=MAST_T[5])) give("master");
+    if((LF.k.elite|0)>=10) give("mutant"); if((LF.k.nest|0)>=10) give("exterm"); if(rep.nemesis&&rep.nemesis.killed) give("vengeance"); if((LF.disarms|0)>=10) give("sapper"); if((LF.dailies|0)>=5) give("dailies"); if(Object.values(profile.mastery).some(v=>(v|0)>=MAST_T[5])) give("master");
     if([...profile.stash,...(win?p.inv:[])].some(it=>Items.rarOf(it)>=4)) give("legend");
     rep.medals=earn; }
   // experience: kept in full when you get out, half when you don't
@@ -1041,3 +1077,79 @@ function start(data){
 }
 
 document.addEventListener("click",e=>{ if(typeof Snd!=="undefined"&&e.target.closest&&e.target.closest("button")) Snd.play("click"); },true);
+
+// =================== IN TRANSIT: things that happen between the stars ===================
+// A jump has a chance of an encounter: a choice with consequences for credits, fuel, standing,
+// the war and your health. Only the solo player or the squad leader gets them (the ship is theirs).
+let ENC=null;
+const r01=()=>Math.random(), pickR=a=>a[Math.floor(Math.random()*a.length)];
+function encSync(){ save(); if(typeof inSquad==="function"&&inSquad()&&Net.host) hostBroadcastShip(false); if(S&&S.mode==="ship") renderShipHud(); }
+function grantMats(o){ for(const [m,n] of Object.entries(o)) profile.mats[m]=(profile.mats[m]|0)+n; return Object.entries(o).map(([m,n])=>`${n} ${Items.MATS[m].toLowerCase()}`).join(", "); }
+const ENCOUNTERS=[
+  {id:"pod",title:"A lifepod",text:"A lifepod tumbles across your bow, its distress beacon shrieking the same three notes on a loop. Frost on the viewport. Something might be alive in there.",choices:[
+    {t:"Bring it aboard",go:()=>{ const r=r01(); if(r<.5){ profile.credits+=260; profile.rep.guild=Math.min(100,(profile.rep.guild|0)+5); return "A half-frozen Guild miner, alive. You thaw her out and drop her at the next relay. The Guild wires 260 cr and remembers your name. (+260 cr, Guild standing +5)"; }
+      if(r<.8) return `Empty. Whoever was in it got out, or got eaten. You strip it anyway: ${grantMats({parts:2,circ:2})}.`;
+      profile.injury=profile.injury||{frac:{},inf:0}; profile.injury.inf=Math.max(1,profile.injury.inf|0); return "The pod hisses open and a husk comes out swinging. You put it down with a fire axe, but not before it rakes your arm. The wound is already hot. (Infected: get antibiotics or the medbay.)"; }},
+    {t:"Leave it",go:()=>"You let it tumble on. The beacon fades behind you, still screaming."}]},
+  {id:"toll",title:"Reaver toll",when:()=>true,text:()=>(profile.rep.reaver|0)>=20?"A Reaver gunship swings in close, guns tracking, then their captain recognises your transponder and waves you through with a grin full of steel.":"A Reaver gunship drops out of the dark, guns tracking you. \"Toll's 150. Pay, or we take it out of your hull.\"",choices:()=>(profile.rep.reaver|0)>=20?[{t:"Wave back",go:()=>"Friends in low places. They peel off toward someone less lucky."}]:[
+    {t:"Pay 150 cr",ok:()=>profile.credits>=150,go:()=>{ profile.credits-=150; profile.rep.reaver=Math.min(100,(profile.rep.reaver|0)+2); return "You pay. They laugh, and let you go. (−150 cr, Reaver standing +2)"; }},
+    {t:"Run for it",go:()=>{ if(r01()<.55) return "You redline the drive and slip away before they get a lock."; const sh=ship(); sh.fuel=Math.max(0,sh.fuel-1); sh.day+=1; return "They rake your engines as you run. You limp clear, a day late and a fuel cell lighter. (−1 fuel, +1 day)"; }},
+    {t:"Fight",go:()=>{ if(r01()<.45){ profile.rep.reaver=Math.max(-100,(profile.rep.reaver|0)-6); return `Your point-defence finds their fuel line. They flee trailing fire and debris, which you scoop up: ${grantMats({scrap:4,prop:2,parts:1})}. (Reaver standing −6)`; } const sh=ship(); sh.fuel=Math.max(0,sh.fuel-2); profile.food=Math.max(0,profile.food-15); return "It goes badly. A torpedo cracks the galley and a fuel tank. They break off when they get bored. (−2 fuel, −15 food)"; }}]},
+  {id:"cargo",title:"Drifting cargo",text:"A cargo pod tumbles in your path, lost from some freighter's chain. The manifest seal is still green.",choices:[
+    {t:"Crack it open",go:()=>{ if(r01()<.8){ const it=Items.roll(Math.random,2,pickR(["val","weapon","armor","med"])); World.grant(profile,it); return `Salvage: ${grantMats({scrap:2+Math.floor(r01()*3),[pickR(["prop","circ","org"])]:2})} and a ${Items.name(it)} (in your stash).`; } const sh=ship(); sh.fuel=Math.max(0,sh.fuel-1); return "Rigged. The pod blows when you cut the seal and takes a fuel cell with it. (−1 fuel)"; }},
+    {t:"Leave it",go:()=>"Not worth the risk. You let it drift."}]},
+  {id:"flare",title:"Solar flare",text:"Your instruments scream. A star you're passing is throwing a tantrum, and the radiation front will hit in minutes.",choices:[
+    {t:"Ride it out in the shadow of a moon",go:()=>{ ship().day+=1; return "You hide and wait. It costs you a day, but the electronics live. (+1 day)"; }},
+    {t:"Burn through it",ok:()=>ship().fuel>=1,go:()=>{ ship().fuel-=1; return r01()<.3?"You make it through, mostly. The stash locker's lights flicker for an hour. (−1 fuel)":"You punch through at full burn. (−1 fuel)"; }}]},
+  {id:"trader",title:"Vanta skiff",text:"A sleek Vanta Combine skiff matches your course and opens a channel. \"Long way between markets. Need anything?\"",choices:[
+    {t:"Buy a fuel cell (150 cr)",ok:()=>profile.credits>=150&&ship().fuel<ship().fuelMax,go:()=>{ profile.credits-=150; ship().fuel+=1; return "A drone ferries the cell across. (+1 fuel, −150 cr)"; }},
+    {t:"Buy a medkit (110 cr)",ok:()=>profile.credits>=110,go:()=>{ profile.credits-=110; World.grant(profile,mk({d:"medkit",r:0})); return "A medkit, sealed and current. (In your stash, −110 cr)"; }},
+    {t:"Sell your scrap (12 cr each)",ok:()=>(profile.mats.scrap|0)>0,go:()=>{ const n=profile.mats.scrap|0, c=n*12; profile.mats.scrap=0; profile.credits+=c; return `They take ${n} scrap off your hands for ${c} cr.`; }},
+    {t:"Wave them off",go:()=>"\"Your loss.\" The skiff peels away."}]},
+  {id:"choir",title:"The Choir sings",text:"The comms fill with the Iron Choir's song: a thousand voices, perfectly in tune, singing a word you almost know. It's coming from a relay buoy nearby.",choices:[
+    {t:"Trace it and burn the relay (lose a day)",go:()=>{ const sh=ship(); sh.day+=1; World.pushChoir(sh,-6,"A crew in transit traced and burned a Choir relay buoy."); profile.xp=(profile.xp|0)+40; return "You find the buoy and burn it to slag. The song cuts off mid-word. (+40 XP, the Choir is pushed back, +1 day)"; }},
+    {t:"Listen",go:()=>{ World.pushChoir(ship(),3,"The Choir's song is spreading along the trade lanes."); profile.xp=(profile.xp|0)+60; return "You listen until you understand it. You wish you hadn't. Something behind your eyes hums along. (+60 XP, the Choir grows louder)"; }},
+    {t:"Cut the comms",go:()=>"Silence. Your hand is shaking on the switch."}]},
+  {id:"patrol",title:"Concord patrol",text:()=>(profile.rep.marshal|0)<0?"A Concord Marshal cutter lights you up. \"Contractor, you have outstanding fines. Heave to.\"":"A Concord Marshal cutter pulls alongside. \"Routine sweep, contractor. Seen anything we should know about?\"",choices:()=>(profile.rep.marshal|0)<0?[
+    {t:"Pay the 120 cr fine",ok:()=>profile.credits>=120,go:()=>{ profile.credits-=120; profile.rep.marshal=Math.min(100,(profile.rep.marshal|0)+5); return "You pay. They log it. (−120 cr, Marshal standing +5)"; }},
+    {t:"Run",go:()=>{ const sh=ship(); sh.fuel=Math.max(0,sh.fuel-1); profile.rep.marshal=Math.max(-100,(profile.rep.marshal|0)-3); return "You outrun a cutter, which they won't forget. (−1 fuel, Marshal standing −3)"; }}]:[
+    {t:"Share your sensor logs",go:()=>{ profile.credits+=100; profile.rep.marshal=Math.min(100,(profile.rep.marshal|0)+3); return "They copy your logs and pay a finder's fee. (+100 cr, Marshal standing +3)"; }},
+    {t:"Say nothing",go:()=>"\"Fly safe.\" They don't sound like they mean it."}]},
+  {id:"body",title:"A body in the dark",text:"Something bumps the hull. A body in a cracked suit, spinning slowly, one glove still clutching a satchel.",choices:[
+    {t:"Pull it in",go:()=>{ const it=Items.roll(Math.random,2,pickR(["val","weapon","med","armor","throw"])); World.grant(profile,it); const L=Items.LOGS.filter(l=>!profile.codex[l.id]); let extra=""; if(L.length&&r01()<.5){ const l=pickR(L); profile.codex[l.id]=ship().day|0; extra=` A data log in the satchel goes in your codex: "${l.t}".`; } return `You give them a spacer's burial afterwards. The satchel held a ${Items.name(it)} (in your stash).${extra}`; }},
+    {t:"Let them drift",go:()=>"You let them sail on. Someone, somewhere, is still waiting for them."}]},
+  {id:"ghost",title:"Sensor ghost",text:"A contact flickers at the edge of your sensors: there, then gone, then there again. It doesn't answer hails.",choices:[
+    {t:"Investigate (lose a day)",go:()=>{ const sh=ship(); sh.day+=1; if(r01()<.55){ const it=Items.roll(Math.random,3,pickR(["val","weapon","armor"])); World.grant(profile,it); return `A smuggler's cache, cloaked and forgotten. Inside: a ${Items.name(it)} (in your stash). (+1 day)`; } return "You chase it for a day. Nothing. Just you, the dark and a feeling of being watched. (+1 day)"; }},
+    {t:"Ignore it",go:()=>"You log it and move on. It follows you for an hour, then doesn't."}]},
+];
+function maybeEncounter(days){ if(Math.random()>.35+.05*Math.min(4,(days|0)-1)) return; const E=pickR(ENCOUNTERS); ENC={...E,title:E.title,txt:typeof E.text==="function"?E.text():E.text,ch:(typeof E.choices==="function"?E.choices():E.choices),res:null}; setTimeout(()=>{ if(S&&S.mode==="ship"&&!panelKind) openPanel("encounter"); else ENC=null; },300); }
+function viewEncounter(){ if(!ENC) return "<p>Nothing on the scopes.</p>";
+  return `<section class="panel h-card report"><p>${esc(ENC.txt)}</p>${ENC.res?`<p class="risk good">${esc(ENC.res)}</p><div class="bar-row"><button data-act="close">Carry on</button></div>`:`<div class="enc-ch">${ENC.ch.map((c,i)=>`<button data-act="enc:${i}" ${c.ok&&!c.ok()?"disabled":""}>${esc(c.t)}</button>`).join("")}</div>`}</section>`; }
+function resolveEncounter(i){ if(!ENC||ENC.res) return; const c=ENC.ch[i]; if(!c||(c.ok&&!c.ok())) return; ENC.res=c.go(); profile.life.encounters=(profile.life.encounters|0)+1; encSync(); renderPanel(); }
+
+// =================== VOID RUNNER: the break-room arcade cabinet ===================
+// An original little arcade game: steer your skiff through falling debris, grab scrap, survive.
+let VR=null;
+function viewArcade(){ const A=profile.arcade, today=ship().day|0;
+  setTimeout(vrInit,0);
+  return `<section class="panel h-card"><div class="vr-wrap"><canvas id="vr-c" width="240" height="300"></canvas><div class="vr-side"><p><b>High score: ${A.best|0}</b></p><p class="risk">←/→ or A/D to steer (or tap the left and right halves of the screen). Dodge the debris, grab the yellow scrap, and catch the blue shield.</p><p class="risk">Score 600+ for the daily prize from Hesk: 60 cr (${A.day===today?"already won today":"not won yet today"}). Score 1500 for a medal.</p><button data-act="vr-start">${VR&&VR.over?"Play again":"Insert credit"}</button></div></div></section>`; }
+function vrInit(){ const c=$("vr-c"); if(!c) return; if(!VR) VR={over:true,score:0}; c.onpointerdown=e=>{ const r=c.getBoundingClientRect(); VR.touch=(e.clientX-r.left)<r.width/2?-1:1; }; c.onpointerup=c.onpointerleave=()=>{ if(VR) VR.touch=0; }; vrDraw(); }
+function vrStart(){ VR={over:false,score:0,t:0,x:120,hp:3,shield:0,rocks:[],bits:[],keys:{},touch:0,last:performance.now(),spawn:0,inv:0}; if(typeof Snd!=="undefined") Snd.play("levelup"); requestAnimationFrame(vrLoop); }
+document.addEventListener("keydown",e=>{ if(panelKind!=="arcade"||!VR) return; const k=e.key.toLowerCase(); if(["arrowleft","arrowright","a","d"].includes(k)){ VR.keys[k]=1; e.preventDefault(); e.stopPropagation(); } if((k===" "||k==="enter")&&VR.over){ e.preventDefault(); vrStart(); } },true);
+document.addEventListener("keyup",e=>{ if(VR&&VR.keys) VR.keys[e.key.toLowerCase()]=0; },true);
+function vrLoop(now){ if(!VR||VR.over) return; if(panelKind!=="arcade"){ VR.over=true; return; } const dt=Math.min(.05,(now-VR.last)/1000); VR.last=now; VR.t+=dt; const sp=1+VR.t/25;
+  const dir=(VR.keys.arrowleft||VR.keys.a?-1:0)+(VR.keys.arrowright||VR.keys.d?1:0)+VR.touch; VR.x=Math.max(10,Math.min(230,VR.x+dir*170*dt)); VR.score+=dt*10*sp; VR.inv=Math.max(0,VR.inv-dt); VR.shield=Math.max(0,VR.shield-dt);
+  VR.spawn-=dt; if(VR.spawn<=0){ VR.spawn=Math.max(.18,.7-VR.t/60); const big=Math.random()<.25; VR.rocks.push({x:10+Math.random()*220,y:-12,r:big?11:5+Math.random()*4,v:(60+Math.random()*50)*sp,rot:Math.random()*6,spin:(Math.random()-.5)*4}); if(Math.random()<.22) VR.bits.push({x:10+Math.random()*220,y:-8,v:70*sp,k:Math.random()<.12?"shield":"scrap"}); }
+  for(const r of VR.rocks){ r.y+=r.v*dt; r.rot+=r.spin*dt; if(!VR.inv&&Math.hypot(r.x-VR.x,r.y-278)<r.r+6){ r.y=999; if(VR.shield>0){ VR.shield=0; if(typeof Snd!=="undefined") Snd.play("glass"); } else { VR.hp--; VR.inv=1.2; if(typeof Snd!=="undefined") Snd.play("hurt"); if(VR.hp<=0) return vrOver(); } } }
+  for(const b of VR.bits){ b.y+=b.v*dt; if(Math.hypot(b.x-VR.x,b.y-278)<12){ b.y=999; if(b.k==="shield") VR.shield=8; else VR.score+=50; if(typeof Snd!=="undefined") Snd.play("pickup"); } }
+  VR.rocks=VR.rocks.filter(r=>r.y<320); VR.bits=VR.bits.filter(b=>b.y<320); vrDraw(); requestAnimationFrame(vrLoop); }
+function vrOver(){ VR.over=true; const sc=Math.floor(VR.score), A=profile.arcade, today=ship().day|0; let msg=`GAME OVER · ${sc}`; if(sc>(A.best|0)){ A.best=sc; msg+=" · NEW HIGH SCORE"; }
+  if(sc>=600&&A.day!==today){ A.day=today; profile.credits+=60; msg+=" · Hesk pays up: +60 cr"; } if(sc>=1500) awardMedal("arcade"); save(); toast(msg); if(typeof Snd!=="undefined") Snd.play("die"); vrDraw(); setTimeout(()=>{ if(panelKind==="arcade") renderPanel(); },900); }
+function vrDraw(){ const c=$("vr-c"); if(!c||!VR) return; const g=c.getContext("2d"), t=performance.now()/1000; g.fillStyle="#020804"; g.fillRect(0,0,240,300);
+  for(let i=0;i<40;i++){ const y=((i*53+t*(20+(i%3)*25))%300), x=(i*97)%240; g.fillStyle=i%3?"#1a3a22":"#3a6a44"; g.fillRect(x,y,1,1+(i%3)); }
+  for(const r of VR.rocks||[]){ g.save(); g.translate(r.x,r.y); g.rotate(r.rot); g.fillStyle="#2f5a3a"; g.beginPath(); for(let k=0;k<7;k++){ const a=k/7*6.283, rr=r.r*(.75+((k*37)%10)/30); g.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); } g.fill(); g.strokeStyle="#7aff9a"; g.lineWidth=1; g.stroke(); g.restore(); }
+  for(const b of VR.bits||[]){ g.fillStyle=b.k==="shield"?"#5ad0ff":"#ffd060"; g.fillRect(b.x-3,b.y-3,6,6); g.fillStyle="#fff"; g.fillRect(b.x-1,b.y-1,2,2); }
+  if(!VR.over||VR.hp>0){ const blink=VR.inv&&((t*10)|0)%2; if(!blink){ g.fillStyle="#9affb0"; g.beginPath(); g.moveTo(VR.x,268); g.lineTo(VR.x-8,286); g.lineTo(VR.x,282); g.lineTo(VR.x+8,286); g.fill(); g.fillStyle="#ffb040"; g.fillRect(VR.x-1,286,2,3+((t*20)|0)%3); } if(VR.shield>0){ g.strokeStyle=`rgba(90,208,255,${.5+.3*Math.sin(t*8)})`; g.beginPath(); g.arc(VR.x,278,13,0,6.283); g.stroke(); } }
+  g.fillStyle="#7aff9a"; g.font="bold 12px monospace"; g.fillText(String(Math.floor(VR.score||0)).padStart(6,"0"),6,16); g.fillText("♥".repeat(Math.max(0,VR.hp|0)),190,16);
+  if(VR.over){ g.fillStyle="rgba(0,0,0,.55)"; g.fillRect(0,110,240,70); g.fillStyle="#9affb0"; g.textAlign="center"; g.font="bold 18px monospace"; g.fillText(VR.t?"GAME OVER":"VOID RUNNER",120,140); g.font="11px monospace"; g.fillText(VR.t?`SCORE ${Math.floor(VR.score)}`:"INSERT CREDIT",120,160); g.textAlign="left"; }
+  for(let y=0;y<300;y+=3){ g.fillStyle="rgba(0,0,0,.18)"; g.fillRect(0,y,240,1); } }

@@ -100,6 +100,7 @@ const Sim = (() => {
     stalker:{name:"stalker",hp:.55,dr:0,spd:2,dmg:[3,6],acc:.74,infect:.3},
     brute:{name:"brute",hp:2.3,dr:.3,spd:.5,dmg:[9,16],acc:.62,door:3,stun:.45,frac:.4},
     spitter:{name:"spitter",hp:.8,dr:0,spd:1,dmg:[2,5],acc:.55,range:6,acid:[3,6]},
+    nest:{name:"nest",hp:1.6,dr:0,spd:0,dmg:[0,0],acc:0,nest:1},
     matriarch:{name:"Matriarch",hp:5,dr:.25,spd:1,dmg:[10,18],acc:.72,door:4,boss:1,frac:.3,infect:.3},
   };
   const HT=e=>HTYPES[e.type||"husk"]||HTYPES.husk;
@@ -138,7 +139,7 @@ const Sim = (() => {
   // ---------- tile predicates ----------
   const PROPS={c:"crate",B:"bed",t:"desk",l:"locker",r:"barrel",f:"brazier",g:"generator",S:"tank",
     u:"couch",T:"table",n:"chair",q:"coffee",V:"vending",G:"arcade",w:"toilet",s:"sink",x:"shower",I:"bars",z:"captive",j:"gunrack",p:"plant",d:"captchair",y:"footlocker",U:"workbench",e:"cogitator","!":"medcab",i:"surgery",D:"pipes","%":"pallet","5":"stasis","6":"altar","7":"pew","8":"o2rack","9":"pump","0":"ammocrate","$":"shelf",";":"cot","*":"drive","(":"reactor","^":"loader",_:"counter","-":"fridge","[":"strongbox"};
-  const CONTAINERS=new Set(["locker","crate","footlocker","ammocrate","medcab","shelf","strongbox","pallet","gunrack","fridge"]);
+  const CONTAINERS=new Set(["pod","locker","crate","footlocker","ammocrate","medcab","shelf","strongbox","pallet","gunrack","fridge"]);
   const TERMS={"`":"comms",N:"helm",M:"navtable",K:"rack",Q:"stash",J:"records",C:"board",A:"airlock",O:"workbench","&":"wardrobe","?":"bar"};
   const SEATS={"1":"pilot","2":"copilot","3":"nav","4":"eng"};
   const gas  = t => t.t==="floor"||t.t==="extract"||t.t==="breach"||t.t==="prop"||t.t==="terminal"||t.t==="seat"||(t.t==="door"&&t.open);
@@ -196,6 +197,7 @@ const Sim = (() => {
     s.repd={}; s.kills={}; s.factionRep=(opts.factions&&opts.factions.rep)||{};
     s.tierN=(opts.gen&&opts.gen.tier)||1;
     if(G) placeSecurity(s,opts.gen.tier||1,opts.gen.kind||"",opts.gen.kind==="hive"?"choir":opts.gen.kind==="outpost"?"marshal":null);
+    if(G&&opts.factions&&opts.factions.nemesis) spawnNemesis(s,opts.gen.tier||1,opts.factions.nemesis);
     if(G){ spawnRaiders(s,opts.gen.tier||1,opts.mods||{},opts.factions); if(opts.factions&&opts.factions.hire) spawnHire(s,opts.gen.tier||1,opts.factions.hire); }
     say(s,`Shuttle docked at ${s.site}. Station is silent. ${s.power?"Lights are on.":"No power. Emergency lights only."}`,"info");
     say(s,"Your suit reads a full atmosphere outside the visor. Magboots engaged.","air");
@@ -226,7 +228,7 @@ const Sim = (() => {
       w1:cp(lo.w1),w2:cp(lo.w2),melee:cp(lo.melee),head:G0.head,armor,legs:G0.legs,acc:G0.acc,light:G0.light,pack,act:1,ammo,mats:Object.fromEntries(Object.keys(Items.MATS).map(k=>[k,0])),cap,look:lo.look||null,stimT:0,
       food:lo.food==null?80:Math.max(0,Math.min(100,+lo.food)),water:lo.water==null?80:Math.max(0,Math.min(100,+lo.water)),
       inv:(lo.inv||[]).slice(0,cap+((lo.perks&&lo.perks.mule)|0)).map(it=>({...it,id:s.nextId++})),alive:true,acted:false,busy:0,face:[1,0],seen:new Array(s.W*s.H).fill(0),flags:{}});
-    const P=s.ents[s.ents.length-1]; P.cap=capOf(P); P.secCap=Math.max(0,lo.secCap==null?2:lo.secCap|0); P.brig=!!lo.brig; P.mast=lo.mast&&typeof lo.mast==="object"?{...lo.mast}:{}; if(lo.morale) P.morale=1; if(lo.remains&&lo.remains.items) P.remainsLo=lo.remains;
+    const P=s.ents[s.ents.length-1]; P.cap=capOf(P); P.secCap=Math.max(0,lo.secCap==null?2:lo.secCap|0); P.brig=!!lo.brig; P.mast=lo.mast&&typeof lo.mast==="object"?{...lo.mast}:{}; P.imp=lo.implants&&typeof lo.implants==="object"?{...lo.implants}:{}; if(P.imp.lungs){ P.o2max+=30; P.o2+=30; } if(lo.morale) P.morale=1; if(lo.remains&&lo.remains.items) P.remainsLo=lo.remains;
   }
   // ---- extras that make each station worth exploring: hidden caches, lore, radiation, and something going wrong ----
   function furnishExtras(s,tier,kind){
@@ -240,6 +242,9 @@ const Sim = (() => {
     // radiation: a leaking reactor or fuel store floods one room
     const hot=rooms.filter(r=>/Engineering|Fuel storage/.test(r[0])); s.rad=[];
     if(hot.length&&chance(s,kind==="mining"||kind==="hive"?.6:.3)){ const r=hot[ri(s,0,hot.length-1)]; for(let y=r[2];y<=r[4];y++)for(let x=r[1];x<=r[3];x++){ const i=idx(s,x,y); if(s.tiles[i].t!=="wall"&&s.tiles[i].t!=="space") s.rad.push(i); } }
+    // husk nests
+    { const want=(kind==="hive"||kind==="research"||kind==="hospital"?ri(s,1,2):chance(s,.35)?1:0)+(tier>=3&&chance(s,.5)?1:0)+((s.mods&&s.mods.nests)|0); const T=farTiles(s,12).filter(([x,y])=>{ const t=tileAt(s,x,y); return t.t==="floor"&&!entAt(s,x,y)&&N4.filter(([a,b])=>walk(tileAt(s,x+a,y+b))).length>=3&&roomName(x,y)&&!/corridor|Docking/i.test(roomName(x,y)); });
+      for(let k=0;k<want&&T.length;k++){ const [x,y]=T.splice(ri(s,0,T.length-1),1)[0]; if(s.ents.some(e=>e.type==="nest"&&Math.hypot(e.x-x,e.y-y)<8)) continue; const n=addHusk(s,x,y,"nest"); n.t=ri(s,0,8); } }
     // maintenance vents: crawlspaces linking two rooms (stalkers use them too)
     s.vents=[]; { const cand=[]; for(const r of rooms){ const opts=[]; for(let y=r[2];y<=r[4];y++)for(let x=r[1];x<=r[3];x++){ const t=tileAt(s,x,y); if(t.t!=="floor"||s.items.some(q=>q.x===x&&q.y===y)||entAt(s,x,y)) continue;
           if([[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].some(([a,b])=>{ const q=tileAt(s,x+a,y+b); return q.t==="prop"||q.t==="door"||q.t==="terminal"||q.t==="extract"; })) continue; opts.push([x,y]); }
@@ -251,9 +256,14 @@ const Sim = (() => {
       for(let k=tier+ri(s,0,1);k>0&&T.length;k--){ const [x,y]=T.splice(ri(s,0,T.length-1),1)[0]; if(!s.traps.some(q=>Math.abs(q.x-x)+Math.abs(q.y-y)<4)) s.traps.push({x,y,seen:{}}); } }
     if(s.mods&&s.mods.ev){ s.ev={type:s.mods.ev,at:ri(s,35,70),on:0}; return; }
     // a station event, some time into the raid
-    if(chance(s,.45)){ const opts=s.power?[["meltdown",3],["horde",4],["lockdown",2],["surge",2]]:[["meltdown",2],["horde",5]]; let t=opts.reduce((a,o)=>a+o[1],0)*rand(s), type="horde"; for(const [k,w] of opts){ if((t-=w)<0){ type=k; break; } } s.ev={type,at:ri(s,30,100),on:0}; } }
+    if(chance(s,.45)){ const opts=s.power?[["meltdown",3],["horde",4],["lockdown",2],["surge",2],["boarding",3],["gas",2],["drop",3]]:[["meltdown",2],["horde",5],["boarding",3],["gas",2],["drop",3]]; let t=opts.reduce((a,o)=>a+o[1],0)*rand(s), type="horde"; for(const [k,w] of opts){ if((t-=w)<0){ type=k; break; } } s.ev={type,at:ri(s,30,100),on:0}; } }
+  // husk nests: pulsing egg sacs that birth stalkers while anyone living is near. Burn them or shoot them
+  function nestTick(s,h){ h.t=(h.t|0)+1; const near=players(s).some(q=>q.alive&&Math.hypot(q.x-h.x,q.y-h.y)<=10)||s.ents.some(q=>q.alive&&q.kind==="raider"&&Math.hypot(q.x-h.x,q.y-h.y)<=7);
+    if(!near||h.t<9) return; const kids=s.ents.filter(q=>q.alive&&q.mom===h.id).length; if(kids>=4) return; const sp=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dx,dy])=>[h.x+dx,h.y+dy]).find(([x,y])=>free(s,x,y)); if(!sp) return;
+    h.t=0; const c=addHusk(s,sp[0],sp[1],chance(s,.7)?"stalker":"husk"); c.mom=h.id; c.aware=true; const q=players(s).filter(z=>z.alive).sort((a,b)=>Math.hypot(a.x-h.x,a.y-h.y)-Math.hypot(b.x-h.x,b.y-h.y))[0]; if(q) c.last={x:q.x,y:q.y};
+    fx(s,{type:"shriek",x:h.x,y:h.y,id:h.id}); if(anyPlayerSees(s,h.x,h.y)) say(s,"The nest splits along a seam and something wet crawls out, already hunting.","bad"); else if(q&&Math.hypot(q.x-h.x,q.y-h.y)<8) say(s,"Something tears and squelches nearby. Then claws on the deck.","warn"); }
   function mutate(s,tier,mods){ const P=(tier>=3?.18:tier===2?.11:.06)*((mods&&mods.elite)||1), keys=Object.keys(MUTS);
-    for(const h of s.ents){ if(h.kind!=="husk"||h.type==="matriarch"||h.mut||!chance(s,P)) continue; h.mut=keys[ri(s,0,keys.length-1)];
+    for(const h of s.ents){ if(h.kind!=="husk"||h.type==="matriarch"||h.type==="nest"||h.mut||!chance(s,P)) continue; h.mut=keys[ri(s,0,keys.length-1)];
       if(h.mut==="armored") for(const l of LIMBS){ h.hp[l]=Math.round(h.hp[l]*1.6); h.max[l]=h.hp[l]; } } }
   const ventOf=(s,x,y)=>{ const t=tileAt(s,x,y); return t.vent?s.vents[t.vent-1]:null; };
   function ventExit(s,e){ const V=ventOf(s,e.x,e.y); if(!V) return null; const o=V[0]===idx(s,e.x,e.y)?V[1]:V[0], ox=o%s.W, oy=(o/s.W)|0;
@@ -289,11 +299,23 @@ const Sim = (() => {
         say(s,"A long, wet howl rolls through the vents. Then another. Then dozens. A horde is coming for you.","bad"); }
       if(E.type==="lockdown"){ E.end=s.turn+15; E.doors=[]; for(let i=0;i<s.tiles.length;i++){ const t=s.tiles[i]; if(t.t==="door"&&!t.broken&&!t.locked){ if(!entAt(s,i%s.W,(i/s.W)|0)) t.open=false; t.locked=true; E.doors.push(i); } } for(const b of s.ents) if(b.kind==="bot") b.seen={};
         say(s,"\"SECURITY LOCKDOWN.\" Every door slams and maglocks. 15 turns, or a breaching charge.","bad"); }
+      if(E.type==="boarding"){ const pad=s.tiles.findIndex(t=>t.t==="extract"), px=pad%s.W, py=(pad/s.W)|0, T=[]; for(let dy=-6;dy<=6;dy++)for(let dx=-6;dx<=6;dx++){ const x=px+dx,y=py+dy; if(tileAt(s,x,y).t==="floor"&&!entAt(s,x,y)&&players(s).every(q=>Math.hypot(q.x-x,q.y-y)>4)) T.push([x,y]); }
+        const fac=pickS(s,["reaver","reaver","blacksun","hollow"]), id="cb"; s.crews[id]={id,fac,att:"hostile",met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:999,home:[px,py],boarders:1}; const used=new Set(s.ents.filter(e=>e.kind==="raider").map(e=>e.name));
+        for(let k=0;k<3+((s.tierN|0)>=3?1:0)&&T.length;k++){ const [x,y]=T.splice(ri(s,0,T.length-1),1)[0], r=makeRaider(s,fac,Math.max(2,s.tierN|0),x,y,id,k===0,used); const q=players(s).find(z=>z.alive); if(q) r.last={x:q.x,y:q.y}; s.ents.push(r); }
+        say(s,`A hull-grinding CLANG from the docking bay. Another ship has latched on. ${FACTIONS[fac].name} boarders are pouring in by the shuttle pad.`,"bad"); }
+      if(E.type==="gas"){ E.end=s.turn+45; const rs=(s.rooms||[]).filter(r=>r[0]&&!/Docking/i.test(r[0])); const r=rs.length?rs[ri(s,0,rs.length-1)]:null; s.gas=[]; if(r){ const cx=(r[1]+r[3])>>1, cy=(r[2]+r[4])>>1; for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const i=idx(s,cx+dx,cy+dy); if(walk(s.tiles[i])) s.gas.push(i); } E.room=r[0]; }
+        say(s,`A pipe ruptures somewhere${E.room?` near the ${E.room}`:""}. Green fog starts rolling through the decks. Toxic. Masks on.`,"bad"); }
+      if(E.type==="drop"){ const T=farTiles(s,10).filter(([x,y])=>tileAt(s,x,y).t==="floor"&&!entAt(s,x,y)&&roomName(x,y)&&!s.items.some(q=>q.x===x&&q.y===y)); if(T.length){ const [x,y]=T[ri(s,0,T.length-1)], t=4+(s.tierN|0);
+          const loot=[Items.roll(()=>rand(s),t,"weapon"),Items.roll(()=>rand(s),t,"armor"),Items.roll(()=>rand(s),t,"med"),Items.roll(()=>rand(s),t,pickS(s,["val","throw","ammo"]))]; s.tiles[idx(s,x,y)]={t:"prop",kind:"pod",loot}; s.fuel[idx(s,x,y)]=0; noise(s,x,y,22); fx(s,{type:"explode",x,y,big:1}); E.x=x; E.y=y;
+          say(s,`Something screams through the hull and slams into the ${roomName(x,y)}. An orbital supply pod. Everyone aboard heard that.`,"warn");
+          for(const C of Object.values(s.crews||{})) if(!C.leave) C.goal={k:"box",x,y}; } }
       if(E.type==="surge"){ E.end=s.turn+12; s.power=false; say(s,"A power surge blows the main bus. The station goes dark. The backup should kick in soon.","warn"); }
       return; }
     if(!E.on||E.done) return;
     if(E.type==="meltdown"){ const left=E.end-s.turn; if(left>0&&left%10===0) say(s,`"Core breach in ${left} turns."`,"bad");
       if(left<=0){ E.done=1; fx(s,{type:"explode",x:players(s)[0]?players(s)[0].x:0,y:players(s)[0]?players(s)[0].y:0,big:1}); for(const e of s.ents) if(e.alive&&(e.kind!=="player"||!e.extracted)){ CTX=e.kind==="player"?e.id:null; kill(s,e,"Vaporised when the reactor went critical."); } CTX=null; } }
+    if(E.type==="gas"){ if(s.turn<E.end&&s.gas.length<130){ const add=[]; for(const i of s.gas){ if(!chance(s,.22)) continue; const x=i%s.W,y=(i/s.W)|0; for(const [dx,dy] of N4){ const j=idx(s,x+dx,y+dy), t=s.tiles[j]; if(t&&(walk(t)||(t.t==="door"&&t.open))&&!s.gas.includes(j)&&!add.includes(j)) add.push(j); } } s.gas.push(...add.slice(0,8)); }
+      if(s.turn>=E.end){ s.gas=s.gas.slice(0,Math.max(0,s.gas.length-10)); if(!s.gas.length){ E.done=1; say(s,"The scrubbers finally catch up. The green fog thins and is gone.","good"); } } }
     if((E.type==="lockdown"||E.type==="surge")&&s.turn>=E.end){ E.done=1; if(E.type==="lockdown"){ for(const i of E.doors||[]) s.tiles[i].locked=false; say(s,"\"Lockdown lifted.\" The maglocks release with a clunk.","good"); } else { s.power=true; fx(s,{type:"power"}); say(s,"The backup generators catch. Lights stutter back on.","good"); } } }
   function chargeTick(s){ if(!s.charges||!s.charges.length) return; for(const c of s.charges){ if(--c.t>0) continue; const t=tileAt(s,c.x,c.y); ATK=c.by;
       if(t.t==="door"){ t.open=true; t.broken=true; t.locked=false; t.sealed=false; } fx(s,{type:"explode",x:c.x,y:c.y}); noise(s,c.x,c.y,16); say(s,"The breaching charge goes off. The door is gone.","warn"); blast(s,c.x,c.y,{r:1.6,dmg:[8,14]}); ATK=null; }
@@ -356,7 +378,7 @@ const Sim = (() => {
   const N4=[[1,0],[-1,0],[0,1],[0,-1]];
   function face(e,dx,dy){ if(!dx&&!dy) return; e.face=Math.abs(dx)>=Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]; }
   const fx=(s,o)=>s.fx.push(o);
-  let CTX=null, ATK=null, KCLS=null; const isPid=(s,id)=>!!id&&s.ents.some(q=>q.id===id&&q.kind==="player"); const label=e=>e.kind==="husk"?"the "+(e.mut?MUTS[e.mut].n.toLowerCase()+" ":"")+((HTYPES[e.type||"husk"]||{}).name||"husk"):e.kind==="bot"?"the "+e.name:e.name; // which player a log line is about (multiplayer renders it from their perspective)
+  let CTX=null, ATK=null, KCLS=null, SPEC=null; const isPid=(s,id)=>!!id&&s.ents.some(q=>q.id===id&&q.kind==="player"); const label=e=>e.kind==="husk"?"the "+(e.mut?MUTS[e.mut].n.toLowerCase()+" ":"")+((HTYPES[e.type||"husk"]||{}).name||"husk"):e.kind==="bot"?"the "+e.name:e.name; // which player a log line is about (multiplayer renders it from their perspective)
   function say(s,msg,kind="info"){ s.log.push({t:s.turn,msg,kind,pid:CTX}); if(s.log.length>80) s.log.shift(); }
   function roomName(x,y){ for(const r of ROOMS) if(x>=r[1]&&x<=r[3]&&y>=r[2]&&y<=r[4]) return r[0]; return "Service crawlway"; }
   function line(x0,y0,x1,y1,extend=0){ // Bresenham, excludes start
@@ -370,7 +392,7 @@ const Sim = (() => {
   }
   const sightR=s=>s.power?8:4;
   // everyone sees the same distance; only sniper rifles and scoped guns see a few tiles further
-  function sightFor(s,e){ let r=sightR(s); const g=e&&(e.kind==="player"||e.kind==="raider")&&gun(e), st=g&&ST(g); if(st){ if(st.cls==="sniper") r+=s.power?3:2; else if(st.mod==="scope") r+=s.power?2:1; } return r; }
+  function sightFor(s,e){ let r=sightR(s); if(e&&e.imp&&e.imp.ocular) r+=1; const g=e&&(e.kind==="player"||e.kind==="raider")&&gun(e), st=g&&ST(g); if(st){ if(st.cls==="sniper") r+=s.power?3:2; else if(st.mod==="scope") r+=s.power?2:1; } return r; }
   function canSee(s,p,x,y){ const d=Math.hypot(p.x-x,p.y-y); let r=sightFor(s,p); if(p.kind!=="player"&&d>1.5){ const q=s.ents.find(e=>e.kind==="player"&&e.alive&&e.sneak&&e.x===x&&e.y===y); if(q) r-=2; } return d<=r+.5 && los(s,p.x,p.y,x,y); }
   function anyPlayerSees(s,x,y){ return players(s).some(p=>p.alive&&canSee(s,p,x,y)); }
   function fov(s,p){
@@ -384,20 +406,24 @@ const Sim = (() => {
   function pickLimb(s){ let r=rand(s)*100; for(const [l,w] of HIT_W){ if((r-=w)<0) return l; } return "torso"; }
   function crippled(e){ return !(e.stimT>0)&&!(e.kind==="player"&&gearOf(e).nolimp)&&(e.hp.lleg<=0||e.hp.rleg<=0||!!(e.frac&&(e.frac.lleg||e.frac.rleg))); }
   function bleedDecal(s,x,y,n=1){ const k=idx(s,x,y); s.blood[k]=Math.min(6,(s.blood[k]||0)+n); }
-  function noise(s,x,y,r){ for(const h of s.ents) if(h.kind==="husk"&&h.alive&&Math.hypot(h.x-x,h.y-y)<=r){ h.aware=true; h.last={x,y}; } }
+  function noise(s,x,y,r){ if(r>=3&&s.fx&&s.fx.length<40) s.fx.push({type:"noise",x,y,r}); for(const h of s.ents) if(h.kind==="husk"&&h.alive&&Math.hypot(h.x-x,h.y-y)<=r){ h.aware=true; h.last={x,y}; } }
 
   function damage(s,e,limb,dmg,bleedP,cause){
     if(!e.alive) return;
     if(e.kind==="raider"&&isPid(s,ATK)) provoke(s,e,ATK);
     if(e.kind==="raider"&&ATK){ const A=s.ents.find(q=>q.id===ATK&&q.kind==="raider"); const C=crewOf(s,e); if(A&&C&&A.crew!==e.crew){ C.enemy=C.enemy||{}; C.enemy[A.crew]=1; } }
-    if(e.kind==="husk"&&HT(e).dr) dmg=Math.max(1,Math.round(dmg*(1-HT(e).dr)));
-    if(e.kind==="husk"&&e.mut==="armored") dmg=Math.max(1,Math.round(dmg*.75));
-    if(e.kind==="raider"||e.kind==="player"){ const G=gearOf(e), dr=limb==="head"?G.head:limb==="torso"?G.torso:limb==="larm"||limb==="rarm"?G.torso*.5:G.legs; if(dr) dmg=Math.max(1,Math.round(dmg*(1-dr))); }
+    if(e.type==="nest") limb="torso";
+    const armoredT=(e.kind==="husk"&&(HT(e).dr||e.mut==="armored"))||((e.kind==="raider"||e.kind==="player")&&gearOf(e).torso>=.12)||e.kind==="bot";
+    if(SPEC==="hp"){ dmg=Math.round(dmg*(armoredT?.75:1.25)); if(!armoredT) bleedP=1; }
+    if(e.kind==="husk"&&HT(e).dr) dmg=Math.max(1,Math.round(dmg*(1-HT(e).dr*(SPEC==="ap"?.35:1))));
+    if(e.kind==="husk"&&e.mut==="armored"&&SPEC!=="ap") dmg=Math.max(1,Math.round(dmg*.75));
+    if(e.kind==="player"&&e.imp&&e.imp.dermal) dmg=Math.max(1,Math.round(dmg*.9));
+    if(e.kind==="raider"||e.kind==="player"){ const G=gearOf(e), dr=(limb==="head"?G.head:limb==="torso"?G.torso:limb==="larm"||limb==="rarm"?G.torso*.5:G.legs)*(SPEC==="ap"?.35:1); if(dr) dmg=Math.max(1,Math.round(dmg*(1-dr))); }
     if(e.downed&&(limb==="head"||limb==="torso")){ kill(s,e,cause); return; }
     const was=e.hp[limb]; e.hp[limb]=Math.max(0,was-dmg);
     if(e.kind==="player"){ const A=ATK&&ATK!==e.id?s.ents.find(q=>q.id===ATK):null; e.hits=(e.hits||[]).slice(-7); e.hits.push({t:s.turn,l:limb,d:dmg,by:A?whoIs(A):String(cause||"injuries")}); }
     else if(isPid(s,ATK)){ const P=s.ents.find(q=>q.id===ATK); P.tally=P.tally||{}; P.tally.dealt=(P.tally.dealt|0)+Math.min(was,dmg); }
-    if(!e.syn&&chance(s,bleedP)) e.bleed[limb]=1;
+    if(!e.syn&&e.type!=="nest"&&chance(s,bleedP)) e.bleed[limb]=1;
     if(!e.syn) bleedDecal(s,e.x,e.y,1); fx(s,{type:"hurt",id:e.id,x:e.x,y:e.y,limb,dmg,syn:e.syn?1:0});
     const vis=anyPlayerSees(s,e.x,e.y), you=e.kind==="player", who=e.kind==="raider"?e.name+"'s":e.kind==="bot"?`The ${e.name}'s`:`The ${HT(e).name}'s`;
     // a heavy hit that wrecks a limb can tear it clean off
@@ -416,6 +442,10 @@ const Sim = (() => {
   }
   function whoIs(A){ if(A.kind==="husk") return (A.mut?MUTS[A.mut].n+" ":"")+HT(A).name; if(A.kind==="raider"){ const g=gun(A); return `${A.name} (${FACTIONS[A.fac]?FACTIONS[A.fac].name:"raider"}${g?", "+nm(g).toLowerCase():""})`; } if(A.kind==="bot") return A.name; if(A.kind==="player") return A.name+" (friendly fire)"; return A.name||"something"; }
   function kill(s,e,cause){
+    if(e.kind==="player"&&e.alive&&!/Vaporised/.test(String(cause))){ const li=(e.inv||[]).findIndex(q=>q.d==="lazarus"); if(li>=0){ e.inv.splice(li,1); for(const l of ["head","torso"]) e.hp[l]=Math.max(e.hp[l],Math.round(e.max[l]*.35)); e.blood=Math.max(e.blood,45); e.bleed={}; e.stimT=Math.max(e.stimT|0,6); e.downed=false; e.lazarus=(e.lazarus|0)+1;
+        fx(s,{type:"lazarus",id:e.id,x:e.x,y:e.y}); const c0=CTX; CTX=e.id; say(s,"Your heart stops. Then the Lazarus injector slams a needle into it. You gasp back to life, shaking.","good"); CTX=c0; return; } }
+    if(e.kind==="player"&&ATK){ const A=s.ents.find(q=>q.id===ATK&&q.kind==="raider"); if(A) e.nemSrc={name:A.name,fac:A.fac,look:A.look,w1:A.w1||null,head:A.head||null,armor:A.armor||null,was:A.nemesis?1:0}; }
+    if(e.nemesis&&isPid(s,ATK)){ s.nemesisDown=ATK; say(s,`${e.name} is dead. Your nemesis won't be hunting you anymore. Search the body: your gear is on it.`,"good"); }
     e.alive=false; bleedDecal(s,e.x,e.y,3); fx(s,{type:"die",id:e.id,x:e.x,y:e.y});
     if(e.kind==="player"){ s.cause=cause; e.cause=cause; const lh=(e.hits||[]).slice(-1)[0]; e.killer=lh?lh.by:String(cause||""); const c0=CTX; CTX=e.id; say(s,`You die. ${cause}`,"bad"); CTX=c0; }
     if(e.jobTarget){ const J=(s.jobs||[]).find(q=>q.id===e.jobTarget); if(J&&!J.done){ J.done=true; say(s,`${e.name} is dead. Contract target eliminated.`,"good"); } }
@@ -428,6 +458,7 @@ const Sim = (() => {
       if(C&&isPid(s,ATK)){ setAtt(s,e.crew,"hostile"); addRep(s,e.fac,C.hired?-15:-12); s.kills[e.fac]=(s.kills[e.fac]||0)+1; for(const [f2,F2] of Object.entries(FACTIONS)) if(F2.foes.includes(e.fac)) addRep(s,f2,3); } }
     else if(e.kind==="bot"){ fx(s,{type:"explode",x:e.x,y:e.y,small:1}); spawnItem(s,{d:chance(s,.5)?"circ":"parts",r:0,n:1},e.x,e.y); if(anyPlayerSees(s,e.x,e.y)) say(s,`The ${e.name} sparks, shudders and dies.`,"good"); }
     else { const T0=HT(e);
+      if(e.type==="nest"){ spawnItem(s,{d:"mutagen",r:0},e.x,e.y); spawnItem(s,Items.roll(()=>rand(s),(s.tierN|0)+1,pickS(s,["val","weapon","med","armor"])),e.x,e.y); if(anyPlayerSees(s,e.x,e.y)) say(s,"The nest ruptures in a gush of black fluid. Whatever was growing in it won't hatch now.","good"); fx(s,{type:"roar",x:e.x,y:e.y}); return; }
       if(e.mut){ spawnItem(s,{d:"mutagen",r:0},e.x,e.y); if(chance(s,.6)) spawnItem(s,Items.roll(()=>rand(s),2,pickS(s,["val","ammo","med","weapon"])),e.x,e.y);
         if(e.mut==="volatile"){ if(anyPlayerSees(s,e.x,e.y)) say(s,"The volatile husk's swollen body ruptures in a spray of burning gas!","warn"); const k0=KCLS; KCLS="explosive"; blast(s,e.x,e.y,{r:1.6,dmg:[8,16]}); KCLS=k0; } }
       if(e.type==="matriarch"){ for(const c of ["val","val","weapon","armor"]) spawnItem(s,Items.roll(()=>rand(s),3,c),e.x,e.y); spawnItem(s,{d:"core",r:0,n:2},e.x,e.y); say(s,"The Matriarch crashes to the deck. The whole station seems to exhale.","good"); fx(s,{type:"roar",x:e.x,y:e.y}); }
@@ -528,7 +559,7 @@ const Sim = (() => {
     return true;
   }
   // an enemy that hasn't noticed you, struck from behind, dies quietly
-  function unaware(s,h,p){ if(h.kind==="husk") return h.type!=="matriarch"&&(!h.aware||(p.sneak&&!h.last&&!huskSees(s,h,p))); if(h.kind==="raider") return !h.last&&!(crewOf(s,h)&&crewOf(s,h).att==="hostile"&&rSees(s,h,p)); return false; }
+  function unaware(s,h,p){ if(h.kind==="husk") return h.type!=="matriarch"&&h.type!=="nest"&&(!h.aware||(p.sneak&&!h.last&&!huskSees(s,h,p))); if(h.kind==="raider") return !h.last&&!(crewOf(s,h)&&crewOf(s,h).att==="hostile"&&rSees(s,h,p)); return false; }
   function behind(h,p){ const f=h.face||[0,1]; return f[0]*(p.x-h.x)+f[1]*(p.y-h.y)<=0; }
   function melee(s,p,h){
     if(p.kind==="player"&&(h.kind==="husk"||h.kind==="raider")&&unaware(s,h,p)&&behind(h,p)){ KCLS="melee"; face(p,h.x-p.x,h.y-p.y); fx(s,{type:"takedown",x:h.x,y:h.y,id:p.id});
@@ -561,7 +592,7 @@ const Sim = (() => {
     const G=gearOf(p); let c=.9+(st.acc||0)+G.acc-(st.fall??.035)*d; if(p.food!=null&&(p.food<8||p.water<8)) c-=.05;
     if(st.close&&d<3) c-=st.close;
     c-= p.hp.rarm<=0?.35:(1-p.hp.rarm/p.max.rarm)*.15;
-    if(p.perks) c+=.04*(p.perks.marksman|0); if(p.mast&&st.cls) c+=.025*(p.mast[st.cls]|0); if(p.frac){ if(p.frac.rarm) c-=.12; if(p.frac.larm) c-=.06; } if((p.inf|0)>=25) c-=.08;
+    if(p.perks) c+=.04*(p.perks.marksman|0); if(p.mast&&st.cls) c+=.025*(p.mast[st.cls]|0); if(p.imp&&p.imp.reflex) c+=.04; if(p.frac){ if(p.frac.rarm) c-=.12; if(p.frac.larm) c-=.06; } if((p.inf|0)>=25) c-=.08;
     c-= p.hp.larm<=0?.12:0;
     if(p.blood<50) c-=.15;
     if(!s.power&&d>3&&!st.dark&&!G.dark) c-=.1;
@@ -584,7 +615,9 @@ const Sim = (() => {
     if(p.ammo[st.ammo]===0) say(s,`That was your last ${Items.AMMO[st.ammo].name.toLowerCase().replace(/s$/,"")}.`,"warn");
     return true;
   }
-  function fireOne(s,p,tx,ty,st,target){ KCLS=st.cls||"rifle"; const mx=p.mast&&(p.mast[st.cls]|0)>=5?1.15:1;
+  function fireOne(s,p,tx,ty,st,target){ SPEC=null; if(p.spec&&p.spec.n>0&&st.cls!=="launcher"){ SPEC=p.spec.t; p.spec.n--; if(p.spec.n<=0){ say(s,`That was your last ${SPEC_N[p.spec.t]} round. Back to standard ammo.`,"warn"); p.spec=null; } } try{ return fireOne0(s,p,tx,ty,st,target); } finally { SPEC=null; } }
+  const SPEC_N={ap:"armour-piercing",inc:"incendiary",hp:"hollow-point"};
+  function fireOne0(s,p,tx,ty,st,target){ KCLS=st.cls||"rifle"; const mx=p.mast&&(p.mast[st.cls]|0)>=5?1.15:1;
     if(st.cls==="launcher"){ let at=[tx,ty], prev=[p.x,p.y];
       for(const [x,y] of line(p.x,p.y,tx,ty)){ const tt=tileAt(s,x,y);
         if(tt.t==="window"){ hitWindow(s,x,y,tt,true); at=prev; break; } if(!clear(tt)||(tt.t==="prop"&&tt.kind==="barrel")){ at=tt.t==="prop"?[x,y]:prev; break; }
@@ -603,7 +636,7 @@ const Sim = (() => {
       if(e&&e!==p){
         const isT=e===target, pel=st.pellets||1; let hits=0;
         for(let q=0;q<pel&&e.alive;q++){ if(isT?chance(s,hc):chance(s,.3)){ hits++; const l=st.head&&chance(s,st.head)?"head":pickLimb(s); damage(s,e,l,Math.round(ri(s,st.dmg[0],st.dmg[1])*mx),st.bleed??.55,"shot"); } }
-        if(hits){ what="flesh"; fx(s,{type:"shot",x0:p.x,y0:p.y,x1:x,y1:y,what});
+        if(hits){ what="flesh"; fx(s,{type:"shot",x0:p.x,y0:p.y,x1:x,y1:y,what}); if(SPEC==="inc"&&chance(s,.4)){ const fi=idx(s,x,y); s.fire[fi]=Math.max(s.fire[fi]|0,2); s.fuel[fi]=Math.max(s.fuel[fi]|0,6); }
           say(s, e.kind==="raider"||e.kind==="player"?`Your round hits ${e.name}!`:pel>1?`${hits} of ${pel} pellets tear into ${label(e)}.`:`You hit ${label(e)}.`, "good");
           if(e.kind==="husk"){ e.aware=true; e.last={x:p.x,y:p.y}; if(st.stun&&e.alive) e.stun=Math.max(e.stun|0,st.stun);
             if(st.knock&&e.alive){ const dx=Math.sign(e.x-p.x), dy=Math.sign(e.y-p.y), nx=e.x+(Math.abs(e.x-p.x)>=Math.abs(e.y-p.y)?dx:0), ny=e.y+(Math.abs(e.x-p.x)<Math.abs(e.y-p.y)?dy:0); if(walk(tileAt(s,nx,ny))&&!entAt(s,nx,ny)){ e.x=nx; e.y=ny; } } }
@@ -760,11 +793,14 @@ const Sim = (() => {
       p.blood=Math.min(100,p.blood+15); p.inv.splice(i,1); say(s,"You jab a coagulant and staple your wounds shut.","good"); return true;
     }
     if(it.d==="o2"){ p.o2=Math.min(p.o2max,p.o2+50); p.inv.splice(i,1); say(s,"You clip the canister into your suit. +50 O₂.","air"); return true; }
-    if(it.d==="stim"){ p.blood=Math.min(100,p.blood+25); p.stimT=10; p.inv.splice(i,1); say(s,"The stim hits like a hammer. Pain is a rumour for ten turns.","good"); return true; }
+    if(it.d==="stim"){ p.blood=Math.min(100,p.blood+(p.imp&&p.imp.adrenal?35:25)); p.stimT=p.imp&&p.imp.adrenal?15:10; p.inv.splice(i,1); say(s,"The stim hits like a hammer. Pain is a rumour for ten turns.","good"); return true; }
     if(it.d==="breach"){ const dirs=[p.face||[0,-1],...N4]; for(const [dx,dy] of dirs){ const x=p.x+dx,y=p.y+dy,t=tileAt(s,x,y); if(t.t==="door"&&!t.open){ s.charges=s.charges||[]; s.charges.push({x,y,t:2,by:p.id}); p.inv.splice(i,1); face(p,dx,dy); fx(s,{type:"plant",x,y}); say(s,"You slap the breaching charge on the door and step back. Two turns.","warn"); return true; } }
       say(s,"Face a closed door to plant a breaching charge.","info"); return false; }
     if(it.d==="sentry"){ const dirs=[p.face||[0,1],...N4,[1,1],[-1,1],[1,-1],[-1,-1]]; for(const [dx,dy] of dirs){ const x=p.x+dx,y=p.y+dy; if(free(s,x,y)){ const b=addBot(s,x,y,"turret","p:"+p.id); b.batt=30; b.name="field sentry"; b.face=[dx||1,0]; p.inv.splice(i,1); fx(s,{type:"robot",x,y}); say(s,"You thump the field sentry down. It unfolds, spins up and starts scanning. 30 turns of battery.","good"); return true; } }
       say(s,"No room to set the sentry down here.","info"); return false; }
+    if(it.d==="apkit"||it.d==="inckit"||it.d==="hpkit"){ const g=gun(p); if(!g||ST(g).cls==="launcher"){ say(s,"Hold a gun to load special rounds into.","info"); return false; } const t=it.d==="apkit"?"ap":it.d==="inckit"?"inc":"hp"; p.spec={t,n:12}; p.inv.splice(i,1); fx(s,{type:"reload",x:p.x,y:p.y});
+      say(s,`You thumb twelve ${SPEC_N[t]} rounds in. ${t==="ap"?"They punch through armour, plating and brute hide.":t==="inc"?"Every hit might set the target ablaze.":"Brutal on flesh, weak against armour."}`,"good"); return true; }
+    if(it.d==="lazarus"){ say(s,"The Lazarus injector fires on its own when your heart stops. Just keep it on you.","info"); return false; }
     if(it.d==="tripmine"){ const dirs=[p.face||[0,1],...N4]; for(const [dx,dy] of dirs){ const x=p.x+dx,y=p.y+dy, t=tileAt(s,x,y); if((t.t==="floor"||t.t==="door"&&t.open)&&!entAt(s,x,y)&&!trapAt(s,x,y)&&!mineAt(s,x,y)&&!t.vent){ s.mines=s.mines||[]; s.mines.push({x,y,by:p.id,t:s.turn}); p.inv.splice(i,1); face(p,dx,dy); fx(s,{type:"plant",x,y}); say(s,"You set the tripmine and run the wire. It arms next turn. Your crew's suits won't trigger it.","good"); return true; } }
       say(s,"No clear deck in front of you to set it on.","info"); return false; }
     if(it.d==="weldtorch"){ const dirs=[p.face||[0,-1],...N4]; for(const [dx,dy] of dirs){ const x=p.x+dx,y=p.y+dy,t=tileAt(s,x,y); if(t.t!=="door"||t.vault||t.broken) continue;
@@ -789,7 +825,7 @@ const Sim = (() => {
 
   // ---------- world resolution ----------
   function endTurn(s){
-    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); trapTick(s);
+    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); trapTick(s); nemTick(s);
     for(const p of players(s)) if(p.alive&&p.downed&&--p.downT<=0){ CTX=p.id; kill(s,p,"Bled out before help arrived."); }
     CTX=null;
     s.turn++;
@@ -919,6 +955,7 @@ const Sim = (() => {
     const claimed=new Set();
     for(const h of s.ents){
       if(h.kind!=="husk"||!h.alive) continue; ATK=null;
+      if(h.type==="nest"){ nestTick(s,h); continue; }
       if(h.mut==="regen"&&s.turn%2===0){ for(const l of LIMBS) if(!(h.sev&&h.sev[l])&&h.hp[l]>0) h.hp[l]=Math.min(h.max[l],h.hp[l]+2); if(s.turn%6===0) h.bleed={}; }
       if(h.stun>0){ h.stun--; continue; }
       if(s.fire[idx(s,h.x,h.y)]){ const opts=N4.map(([dx,dy])=>[h.x+dx,h.y+dy]).filter(([x,y])=>free(s,x,y));
@@ -990,7 +1027,7 @@ const Sim = (() => {
     if(p.kind==="bot") return;
     if(p.kind==="raider"){ ATK=h.id; face(h,p.x-h.x,p.y-h.y); fx(s,{type:"claw",x:p.x,y:p.y,id:h.id}); if(chance(s,TY.acc-.06)){ damage(s,p,pickLimb(s),ri(s,TY.dmg[0],TY.dmg[1]),.35,"husk"); if(p.alive&&anyPlayerSees(s,p.x,p.y)&&chance(s,.4)) say(s,`A husk tears into ${p.name}.`,"info"); } return; }
     CTX=p.id; ATK=h.id; const armsGone=h.hp.larm<=0&&h.hp.rarm<=0; face(h,p.x-h.x,p.y-h.y); fx(s,{type:"claw",x:p.x,y:p.y,id:h.id});
-    if(chance(s,armsGone?.5:TY.acc)){
+    if(chance(s,(armsGone?.5:TY.acc)-(p.imp&&p.imp.reflex?.1:0))){
       const l=pickLimb(s), d=armsGone?ri(s,3,6):ri(s,TY.dmg[0],TY.dmg[1]), n=TY.name;
       say(s, h.type==="brute"?`The brute slams into your ${LNAME[l]}!`:h.type==="matriarch"?`The Matriarch's claws tear through your ${LNAME[l]}!`:armsGone?`The ${n} bites into your ${LNAME[l]}!`:`The ${n} rakes your ${LNAME[l]}!`, "bad");
       if(h.type==="brute") fx(s,{type:"stomp",x:p.x,y:p.y});
@@ -1178,6 +1215,16 @@ const Sim = (() => {
       for(let k=0;k<size;k++){ const [x,y]=tiles.splice(ri(s,0,tiles.length-1),1)[0]; if(!s.crews[id].home) s.crews[id].home=[x,y]; s.ents.push(makeRaider(s,fac,tier,x,y,id,k===0,used)); }
     }
   }
+  // your nemesis: the raider who killed you last time, wearing your gear, and looking for you
+  function spawnNemesis(s,tier,N){ const p0=players(s)[0]; if(!p0||!FACTIONS[N.fac]) return; const T=farTiles(s,16).filter(([x,y])=>tileAt(s,x,y).t==="floor"&&!entAt(s,x,y)&&roomName(x,y)); if(!T.length) return;
+    const [x,y]=T[ri(s,0,T.length-1)], id="cn", lvl=Math.max(1,Math.min(5,N.lvl|0)); s.crews=s.crews||{}; s.crews[id]={id,fac:N.fac,att:"hostile",met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:999,home:[x,y],nemesis:1};
+    const used=new Set(), r=makeRaider(s,N.fac,Math.max(tier,2),x,y,id,true,used); r.name=String(N.name||r.name).slice(0,24); if(N.look) r.look={...N.look}; for(const k of ["w1","head","armor"]) if(N[k]&&Items.def(N[k].d)) r[k]={d:N[k].d,r:N[k].r|0};
+    { const t=r.w1&&ST(r.w1)&&ST(r.w1).ammo; if(t) r.ammo[t]=(r.ammo[t]|0)+Items.AMMO[t].stack*3; }
+    for(const l of LIMBS){ r.hp[l]=Math.round(r.hp[l]*(1.2+.15*lvl)); r.max[l]=r.hp[l]; } r.nemesis=lvl; r.trait="veteran"; r.inv=(N.items||[]).filter(it=>it&&Items.def(it.d)).slice(0,4).map(it=>({...it,id:s.nextId++})).concat(r.inv).slice(0,Math.max(4,r.cap)); s.ents.push(r);
+    const sp=[[1,0],[-1,0],[0,1],[0,-1]].map(([a,b])=>[x+a,y+b]).find(([a,b])=>tileAt(s,a,b).t==="floor"&&!entAt(s,a,b)); if(sp&&lvl>=2) s.ents.push(makeRaider(s,N.fac,tier,sp[0],sp[1],id,false,used)); }
+  function nemTick(s){ const r=s.ents.find(e=>e.nemesis&&e.alive); if(!r) return; const q=players(s).filter(z=>z.alive).sort((a,b)=>Math.hypot(a.x-r.x,a.y-r.y)-Math.hypot(b.x-r.x,b.y-r.y))[0]; if(!q) return;
+    if(!r.taunt&&s.turn>=4){ r.taunt=1; s.log.push({t:s.turn,msg:pickS(s,[`You again. I kept your ${r.w1?nm(r.w1).toLowerCase():"things"}. Come and take it back.`,`I know you're aboard. I can smell you. Same as last time.`,`Back for more? Nobody comes back twice from ${r.name}.`]),kind:"chat",from:r.id,who:r.name,fac:r.fac,att:"hostile",pid:null}); fx(s,{type:"speech",id:r.id,x:r.x,y:r.y}); }
+    if(s.turn%10===0&&!(r.last&&canSee(s,r,q.x,q.y))) r.last={x:q.x,y:q.y}; }
   // a gun you paid for on the comms: arrives with you, follows whoever hired them
   function spawnHire(s,tier,H){ if(!H||!FACTIONS[H.fac]) return; const by=players(s).find(p=>p.id===H.by)||players(s)[0]; if(!by) return;
     const spot=[[0,1],[1,1],[-1,1],[0,-1],[2,0],[-2,0],[1,-1],[-1,-1]].map(([dx,dy])=>[by.x+dx,by.y+dy]).find(([x,y])=>walk(tileAt(s,x,y))&&!entAt(s,x,y)); if(!spot) return;
@@ -1186,7 +1233,7 @@ const Sim = (() => {
     for(const p of players(s)) p.seen[idx(s,r.x,r.y)]=1;
     s.log.push({t:s.turn,msg:`${r.name} of the ${FACTIONS[H.fac].name} checks their ${nm(r.w1)} and falls in behind you.`,kind:"good",pid:null}); }
   function gainXP(s,pid,n){ const p=s.ents.find(e=>e.id===pid&&e.kind==="player"); if(p) p.xp=(p.xp|0)+n; }
-  const XP_KILL={husk:6,stalker:5,spitter:8,brute:14,matriarch:120};
+  const XP_KILL={husk:6,stalker:5,spitter:8,brute:14,matriarch:120,nest:25};
   // fractures and infections: they stay with you until treated (or the medbay sees you)
   function injure(s,p,limb,dmg,o){ if(!p||p.kind!=="player"||!p.alive) return; const ST2=p.perks||{};
     if(o.frac&&limb!=="head"&&limb!=="torso"&&!(p.frac&&p.frac[limb])&&(dmg>=8||p.hp[limb]<p.max[limb]*.4)&&chance(s,o.frac*(ST2.steady?.5:1))){ p.frac=p.frac||{}; p.frac[limb]=1; fx(s,{type:"bash",x:p.x,y:p.y}); const c0=CTX; CTX=p.id; say(s,`Something snaps. Your ${LNAME[limb]} is broken.${limb.endsWith("leg")?" You can barely walk on it.":" Your aim is shot."} A splint would set it.`,"bad"); CTX=c0; }
@@ -1412,6 +1459,8 @@ const Sim = (() => {
   function vitals(s){
     for(const e of s.ents){
       if(!e.alive) continue; CTX=e.kind==="player"?e.id:null; if(e.stimT>0) e.stimT--;
+      if(e.imp&&e.imp.clot&&s.turn%3===0){ const bl=LIMBS.filter(l=>e.bleed[l]); if(bl.length&&chance(s,.45)){ delete e.bleed[bl[0]]; say(s,`Your clotting implant seals the wound on your ${LNAME[bl[0]]}.`,"good"); } }
+      if(s.gas&&s.gas.length&&(e.kind==="player"||e.kind==="raider")&&!e.syn&&s.gas.includes(idx(s,e.x,e.y))){ const h=e.head&&e.head.d, a=e.armor&&e.armor.d; if(!(["gasmask","sallet","eva","deathmask","halohelm","pilothelm"].includes(h)||a==="hazard"||a==="hardsuit")){ e.blood-=2; if(e.kind==="player"&&(!e.flags.gasT||s.turn-e.flags.gasT>6)){ e.flags.gasT=s.turn; say(s,"You choke on the green fog. Your lungs are on fire. Get out, or get a mask on.","bad"); } if(e.blood<=0){ kill(s,e,"Choked on toxic gas."); continue; } } }
       if(e.kind==="player"&&e.inf>0){ e.inf++; if(e.inf===25) say(s,"You're running a fever. Your hands won't stop shaking.","bad"); if(e.inf>=25&&s.turn%(e.inf>=80?3:6)===0){ e.blood-=1; if(e.blood<=0){ kill(s,e,"Taken by fever and infection."); continue; } } }
       if(e.kind==="player"&&e.food!=null){ const hf=e.food, hw=e.water; e.food=Math.max(0,+(e.food-.03).toFixed(3)); e.water=Math.max(0,+(e.water-.045).toFixed(3));
         if(hf>=15&&e.food<15) say(s,"Your stomach knots. You should eat something.","warn"); if(hw>=15&&e.water<15) say(s,"Your mouth is dry. You should drink something.","warn");
@@ -1452,7 +1501,7 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); mix((s.charges||[]).length); mix((s.traps||[]).length+"/"+(s.mines||[]).length); for(const e of s.ents) if(e.sneak) mix("s"+e.id+(e.snk|0)); { let w=0; for(const t of s.tiles) if(t.sealed) w++; mix("w"+w); } if(s.ev) mix(s.ev.type+s.ev.on+(s.ev.done?1:0)); for(const e of s.ents) if(e.rad) mix("r"+e.id+Math.round(e.rad*4)); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
+    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); mix((s.charges||[]).length); mix((s.traps||[]).length+"/"+(s.mines||[]).length); mix("g"+(s.gas?s.gas.length:0)); for(const e of s.ents) if(e.spec) mix("sp"+e.id+e.spec.n); for(const e of s.ents) if(e.type==="nest") mix("n"+e.id+(e.t|0)); for(const e of s.ents) if(e.sneak) mix("s"+e.id+(e.snk|0)); { let w=0; for(const t of s.tiles) if(t.sealed) w++; mix("w"+w); } if(s.ev) mix(s.ev.type+s.ev.on+(s.ev.done?1:0)); for(const e of s.ents) if(e.rad) mix("r"+e.id+Math.round(e.rad*4)); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 

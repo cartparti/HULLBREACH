@@ -276,6 +276,10 @@ body[data-mode="touch"] .tut{top:auto;bottom:calc(env(safe-area-inset-bottom,0px
 body[data-mode="touch"] .obj{top:calc(env(safe-area-inset-top,0px) + 176px);width:min(260px,calc(100% - 32px));font-size:12px}
 body[data-mode="touch"] .obj.closed{width:auto}
 body[data-scene="ship"] .obj{display:none!important}
+.enc-ch{display:flex;flex-direction:column;gap:6px;margin-top:10px}.enc-ch button{text-align:left;justify-content:flex-start;padding:8px 12px;height:auto;min-height:36px}
+.recap.nem{border-color:#7a1a12;background:rgba(90,10,6,.3)}
+.vr-wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}.vr-wrap canvas{width:300px;height:375px;image-rendering:pixelated;border:4px solid #1a1a1e;box-shadow:0 0 0 1px #3a3a44,0 0 30px rgba(90,255,140,.15);touch-action:none;background:#020804}.vr-side{flex:1;min-width:200px}
+body[data-mode="touch"] .vr-wrap canvas{width:min(84vw,300px);height:auto;aspect-ratio:4/5}
 .tmap{position:fixed;inset:0;z-index:60;background:rgba(4,3,3,.82);display:flex;align-items:center;justify-content:center;padding:12px}
 .tmap[hidden]{display:none}
 .tm-box{background:#0c0a09;border:1px solid #5a2a20;box-shadow:0 0 0 1px #000,0 10px 40px rgba(0,0,0,.7);padding:10px 12px;max-width:100%;max-height:100%;display:flex;flex-direction:column;gap:8px}
