@@ -10,7 +10,7 @@ let profile=null, panelKind=null, panelSub=null, mapSel=null, stashFilter="all",
 const itemInfo=World.itemInfo, mk=World.mkItem, AMMO_T=Object.keys(Items.AMMO), MAT_T=Object.keys(Items.MATS);
 function newProfile(){ return {v:SAVE_V,updated:0,credits:500,
   stash:[mk({d:"flashlight"}),mk({d:"bandage"}),mk({d:"bandage"}),mk({d:"o2"}),mk({d:"ration"}),mk({d:"waterflask"})],
-  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,mastery:{},daily:null,morale:0,catGift:0,implants:{},nemesis:null,arcade:{best:0,day:0},
+  ammo:{pistol:12},mats:{scrap:10,prop:3,circ:3,org:4,parts:0,core:0},food:80,water:80,gotLight:1,look:{c:"red",v:"amber",k:"plume",s:1,h:2,hc:1,f:0,e:0,t:0,tc:0,b:0,bc:4,bt:4,bs:1,g:0,fh:0,fm:0,ey:0,br:0,mo:0,no:0},unlocks:{cloak:[],visor:[],crest:[]},rep:{},xp:0,perks:{},injury:{frac:{},inf:0},life:{},codex:{},medals:{},title:null,mastery:{},daily:null,morale:0,catGift:0,implants:{},nemesis:null,arcade:{best:0,day:0},wanted:null,seenPro:0,
   stats:{raids:0,extracts:0,deaths:0,earned:0,best:0,contracts:0},kit:{type:"starter",w1:null,w2:null,melee:null,armor:null,pack:null,inv:[],ammo:{}},
   squad:"solo",last:null,active:null,ship:World.newShip(),welcomed:false}; }
 // v1 saves: gear ids and a shared round count become real items and pistol ammo
@@ -181,6 +181,8 @@ const PANELS={
   comms:{eye:"Bridge · hologram comms",title:()=>commsFac?`Channel open · ${Sim.FACTIONS[commsFac].name}`:"Hail a faction",view:viewComms},
   hack:{eye:"Security terminal",title:()=>"Station network",view:viewHack},
   encounter:{eye:"In transit",title:()=>ENC&&ENC.title||"Contact",view:viewEncounter},
+  bones:{eye:"Galley",title:()=>"Bones",view:viewBones},
+  juke:{eye:"Galley",title:()=>"Jukebox",view:viewJuke},
   arcade:{eye:"Break room",title:()=>"VOID RUNNER",view:viewArcade},
   debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
 };
@@ -481,7 +483,8 @@ function viewWorkbench(){
     <div class="panel h-card span12"><div class="h-eyebrow">Pack upgrades · +1 slot each, up to +3</div><div class="shop">${profile.stash.filter(q=>Items.kind(q)==="pack").map(q=>{ const l=q.l|0, c=Items.UPGRADE_COST(l);
       return `<div class="panel shop-row">${slotHTML(q)}<div class="nm">${nmHTML(q)}<span>+${Items.stats(q).slots} slots${l<3?` → +${Items.stats(q).slots+1} · ${costHTML(c)}`:" · fully upgraded"}</span></div><span></span><button class="plain" data-act="upg:${q.uid}" ${l<3&&canPay(c)?"":"disabled"}>${l<3?"Upgrade":"Maxed"}</button></div>`; }).join("")||`<p class="risk">No packs in your stash.</p>`}</div></div></section>`;
 }
-function viewBar(){
+function viewBar(){ return viewBar0().replace(/<\/section>\s*$/,`<div class="panel h-card span12"><div class="h-eyebrow">Off duty</div><div class="bar-row"><button data-act="bones-open">Play Bones with Hesk</button><button class="plain" data-act="juke-open">Jukebox</button></div><p class="risk">Bones: three dice each, triples beat pairs beat the higher total. Hesk plays for credits.</p></div></section>`); }
+function viewBar0(){
   const menu=Items.BAR.map(b=>`<div class="panel shop-row"><div class="slot" style="display:flex;align-items:center;justify-content:center;font-size:22px">${b.water>(b.food||0)?"🥤":"🍲"}</div><div class="nm"><b>${b.name}</b><span>${[b.food?`+${b.food} food`:"",b.water?`+${b.water} water`:""].filter(Boolean).join(" · ")}</span></div><span class="price">${b.price?b.price+" cr":"free"}</span><button class="plain" data-act="bareat:${b.id}" ${profile.credits<b.price?"disabled":""}>${b.water>(b.food||0)?"Drink":"Eat"}</button></div>`).join("");
   const togo=Items.BAR_TOGO.map(([d,price],i)=>{ const it={d,r:0}; return `<div class="panel shop-row">${slotHTML(it)}<div class="nm">${nmHTML(it)}<span>${esc(Items.statLine(it))} · ${ownedOf(it)} in stash</span></div><span class="price">${price} cr</span><button class="plain" data-act="bartogo:${i}" ${profile.credits<price?"disabled":""}>Buy</button></div>`; }).join("");
   return `<section class="h-grid"><div class="panel h-card span12"><div class="h-eyebrow">How you're holding up</div><div class="vit" style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:4px 8px;align-items:center;max-width:520px">${hungerRows(profile.food,profile.water)}</div>
@@ -647,6 +650,7 @@ const MEDALS=[
   {id:"caches",t:"Treasure Hunter",title:"Treasure Hunter",d:"Find 10 hidden caches."},{id:"archive",t:"Archivist",title:"Archivist",d:"Collect 12 data logs."},
   {id:"warden",t:"Warden",title:"Warden",d:"Bring home 3 prisoners."},{id:"ally",t:"Diplomat",title:"Diplomat",d:"Become Allied with any faction."},
   {id:"choir",t:"Song Breaker",title:"Song Breaker",d:"Finish a job against the Iron Choir."},{id:"throne",t:"Iron Heart",title:"Thronebreaker",d:"Get out of the Throne of Iron alive."},
+  {id:"giant",t:"Giant Killer",title:"Giant Killer",d:"Destroy a Custodian and get out."},{id:"law",t:"Lawbringer",title:"Lawbringer",d:"Collect 3 Concord wanted bounties."},
   {id:"vengeance",t:"Vengeance",title:"Avenger",d:"Kill your nemesis."},{id:"exterm",t:"Exterminator",title:"Exterminator",d:"Destroy 10 husk nests."},
   {id:"chrome",t:"Chromed",title:"Chrome",d:"Fit three cybernetic implants."},{id:"arcade",t:"High Score",title:"Void Runner",d:"Score 1500 in VOID RUNNER."},
   {id:"mutant",t:"Mutant Hunter",title:"Mutant Hunter",d:"Kill 10 mutated husks."},{id:"sapper",t:"Sapper",title:"Sapper",d:"Disarm 10 tripwires."},
@@ -657,7 +661,7 @@ function bountyWeek(){ const wk=Math.floor((ship().day|0)/7); let B=profile.boun
 let logTab="bounties";
 function viewLogbook(){ const B=bountyWeek(), daysLeft=7-((ship().day|0)%7), tabs=[["bounties","Bounties"],["medals","Medals"],["mastery","Mastery"],["codex","Codex"],["stats","Service record"]];
   let body="";
-  if(logTab==="bounties") body=(profile.nemesis?`<div class="recap nem"><div class="h-eyebrow" style="color:var(--blood2)">Nemesis · level ${profile.nemesis.lvl}</div><p><b>${esc(profile.nemesis.name)}</b> of the ${esc(Sim.FACTIONS[profile.nemesis.fac].name)} is hunting you${profile.nemesis.items&&profile.nemesis.items.length?`, carrying your ${profile.nemesis.items.map(it=>esc(Items.name(it))).join(", ")}`:""}. They turn up on about 40% of your raids (every Daily Op).</p></div>`:"")+`<p class="risk">New bounties every 7 days (${daysLeft} day${daysLeft>1?"s":""} left). Progress only counts on raids you get out of alive.</p>`+B.list.map(q=>{ const b=BOUNTIES.find(x=>x.id===q.id); if(!b) return ""; const done=q.prog>=b.n;
+  if(logTab==="bounties") body=(()=>{ const W=wantedWeek(); return `<div class="wanted-row">${W.list.map(q=>{ const S0=World.SECTORS.find(z=>z.id===q.sector); return `<div class="poster ${W.claimed[q.id]?"got":""}"><div class="pw">WANTED</div><b>${esc(q.name)}</b><span>${esc(Sim.FACTIONS[q.fac].name)}</span><span>Last seen: ${esc(S0?S0.name:q.sector)}</span><div class="pr">${W.claimed[q.id]?"COLLECTED":`${q.reward} cr`}</div></div>`; }).join("")}</div><p class="risk">Concord Marshals' wanted list, new every week. Raid derelicts in their sector and you might run into them. Kill them and get out alive to collect.</p>`; })()+(profile.nemesis?`<div class="recap nem"><div class="h-eyebrow" style="color:var(--blood2)">Nemesis · level ${profile.nemesis.lvl}</div><p><b>${esc(profile.nemesis.name)}</b> of the ${esc(Sim.FACTIONS[profile.nemesis.fac].name)} is hunting you${profile.nemesis.items&&profile.nemesis.items.length?`, carrying your ${profile.nemesis.items.map(it=>esc(Items.name(it))).join(", ")}`:""}. They turn up on about 40% of your raids (every Daily Op).</p></div>`:"")+`<p class="risk">New bounties every 7 days (${daysLeft} day${daysLeft>1?"s":""} left). Progress only counts on raids you get out of alive.</p>`+B.list.map(q=>{ const b=BOUNTIES.find(x=>x.id===q.id); if(!b) return ""; const done=q.prog>=b.n;
       return `<div class="cm-row"><div class="cm-t"><b>${b.t}</b><span>${b.d.replace("{n}",b.n)} · ${Math.min(q.prog,b.n)}/${b.n}</span><div class="meter" style="height:5px;margin-top:3px"><i style="width:${Math.min(100,q.prog/b.n*100)}%;background:var(--brass)"></i></div></div>${q.claimed?`<span class="risk good">Claimed</span>`:done?`<button class="plain" data-act="bclaim:${q.id}">Claim ${b.cr} cr</button>`:`<span class="risk">${b.cr} cr · ${b.xp} XP</span>`}</div>`; }).join("");
   if(logTab==="medals"){ const got=MEDALS.filter(m=>profile.medals[m.id]).length; body=`<p class="risk">${got}/${MEDALS.length} medals. Each one unlocks a title to wear and hangs a trophy on your ship's corridor wall.</p><div class="medals">${MEDALS.map(m=>{ const has=profile.medals[m.id];
       return `<div class="medal ${has?"got":""}"><i>${has?"✦":"✧"}</i><div><b>${m.t}</b><span>${m.d}</span>${has?`<button class="plain" data-act="title:${m.id}" ${profile.title===m.id?"disabled":""}>${profile.title===m.id?"Wearing":"Wear title: "+m.title}</button>`:""}</div></div>`; }).join("")}</div>${profile.title?`<button class="plain" data-act="title:none">Remove title</button>`:""}`; }
@@ -778,6 +782,8 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
     ${Lr.recap?`<div class="recap"><div class="h-eyebrow" style="color:var(--blood2)">What happened</div><p><b>Killed by ${esc(Lr.recap.killer||"something in the dark")}</b> on turn ${Lr.recap.turns}. You put down ${Lr.recap.kills} and dealt ${Lr.recap.dealt} damage.</p>${Lr.recap.hits.length?`<ol class="hits">${Lr.recap.hits.map(h=>`<li><span>T${h.t}</span> ${esc(h.by)} · ${esc(Sim.LNAME[h.l]||h.l)} <b>−${h.d}</b></li>`).join("")}</ol>`:""}<p class="risk">${esc(Lr.recap.tip)}</p></div>`:""}
     ${Lr.nemesis&&Lr.nemesis.made?`<div class="recap nem"><div class="h-eyebrow" style="color:var(--blood2)">${Lr.nemesis.lvl>1?"Your nemesis grows stronger":"A nemesis is born"}</div><p><b>${esc(Lr.nemesis.name)}</b> of the ${esc(Sim.FACTIONS[Lr.nemesis.fac].name)}${Lr.nemesis.lvl>1?` killed you again. They're level ${Lr.nemesis.lvl} now: tougher, better equipped, and they travel with friends.`:" killed you, and they'll remember it."}${Lr.nemesis.took.length?` They took your ${Lr.nemesis.took.map(esc).join(", ")}.`:""} They'll turn up on your raids. Kill them to take it all back.</p></div>`:""}
     ${Lr.nemesis&&Lr.nemesis.killed?`<p class="risk good"><b>Vengeance.</b> ${esc(Lr.nemesis.name)} is dead. Whatever they took from you was on their body.</p>`:""}
+    ${Lr.sides&&Lr.sides.length?`<p class="risk good">Side objectives: ${Lr.sides.map(o=>`${esc(o.t)} (+${o.cr} cr)`).join(", ")}.</p>`:""}
+    ${Lr.wanted?`<p class="risk good"><b>Bounty collected:</b> ${esc(Lr.wanted.name)}, dead. The Concord Marshals pay ${Lr.wanted.reward} cr.</p>`:""}
     ${Lr.daily?`<p class="risk good"><b>Daily Op complete: ${esc(Lr.daily.name)}.</b> Supply crate: ${Lr.daily.items.map(x=>`<b style="color:${x.c}">${esc(x.n)}</b>`).join(", ")}, ${Lr.daily.cr} cr and ${Lr.daily.xp} XP.</p>`:""}
     ${Lr.mast&&Lr.mast.length?Lr.mast.map(m=>`<p class="risk good">${esc(m.c)} mastery: <b>${esc(m.lvl)}</b>. ${esc(m.bonus)}</p>`).join(""):""}
     ${Lr.medals&&Lr.medals.length?`<p class="risk good">Medal${Lr.medals.length>1?"s":""} earned: <b>${Lr.medals.map(esc).join(", ")}</b>. Wear the title from the Logbook.</p>`:""}
@@ -844,6 +850,10 @@ $("p-body").addEventListener("click",e=>{
     case "unimplant": if(profile.implants[x]){ delete profile.implants[x]; toast("Implant removed."); save(); } break;
     case "enc": resolveEncounter(+x); break;
     case "vr-start": vrStart(); return;
+    case "bones-open": openPanel("bones"); return;
+    case "juke-open": openPanel("juke"); return;
+    case "bones": bonesRoll(+x); return;
+    case "juke": if(typeof Snd!=="undefined"&&Snd.song){ Snd.song(+x); jukeOn=+x; renderPanel(); } return;
     case "bclaim": { const B=bountyWeek(), q=B.list.find(z=>z.id===x), b=BOUNTIES.find(z=>z.id===x); if(!q||!b||q.claimed||q.prog<b.n) break; q.claimed=true; profile.credits+=b.cr; profile.xp=(profile.xp|0)+b.xp; toast(`Bounty paid: ${b.cr} cr and ${b.xp} XP.`); if(typeof Snd!=="undefined") Snd.play("coin"); save(); break; }
     case "title": profile.title=x==="none"?null:x; save(); break;
     case "perk": if(perkPoints()>0&&PERKS[x]&&(profile.perks[x]|0)<PERKS[x].max){ profile.perks[x]=(profile.perks[x]|0)+1; save(); toast(`${PERKS[x].name} rank ${profile.perks[x]}.`); } break;
@@ -931,7 +941,14 @@ function scanSite(L){ const sd=(ship().seeds||{})[L.id]; if(!sd) return null; co
   return scanCache[key]={power:g.power,husks:H,boss:!!g.boss,turrets:g.ents.filter(e=>e.kind==="bot"&&e.type==="turret").length,drones:g.ents.filter(e=>e.kind==="bot"&&e.type==="drone").length,crews,fires:Object.keys(g.fire).length}; }
 function raidOpts(L,fx){ const held=World.controlOf(ship(),L.id); return {jobs:(ship().jobs||[]).filter(j=>j.site===L.id),gen:{tier:L.site.tier||1,fireStart:!!L.site.fireStart,kind:held==="choir"?"hive":(L.site.kind||""),size:L.site.size||""},site:L.name,mods:L.site.mods,factions:fx||factionSetup(PID)}; }
 // what the station's crews know about you: your standing, and a merc you've paid for (used once)
-function factionSetup(by){ const N=profile.nemesis, hunt=N&&Math.random()<(L0=>L0&&L0.daily?1:.4)(here()); return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null,nemesis:hunt?{...N}:null}; }
+function factionSetup(by){ const N=profile.nemesis, hunt=N&&Math.random()<(L0=>L0&&L0.daily?1:.4)(here()); const W=wantedHere(); return {rep:{...(profile.rep||{})},hire:profile.hire?{fac:profile.hire.fac,by}:null,nemesis:hunt?{...N}:null,wanted:W&&!hunt&&Math.random()<.65?{id:W.id,name:W.name,fac:W.fac}:null}; }
+// Concord wanted posters: three named raider captains a week, each hiding out in one sector
+const WNAMES=["Corrin \"Saw\" Mallory","Ines Vahl the Red","Dutch Okafor","Mother Brisk","Teodor Kask","Sable Quinn","Iron Pell","Grue the Patient","Halvard Stoke","Nadia Ruhl","Fen Marrow","Old Absalom"];
+function wantedWeek(){ const wk=Math.floor((ship().day|0)/7); let W=profile.wanted; if(!W||W.week!==wk){ let h=(wk*2246822519+3266489917)>>>0; const R=()=>{ h=(h^(h<<13))>>>0; h=(h^(h>>>17))>>>0; h=(h^(h<<5))>>>0; return h/4294967296; };
+    const facs=["reaver","blacksun","hollow","reaver","blacksun"], secs=World.SECTORS.map(q=>q.id).slice(), names=WNAMES.slice(), list=[];
+    for(let i=0;i<3;i++){ const sec=secs.splice(Math.floor(R()*secs.length),1)[0], nm=names.splice(Math.floor(R()*names.length),1)[0]; list.push({id:"w"+wk+"_"+i,name:nm,fac:facs[Math.floor(R()*facs.length)],sector:sec,reward:500+Math.floor(R()*5)*100}); }
+    W=profile.wanted={week:wk,list,claimed:{}}; } return W; }
+function wantedHere(){ const L=here(); if(!L||L.type==="station"||L.type==="outpost") return null; const W=wantedWeek(); return W.list.find(q=>q.sector===L.sector&&!W.claimed[q.id])||null; }
 function deploy(){
   const L=here(); if(L.type!=="derelict") return;
   if(inSquad()){ if(Net.host){ Net.ready=true; Net.readyLo=loadoutFromKit(kitResolved()); squadPresence(); hostLaunch(); } else setReady(!Net.ready); return; }
@@ -997,6 +1014,9 @@ function settlePersonal(){
     profile.nemesis={name:p.nemSrc.name,fac:p.nemSrc.fac,look:p.nemSrc.look,w1:p.nemSrc.w1,head:p.nemSrc.head,armor:p.nemSrc.armor,lvl:same?Math.min(5,(N0.lvl|0)+1):1,items:[...(same?N0.items||[]:[]),...took].slice(0,4),since:ship().day|0};
     if(took.length&&profile.remains&&profile.remains.items){ const R0=profile.remains.items; for(const it of took){ const k=R0.findIndex(q=>q.d===it.d&&(q.r|0)===(it.r|0)); if(k>=0) R0.splice(k,1); } rep.remains=R0.length; if(!R0.length) profile.remains=null; }
     rep.nemesis={made:1,name:p.nemSrc.name,fac:p.nemSrc.fac,lvl:profile.nemesis.lvl,took:took.map(it=>Items.name(it))}; }
+  // side objectives done and survived; Concord wanted bounties
+  rep.sides=[]; if(win) for(const o of S.side||[]){ const D=Sim.SIDES[o.id]; if(o.done&&D){ profile.credits+=D.cr; p.xp=(p.xp|0)+D.xp; rep.sides.push({t:D.t,cr:D.cr}); } }
+  if(win&&S.wantedDown){ const W=wantedWeek(), q=W.list.find(z=>z.id===S.wantedDown); if(q&&!W.claimed[q.id]){ W.claimed[q.id]=1; profile.credits+=q.reward; profile.rep.marshal=Math.min(100,(profile.rep.marshal|0)+5); profile.life.wanted=(profile.life.wanted|0)+1; rep.wanted={name:q.name,reward:q.reward}; } }
   // the Daily Op: the first extraction of the day pays out
   if(win&&L.daily&&profile.daily!==L.daily){ profile.daily=L.daily; profile.life.dailies=(profile.life.dailies|0)+1; const cr=700; profile.credits+=cr; p.xp=(p.xp|0)+150;
     const got=[]; let it=null; for(let n=0;n<10&&(!it||Items.rarOf(it)<2||!Items.slotOf(it));n++) it=Items.roll(Math.random,3,["weapon","armor"][n%2]); if(it){ World.grant(profile,it); got.push({n:Items.name(it),c:rc(it)}); }
@@ -1015,7 +1035,7 @@ function settlePersonal(){
     if(win){ if(profile.stats.extracts>=0) give("first"); if(profile.stats.extracts>=10) give("ten"); if((K.matriarch|0)>0) give("queen"); if(haul>=2000) give("rich"); if(L.id==="throne") give("throne"); if(S.ev&&S.ev.type==="meltdown"&&S.ev.on) give("melt"); }
     if((LF.takedowns|0)>=10) give("ghost"); if(Object.keys(LF.regions).length>=3) give("wander"); if((LF.signals|0)>=5) give("signals"); if((LF.hacks|0)>=5) give("net"); if((LF.caches|0)>=10) give("caches");
     if(Object.keys(profile.codex).length>=12) give("archive"); if((LF.prisoners|0)>=3) give("warden"); if(Object.values(profile.rep||{}).some(v=>v>=50)) give("ally"); if(LF.choirJob) give("choir");
-    if((LF.k.elite|0)>=10) give("mutant"); if((LF.k.nest|0)>=10) give("exterm"); if(rep.nemesis&&rep.nemesis.killed) give("vengeance"); if((LF.disarms|0)>=10) give("sapper"); if((LF.dailies|0)>=5) give("dailies"); if(Object.values(profile.mastery).some(v=>(v|0)>=MAST_T[5])) give("master");
+    if((LF.k.elite|0)>=10) give("mutant"); if((LF.k.custodian|0)>=1) give("giant"); if((LF.wanted|0)>=3) give("law"); if((LF.k.nest|0)>=10) give("exterm"); if(rep.nemesis&&rep.nemesis.killed) give("vengeance"); if((LF.disarms|0)>=10) give("sapper"); if((LF.dailies|0)>=5) give("dailies"); if(Object.values(profile.mastery).some(v=>(v|0)>=MAST_T[5])) give("master");
     if([...profile.stash,...(win?p.inv:[])].some(it=>Items.rarOf(it)>=4)) give("legend");
     rep.medals=earn; }
   // experience: kept in full when you get out, half when you don't
@@ -1048,7 +1068,8 @@ function showMenu(){ const m=$("menu"); $("menu-art").src=emblemURL(); paintMenu
   const st=profile.stats; $("m-stats").textContent=`${st.raids} raids · ${st.extracts} extracted · ${st.deaths} lost · ${profile.credits} cr`; $("m-save").textContent=Store.mode==="cloud"?"Saved to your account":"Saved on this device";
   $("m-mode").textContent=mode==="pc"?"Controls: mouse & keys":"Controls: touch"; $("m-sound").textContent=sndLabel(); $("m-music").textContent=Snd.cfg().music>0?"Music on":"Music off"; $("m-gfx").textContent=LOWFX?"Low graphics":"High graphics"; m.hidden=false; }
 function hideMenu(){ $("menu").hidden=true; }
-$("m-play").onclick=()=>{ hideMenu(); if(!profile.welcomed){ profile.welcomed=true; save(); } toast(`Aboard. Walk to a terminal and press ${mode==="pc"?"F":"USE"}. ${mode==="pc"?"I or Tab":"The Inventory button"} opens your kit.`); };
+if($("m-pro")) $("m-pro").onclick=()=>{ if(typeof playPrologue==="function") playPrologue(null); };
+$("m-play").onclick=()=>{ if(!profile.seenPro&&typeof playPrologue==="function"){ profile.seenPro=1; save(); playPrologue(()=>$("m-play").onclick()); return; } hideMenu(); if(!profile.welcomed){ profile.welcomed=true; save(); } toast(`Aboard. Walk to a terminal and press ${mode==="pc"?"F":"USE"}. ${mode==="pc"?"I or Tab":"The Inventory button"} opens your kit.`); };
 $("m-crew").onclick=()=>{ hideMenu(); openPanel("crew"); };
 $("m-ward").onclick=()=>{ hideMenu(); openPanel("wardrobe"); };
 const sndLabel=()=>{ const c=Snd.cfg(); return c.on?`Sound ${Math.round(c.vol*100)}%`:"Sound off"; };
@@ -1153,3 +1174,19 @@ function vrDraw(){ const c=$("vr-c"); if(!c||!VR) return; const g=c.getContext("
   g.fillStyle="#7aff9a"; g.font="bold 12px monospace"; g.fillText(String(Math.floor(VR.score||0)).padStart(6,"0"),6,16); g.fillText("♥".repeat(Math.max(0,VR.hp|0)),190,16);
   if(VR.over){ g.fillStyle="rgba(0,0,0,.55)"; g.fillRect(0,110,240,70); g.fillStyle="#9affb0"; g.textAlign="center"; g.font="bold 18px monospace"; g.fillText(VR.t?"GAME OVER":"VOID RUNNER",120,140); g.font="11px monospace"; g.fillText(VR.t?`SCORE ${Math.floor(VR.score)}`:"INSERT CREDIT",120,160); g.textAlign="left"; }
   for(let y=0;y<300;y+=3){ g.fillStyle="rgba(0,0,0,.18)"; g.fillRect(0,y,240,1); } }
+
+// =================== BONES: dice with Hesk at the galley bar ===================
+let BONES=null;
+const DIE=["","⚀","⚁","⚂","⚃","⚄","⚅"];
+function bonesScore(d){ const c={}; for(const v of d) c[v]=(c[v]|0)+1; const n=Math.max(...Object.values(c)), sum=d.reduce((a,b)=>a+b,0), top=+Object.keys(c).find(k=>c[k]===n); return {rank:n===3?3:n===2?2:1,val:n===3?top*100:n===2?top*10+sum/100:sum,label:n===3?`Triple ${top}s`:n===2?`Pair of ${top}s`:`${sum}`}; }
+function viewBones(){ const B=BONES; return `<section class="panel h-card"><p>Hesk slides three yellowed knucklebone dice across the bar. "Triples beat pairs, pairs beat the higher total. Ties go to the house, because it's my house."</p>
+  ${B?`<div class="bones"><div><span>You</span><b>${B.me.map(v=>DIE[v]).join(" ")}</b><i>${esc(bonesScore(B.me).label)}</i></div><div><span>Hesk</span><b>${B.hk.map(v=>DIE[v]).join(" ")}</b><i>${esc(bonesScore(B.hk).label)}</i></div></div><p class="risk ${B.win?"good":"bad"}">${esc(B.msg)}</p>`:""}
+  <div class="bar-row">${[10,50,100,250].map(w=>`<button data-act="bones:${w}" ${profile.credits>=w?"":"disabled"}>Bet ${w} cr</button>`).join("")}</div><p class="risk">Credits: ${profile.credits}. Bones won: ${profile.life.bonesW|0}, lost: ${profile.life.bonesL|0}.</p></section>`; }
+function bonesRoll(w){ if(!(w>0)||profile.credits<w) return; const r=()=>1+Math.floor(Math.random()*6), me=[r(),r(),r()], hk=[r(),r(),r()], a=bonesScore(me), b=bonesScore(hk), win=a.rank>b.rank||(a.rank===b.rank&&a.val>b.val);
+  profile.credits+=win?w:-w; profile.life[win?"bonesW":"bonesL"]=(profile.life[win?"bonesW":"bonesL"]|0)+1;
+  const msg=win?(a.rank===3?`Triple! Hesk swears in four languages and pays ${w} cr.`:`You take ${w} cr off him. "Beginner's luck," he mutters.`):(a.rank===b.rank&&a.val===b.val?`A tie. House rules: Hesk keeps your ${w} cr.`:`Hesk rakes in your ${w} cr with a grin full of gold teeth.`);
+  BONES={me,hk,win,msg}; if(typeof Snd!=="undefined") Snd.play(win?"pickup":"search"); save(); renderPanel(); }
+// =================== JUKEBOX ===================
+let jukeOn=-1;
+const SONGS=[["Rust Waltz","a slow three-four for dead stations"],["Ninefold Blues","the dockworkers' lament"],["Low Orbit","something to fall asleep to"],["Hymn for the Drowned","sung on Saint ships at a burial"]];
+function viewJuke(){ return `<section class="panel h-card"><p>A battered jukebox wired into the galley speakers. Somebody scratched "PLAY SOMETHING ELSE" into the glass.</p><div class="enc-ch">${SONGS.map(([n,d],i)=>`<button data-act="juke:${i}" ${jukeOn===i?'class="on"':""}>${jukeOn===i?"■ ":"▶ "}${esc(n)} <small style="opacity:.6;margin-left:8px">${esc(d)}</small></button>`).join("")}<button class="plain" data-act="juke:-1">Silence</button></div><p class="risk">Plays while you're aboard. It stops when you board a derelict.</p></section>`; }

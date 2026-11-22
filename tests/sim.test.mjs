@@ -506,4 +506,26 @@ test("implants: ocular sees further, lung sacs add oxygen", () => {
   if (far) { assert.ok(!Sim.canSee(a, pa, far[0], far[1]) && Sim.canSee(b, pb, far[0], far[1]), "the implant sees 5 tiles in the dark"); }
 });
 
+test("the Custodian: guards harder stations, wakes when it sees you, paints rocket strikes, and drops its core", () => {
+  let g = null; for (let k = 0; k < 12 && !g; k++) { const s0 = Sim.newGame(1400 + k, LO, { gen: { tier: 3, kind: "outpost" }, mods: { custodian: 1 } }); if (s0.bossBot) g = s0; }
+  assert.ok(g, "a Custodian spawned"); const c = g.ents.find((e) => e.id === g.bossBot), p = playerOf(g); for (const e of g.ents) if (e.kind !== "player" && e !== c) e.alive = false; g.ev = null; g.traps = []; g.rad = []; g.gas = [];
+  const sp = [[3, 0], [-3, 0], [0, 3], [0, -3], [2, 2], [-2, 2]].map(([a, b]) => [c.x + a, c.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(g, x, y)) && !Sim.entAt(g, x, y) && Sim.los(g, c.x, c.y, x, y));
+  p.x = sp[0]; p.y = sp[1]; for (const l in p.hp) p.hp[l] = p.max[l] = 9999; p.blood = 100;
+  for (let i = 0; i < 6; i++) { p.blood = 100; Sim.act(g, "p1", { type: "wait" }); } assert.ok(c.woke, "woke up"); assert.ok((g.marks || []).length || g.log.some((l) => /targeting lasers/.test(l.msg)), "rocket salvo");
+  for (const l in c.hp) c.hp[l] = 1; c.stun = 9; for (let i = 0; i < 10 && c.alive; i++) Sim.act(g, "p1", { type: "shoot", x: c.x, y: c.y });
+  assert.ok(!c.alive, "destroyed"); assert.ok(g.items.some((i) => i.d === "custcore")); assert.equal(p.tally.k.custodian, 1);
+});
+
+test("side objectives: two per raid, tracked live, completed by doing them", () => {
+  const s = Sim.newGame(1500, LO, { gen: { tier: 2 } }); assert.equal(s.side.length, 2); assert.ok(s.side.every((o) => Sim.SIDES[o.id]));
+  const g = Sim.newGame(1501, LO, { gen: { tier: 2 } }); g.side = [{ id: "search", done: 0, prog: 0 }]; const p = playerOf(g); p.tally = { searches: 8 }; Sim.act(g, "p1", { type: "wait" }); assert.equal(g.side[0].done, 1);
+});
+
+test("Concord wanted targets spawn as tough hostile captains and their death is recorded", () => {
+  const s = Sim.newGame(1600, LO, { gen: { tier: 2 }, factions: { rep: {}, wanted: { id: "w9_1", name: "Old Absalom", fac: "blacksun" } } }), r = s.ents.find((e) => e.wanted === "w9_1");
+  assert.ok(r && r.name === "Old Absalom" && s.crews[r.crew].att === "hostile"); const p = playerOf(s); for (const e of s.ents) if (e.kind !== "player" && e !== r) e.alive = false;
+  const sp = N4.map(([a, b]) => [p.x + a, p.y + b]).find(([x, y]) => Sim.walk(Sim.tileAt(s, x, y)) && !Sim.entAt(s, x, y)); r.x = sp[0]; r.y = sp[1]; for (const l in r.hp) r.hp[l] = 1; r.stun = 9;
+  for (let i = 0; i < 6 && r.alive; i++) Sim.act(s, "p1", { type: "melee", x: r.x, y: r.y }); assert.equal(s.wantedDown, "w9_1");
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

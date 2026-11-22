@@ -75,6 +75,7 @@ const Snd = (() => {
     robot: (n) => { tone(n, { type: "square", f: 600, f1: 300, d: .12, v: .12 }); tone(n, { t: .08, type: "square", f: 900, d: .06, v: .08 }); },
     klaxon: (n) => { for (let k = 0; k < 3; k++) { tone(n, { t: k * .7, type: "sawtooth", f: 440, f1: 330, a: .02, d: .55, v: .14 }); tone(n, { t: k * .7, type: "square", f: 220, f1: 165, a: .02, d: .55, v: .05 }); } },
     horn: (n) => { for (const det of [0, 12, -15]) tone(n, { type: "sawtooth", f: 58, f1: 46, a: .4, d: 2.4, v: .16, det }); noise(n, { a: .3, d: 2.2, v: .2, f: 300, f1: 120 }); },
+    heartbeat: (n) => { tone(n, { f: 58, f1: 40, d: .16, v: .55 }); tone(n, { t: .22, f: 52, f1: 36, d: .2, v: .4 }); },
     meow: (n) => { tone(n, { type: "triangle", f: R(620, 700), f1: R(900, 1000), a: .03, d: .14, v: .14 }); tone(n, { t: .13, type: "triangle", f: 950, f1: 520, d: .28, v: .12 }); },
     purr: (n) => { for (let k = 0; k < 10; k++) noise(n, { t: k * .09, a: .02, d: .07, v: .18, f: 180 }); },
     weld: (n) => { noise(n, { a: .02, d: .9, v: .3, type: "highpass", f: 2500 }); for (let k = 0; k < 8; k++) noise(n, { t: k * .1, d: .03, v: .3, type: "highpass", f: 5000 }); tone(n, { type: "sawtooth", f: 90, d: .9, v: .04 }); },
@@ -123,14 +124,29 @@ const Snd = (() => {
   const SCALE = [220, 261.6, 293.7, 329.6, 392, 440, 523.3]; let nextBell = 0, nextCreak = 0, lastDanger = false, heat = 0, nextBeat = 0, beatN = 0;
   function setG(g, v, tc = .8) { g.gain.setTargetAtTime(v, T(), tc); }
   // st: {scene:"menu"|"ship"|"raid", power, fire (0..1), breach, danger}
+  // ---- the galley jukebox: four little procedural songs ----
+  let song = -1, sNext = 0, sStep = 0;
+  const SONGS = [
+    { bpm: 92, meter: 3, lead: "triangle", ch: [[220, 277.2, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [164.8, 207.7, 246.9]], mel: .55 },
+    { bpm: 78, meter: 4, lead: "sawtooth", ch: [[110, 138.6, 164.8, 196], [146.8, 174.6, 220, 261.6], [110, 138.6, 164.8, 196], [164.8, 207.7, 246.9, 293.7]], mel: .4, swing: 1 },
+    { bpm: 62, meter: 4, lead: "sine", ch: [[130.8, 164.8, 196, 246.9], [110, 130.8, 164.8, 196], [87.3, 110, 130.8, 164.8], [98, 123.5, 146.8, 174.6]], mel: .3 },
+    { bpm: 54, meter: 4, lead: "triangle", ch: [[146.8, 174.6, 220], [130.8, 164.8, 196], [116.5, 146.8, 174.6], [110, 138.6, 164.8]], mel: .45, choir: 1 }];
+  function songTick(now) { const S1 = SONGS[song]; if (!S1) return; if (sNext < now) sNext = now + .05; while (sNext < now + .3) { const beat = sStep % S1.meter, bar = Math.floor(sStep / S1.meter), C = S1.ch[Math.floor(bar / 2) % S1.ch.length], t = sNext - now, bl = 60 / S1.bpm;
+      if (beat === 0) { tone(mus, { t, type: "sine", f: C[0] / 2, a: .02, d: bl * S1.meter * .95, v: .16 }); if (S1.choir) for (const f of C) tone(mus, { t, type: "sawtooth", f: f, a: .5, d: bl * S1.meter, v: .018, det: 6 }); }
+      tone(mus, { t: t + (S1.swing && beat % 2 ? bl * .16 : 0), type: "triangle", f: C[(beat + bar) % C.length] * 2, a: .01, d: bl * .7, v: .05 });
+      if (Math.random() < S1.mel) tone(mus, { t, type: S1.lead, f: C[Math.floor(Math.random() * C.length)] * (Math.random() < .3 ? 4 : 2), a: .02, d: bl * (Math.random() < .3 ? 1.8 : .9), v: S1.lead === "sawtooth" ? .022 : .05 });
+      if (song === 1 && beat % 2 === 1) noise(mus, { t, d: .05, v: .05, type: "highpass", f: 5000 });
+      sStep++; sNext += bl; } }
+  function songSet(i) { song = SONGS[i] ? i : -1; sStep = 0; sNext = 0; return song; }
   function scene(st) {
     if (!ctx || !unlocked) return;
     const raid = st.scene === "raid", menu = st.scene === "menu";
     setG(loop("hum", hum), raid && st.power ? .5 : 0); setG(loop("rumble", rumble), raid ? (st.power ? .12 : .45) : 0);
     setG(loop("engine", engine), st.scene === "ship" ? .35 : 0); setG(loop("fire", crackle), raid ? Math.min(.6, st.fire || 0) : 0, .4); setG(loop("wind", wind), raid && st.breach ? .5 : 0, .3);
-    setG(loop("music", pad), menu ? .9 : st.scene === "ship" ? .45 : 0, 1.5);
+    setG(loop("music", pad), menu ? .9 : st.scene === "ship" ? (song >= 0 ? .1 : .45) : 0, 1.5);
     const now = T();
-    if ((menu || st.scene === "ship") && now > nextBell) { nextBell = now + R(2.6, 5); const f = SCALE[Math.random() * SCALE.length | 0] * (Math.random() < .3 ? .5 : 1); tone(mus, { type: "triangle", f, a: .02, d: 3.2, v: menu ? .08 : .04 }); tone(mus, { type: "sine", f: f * 2.01, a: .02, d: 2.2, v: menu ? .03 : .015 }); }
+    if (song >= 0 && st.scene === "ship") songTick(now);
+    if ((menu || (st.scene === "ship" && song < 0)) && now > nextBell) { nextBell = now + R(2.6, 5); const f = SCALE[Math.random() * SCALE.length | 0] * (Math.random() < .3 ? .5 : 1); tone(mus, { type: "triangle", f, a: .02, d: 3.2, v: menu ? .08 : .04 }); tone(mus, { type: "sine", f: f * 2.01, a: .02, d: 2.2, v: menu ? .03 : .015 }); }
     if (raid && now > nextCreak) { nextCreak = now + R(st.power ? 9 : 4, st.power ? 20 : 10); const k = Math.random();
       if (k < .4) { tone(amb, { type: "sawtooth", f: R(70, 110), f1: R(50, 70), a: .3, d: 1.4, v: .05 }); } // hull groan
       else if (k < .7) { tone(amb, { f: R(1800, 2600), d: .25, v: .04 }); } // drip
@@ -150,5 +166,5 @@ const Snd = (() => {
   function setMusic(v) { S0.music = Math.max(0, Math.min(1, v)); if (mus) mus.gain.setTargetAtTime(S0.music, T(), .05); saveCfg(); }
   function toggle() { S0.on = !S0.on; if (S0.on && !S0.vol) S0.vol = .8; if (master) master.gain.setTargetAtTime(S0.on ? S0.vol : 0, T(), .05); saveCfg(); return S0.on; }
   function selfTest(){ unlock(); const bad=[]; for(const k of Object.keys(LIB)){ try{ LIB[k](sfx); }catch(e){ bad.push(k+': '+e.message); } } try{ for(const sc of ['menu','ship','raid']) scene({scene:sc,power:sc==='raid',fire:.5,breach:true,danger:true}); }catch(e){ bad.push('scene: '+e.message); } return {n:Object.keys(LIB).length,bad,state:ctx&&ctx.state}; }
-  return { play, scene, setListener, cfg, setVol, setMusic, toggle, unlock, selfTest };
+  return { song: songSet, play, scene, setListener, cfg, setVol, setMusic, toggle, unlock, selfTest };
 })();

@@ -1028,7 +1028,7 @@ function drawTacMap(){ const el=$("tmap"); if(!el||!S||S.mode!=="raid") return; 
   if(typeof Net!=="undefined"&&Net.pings) for(const q of Net.pings){ const X=q.x*sc+sc/2, Y=q.y*sc+sc/2, c=typeof colorOf==="function"?colorOf(q.k):"#e8b048", t=((now-q.at)/700)%1; g.strokeStyle=c; g.globalAlpha=1-t; g.beginPath(); g.arc(X,Y,sc*(1+t*3),0,6.283); g.stroke(); g.globalAlpha=1; g.fillStyle=c; g.fillRect(X-1,Y-sc*1.6,2,sc*1.2); }
   if(wrap) wrap.querySelector(".tm-leg").innerHTML=`<span><i style="background:#5ad06a"></i>Shuttle pad</span><span><i style="background:#c8a040"></i>Door</span><span><i style="background:#e0482f"></i>Maglocked / hostile</span><span><i style="background:#ff8a2a"></i>Welded</span><span><i style="background:#5ad0ff"></i>Vent</span><span><i style="background:rgba(120,255,90,.6)"></i>Radiation</span><span><b style="color:#ff3a20">✕</b> Tripwire</span>${typeof inSquad==="function"&&inSquad()?"<span>Tap the map to ping your crew</span>":""}`; mapLast=now; }
 // ---- trophy wall: every medal earned hangs a trophy on the ship's corridor bulkheads ----
-const TROPHY_SLOTS=[[38,3],[39,3],[41,3],[42,3],[44,3],[45,3],[47,3],[48,3],[11,13],[12,13],[13,13],[15,13],[16,13],[17,13],[19,13],[20,13],[21,13],[23,13],[24,13],[25,13],[26,13],[28,13],[30,13],[32,13]];
+const TROPHY_SLOTS=[[38,3],[39,3],[41,3],[42,3],[44,3],[45,3],[47,3],[48,3],[11,13],[12,13],[13,13],[15,13],[16,13],[17,13],[19,13],[20,13],[21,13],[23,13],[24,13],[25,13],[26,13],[28,13],[30,13],[32,13],[34,13],[36,13]];
 function trophyAt(x,y){ if(S.mode!=="ship"||typeof profile==="undefined"||!profile||!profile.medals||typeof MEDALS==="undefined") return null; const k=TROPHY_SLOTS.findIndex(q=>q[0]===x&&q[1]===y); if(k<0||k>=MEDALS.length) return null; const m=MEDALS[k]; return profile.medals[m.id]?m:null; }
 function trophyKey(){ try{ return "T"+(profile&&profile.medals?Object.keys(profile.medals).length:0); }catch(e){ return ""; } }
 function drawTrophy(g,ox,fy,m){ // dark plaque board + a medal-specific trophy
@@ -1049,6 +1049,8 @@ function drawTrophy(g,ox,fy,m){ // dark plaque board + a medal-specific trophy
     case "melt": R(g,cx-2,cy-4,4,7,"#2a2a24"); R(g,cx-1,cy-3,2,5,"#7af04a"); hp(g,cx,cy-5,"#ffd060"); break; // spent fuel rod
     case "legend": R(g,cx-1,cy-4,2,7,"#e0e0f0"); R(g,cx-3,cy+1,6,1,gold); R(g,cx-.5,cy-4,.6,6,"#fff"); break; // legendary blade
     case "wander": R(g,cx-3,cy-3,6,6,"#1a2a4a"); hp(g,cx-1,cy-1,"#fff"); hp(g,cx+1.5,cy+1,"#ffd060"); hp(g,cx+1,cy-2,"#9ad0ff"); break; // star chart
+    case "giant": R(g,cx-3,cy-4,6,6,"#4a4e54"); R(g,cx-2,cy-2,4,1.2,"#ff3a20"); R(g,cx-4,cy+2,8,1.4,"#c89a20"); R(g,cx-4,cy-5,2,2,"#4a4e54"); R(g,cx+2,cy-5,2,2,"#4a4e54"); break; // custodian head
+    case "law": R(g,cx-3,cy-4,6,8,"#c8b890"); R(g,cx-2,cy-3,4,1,"#5a1a12"); R(g,cx-2,cy-1,4,2.4,"#3a3028"); R(g,cx-2,cy+2,4,.6,"#5a1a12"); break; // a wanted poster
     case "vengeance": R(g,cx-3,cy-4,6,5,"#e0482f"); R(g,cx-2,cy+1,4,2,"#e0482f"); R(g,cx-2,cy-3,1.5,1.5,dk); R(g,cx+.5,cy-3,1.5,1.5,dk); R(g,cx-4,cy+2,8,.8,"#ccc"); break; // nemesis skull, pinned
     case "exterm": R(g,cx-3,cy-3,6,6,"#5a1e1a"); R(g,cx-2,cy-2,3,3,"#7a2a22"); R(g,cx-4,cy+2,8,1,"#ff7a30"); hp(g,cx,cy-4,"#ffd060"); break; // burnt nest
     case "chrome": R(g,cx-2,cy-4,4,8,"#9aa2ae"); R(g,cx-1,cy-3,2,1,"#5ad0ff"); R(g,cx-1,cy,2,.6,"#5ad0ff"); R(g,cx-3,cy-1,1,3,"#6a707a"); R(g,cx+2,cy-1,1,3,"#6a707a"); break; // implant
@@ -1360,7 +1362,7 @@ function processFx(){
           setTimeout(()=>{ const o=GORE[GORE.length-1]; },0); splat(px,py,14); splat(px+Math.cos(a)*d*.6,py+Math.sin(a)*d*.4,8,a,.8);
           spawn(26,px,py-8,{col:["#7a1410","#a01e14","#3e0806","#e8dcc0"],speed:85,life:.6,size:1.5,dir:-Math.PI/2,spread:3}); shake=Math.max(shake,3); break; }
       case "shriek": if(vis()){ rings.push({x:cpx(f.x),y:cpx(f.y)-6,t:0,dur:.5,col:"255,60,40"}); atkT[f.id]=now; } break;
-      case "die": spawn(26,cpx(f.x),cpx(f.y),{col:["#5a0e0a","#7a140e","#2a0504"],speed:45,life:.7,size:2}); splat(cpx(f.x),cpx(f.y)+8,12); break;
+      case "die": spawn(26,cpx(f.x),cpx(f.y),{col:["#5a0e0a","#7a140e","#2a0504"],speed:45,life:.7,size:2}); splat(cpx(f.x),cpx(f.y)+8,12); { const e=S.ents.find(q=>q.id===f.id); if(e&&(e.id===S.boss||e.id===S.bossBot||e.nemesis||e.wanted)){ killcam={t0:now}; shake=Math.max(shake,6); showCard({kicker:"Kill confirmed",title:e.type==="matriarch"?"The Matriarch falls":e.type==="custodian"?"The Custodian is scrap":e.nemesis?`${e.name} is dead`:`${e.name}: bounty claimed`,lines:[e.nemesis?"Vengeance. Your gear is on the body.":e.wanted?"Get out alive to collect.":"The whole station seems to exhale."],dur:2600,tone:"gold"}); } } break;
       case "breach": spawn(34,cpx(f.x),cpx(f.y),{col:["#cfe8ee","#7ab0bc","#4a3a24","#fff"],speed:120,life:.8}); lightsT.push({x:f.x,y:f.y,r:5,i:1.2,c:[.8,.9,1],t:0,dur:.25}); shake=Math.max(shake,9); break;
       case "glass": spawn(10,cpx(f.x),cpx(f.y),{col:["#cfe8ee","#7ab0bc"],speed:50,life:.4}); break;
       case "bash": if(vis()){ spawn(8,cpx(f.x),cpx(f.y),{col:["#6a5f50","#3a332a"],speed:35,life:.5}); shake=Math.max(shake,1.2); } break;
@@ -1472,7 +1474,18 @@ function huskExtras(g,e,view,now){ const t=e.type, f=view==="f", sd=view==="s";
   else if(t==="matriarch"){ for(let k=-3;k<=3;k++){ const h=4+(3-Math.abs(k))*1.6; g.fillStyle="#d8c8b0"; g.beginPath(); g.moveTo(k*2-1,-27); g.lineTo(k*2+1,-27); g.lineTo(k*2+(k*.3),-27-h); g.fill(); }
     if(view!=="b"){ for(const [ex,ey] of (f?[[-3,-22],[3,-22],[-1.5,-24],[1.5,-24]]:[[3,-22],[1.5,-24]])) { g.fillStyle="#ff3a20"; g.fillRect(ex,ey,1.2,1); } } } }
 // station security: a tripod turret and a hovering drone
-function drawBot(g,e,x,y,now){ const mine=e.owner&&String(e.owner).startsWith("p:"), off=mine?false:(!S.power||e.hackedOff), fc=e.face||[0,1], a=Math.atan2(fc[1],fc[0]), led=off?"#3a3a34":(Sim.botHostile(S,e,me())?"#ff3a20":"#5ad06a"), hit=flashT[e.id]&&now-flashT[e.id]<110;
+function drawCustodian(g,e,x,y,now){ const hit=flashT[e.id]&&now-flashT[e.id]<110, r=rp[e.id], moving=r&&(Math.abs(r.x-e.x*TS)>.6||Math.abs(r.y-e.y*TS)>.6), awake=e.woke, st=moving?Math.sin(now/120):0, left=(e.face||[1,0])[0]<0;
+  g.save(); g.translate(x+12,y+22); if(left) g.scale(-1,1); g.globalAlpha=.55; R(g,-13,0,26,4,"#000"); g.globalAlpha=1; if(!awake) g.translate(0,4); g.scale(1.25,1.25);
+  const pl=hit?"#ffffff":"#8a9098", dk=hit?"#dddddd":"#4a4e56", hz="#e8b030";
+  g.fillStyle="#0a0a0c"; g.fillRect(-12,-27,24,18); g.fillRect(-17,-33,34,9); g.fillRect(-11,-12,22,13); g.fillRect(-7,-32,14,8);
+  R(g,-9,-10+st,5,10-st,dk); R(g,4,-10-st,5,10+st,dk); R(g,-10,-2+st,7,2,pl); R(g,3,-2-st,7,2,pl);             // legs + feet
+  R(g,-11,-26,22,16,pl); R(g,-11,-26,22,2,"#7a7e86"); R(g,-11,-12,22,2,dk); for(let k=0;k<5;k++) R(g,-10+k*4.4,-12,2.2,2,k%2?hz:"#1a1a1a"); // torso + hazard band
+  R(g,-6,-31,12,6,dk); R(g,-5,-29,10,2,"#120606"); const eye=awake?(.6+.4*Math.sin(now/140)):.15; R(g,-4,-29,8,1.6,`rgba(255,${awake?40:20},20,${eye})`);  // head + eye slit
+  R(g,-16,-25,5,12,dk); R(g,11,-25,5,12,dk); R(g,-16,-15,5,4,pl); R(g,11,-15,5,4,pl);                                 // arms
+  R(g,-14,-32,6,6,pl); R(g,8,-32,6,6,pl); for(const ox of [-13,9]) for(let k=0;k<2;k++) R(g,ox+k*2.4,-31,1.6,1.6,"#120606"); // shoulder pods
+  R(g,-3,-21,6,6,"#1a1c20"); R(g,-2,-20,4,4,awake?"#ff5a2a":"#3a1a10"); g.restore();
+  if(awake) { const gl=g.createRadialGradient(x+12,y-14,0,x+12,y-14,14); gl.addColorStop(0,"rgba(255,60,30,.25)"); gl.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gl; g.fillRect(x-4,y-30,32,32); } }
+function drawBot(g,e,x,y,now){ if(e.type==="custodian"){ drawCustodian(g,e,x,y,now); return; } const mine=e.owner&&String(e.owner).startsWith("p:"), off=mine?false:(!S.power||e.hackedOff), fc=e.face||[0,1], a=Math.atan2(fc[1],fc[0]), led=off?"#3a3a34":(Sim.botHostile(S,e,me())?"#ff3a20":"#5ad06a"), hit=flashT[e.id]&&now-flashT[e.id]<110;
   g.drawImage(SHADOW_BLOB,x+3,y+18);
   if(e.type==="turret"&&mine){ const cx=x+12, cy=y+14; R(g,cx-7,cy+6,14,3,"#3a3420"); for(const dx of [-6,0,6]){ g.strokeStyle="#7a6a30"; g.lineWidth=1.4; g.beginPath(); g.moveTo(cx,cy+2); g.lineTo(cx+dx,cy+8); g.stroke(); }
     disc(g,cx,cy,5,hit?"#fff":"#c8a020"); disc(g,cx,cy,4,hit?"#fff":"#8a7020"); g.save(); g.translate(cx,cy); g.rotate(a); R(g,0,-1.5,10,3,"#2a2418"); R(g,0,-1.5,10,1,"#c8a020"); g.restore(); disc(g,cx,cy-1,1.3,"#5ad06a");
@@ -1642,7 +1655,12 @@ function drawCat(g,e,x,y,now){ const r=rp[e.id], moving=r&&(Math.abs(r.x-e.x*TS)
     R(g,3,-10,5,5,fur); R(g,3,-11.5,1.4,2,fur); R(g,6.4,-11.5,1.4,2,fur); R(g,5.6,-8.6,1.1,1,"#e0b030"); R(g,7.6,-7.4,.8,.7,"#c87a7a"); R(g,4,-7,3,1.6,wh); R(g,-8,-8+tw,1.4,3.5,fur); R(g,-9,-9+tw,1.4,1.6,dk); }
   g.restore();
   if(heartT[e.id]&&now-heartT[e.id]<1400){ const t=(now-heartT[e.id])/1400; for(let k=0;k<2;k++){ const hx=x+8+k*6, hy=y+6-t*12-k*3; g.globalAlpha=1-t; R(g,hx,hy,1.5,1.5,"#ff5a7a"); R(g,hx+2,hy,1.5,1.5,"#ff5a7a"); R(g,hx,hy+1,3.5,1.5,"#ff5a7a"); R(g,hx+1,hy+2.5,1.5,1,"#ff5a7a"); g.globalAlpha=1; } } }
-const heartT={}; let mapOpen=false, mapLast=0;
+const heartT={}; let hbNext=0, killcam=null, outroFor=null, introFor=null;
+// how close to death: 0 fine, 1 hurting, 2 critical
+function lowHealth(p){ if(!p||!p.alive) return 0; const h=p.hp.head/p.max.head, t=p.hp.torso/p.max.torso; return p.blood<20||h<.15||t<.15?2:p.blood<38||h<.3||t<.3?1:0; }
+function quickHeal(){ const p=me(); if(!p||!p.alive||S.mode!=="raid") return; const inv=p.inv, ix=d=>inv.findIndex(i=>i.d===d), bleeding=Object.keys(p.bleed||{}).length, frac=Object.keys(p.frac||{}).length, low=p.blood<55||Sim.LIMBS.some(l=>p.hp[l]>0&&p.hp[l]<p.max[l]*.4);
+  let k=-1; if(bleeding>=2&&ix("medkit")>=0) k=ix("medkit"); else if(bleeding) k=ix("bandage")>=0?ix("bandage"):ix("medkit"); if(k<0&&frac) k=ix("splint"); if(k<0&&(p.inf|0)>=20) k=ix("antibiotic"); if(k<0&&low) k=ix("medkit")>=0?ix("medkit"):ix("stim"); if(k<0&&p.o2<25) k=ix("o2");
+  if(k<0){ toast(bleeding||frac||low?"You've got nothing that helps. Find bandages or a medkit.":"Nothing to treat. You're holding together."); return; } send({type:"use",index:k}); } let mapOpen=false, mapLast=0;
 function drawUI(g,cx,cy,now){
   const glow=(x,y,r,c)=>{ const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,c); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); };
   const p=me(); drawObjectiveMarkers(g,cx,cy,now);
@@ -1667,6 +1685,13 @@ function drawUI(g,cx,cy,now){
     // sound sense: you can hear husks hunting you before you see them
     if(p&&p.alive){ const r0=rp[p.id]; if(r0){ const PX=Math.round(r0.x)-cx+12, PY=Math.round(r0.y)-cy+10; for(const e of S.ents){ if(e.kind!=="husk"||!e.alive||!e.aware||e.type==="nest"||VIS[Sim.idx(S,e.x,e.y)]) continue; const d=Math.hypot(e.x-p.x,e.y-p.y); if(d>12||!e.last||Math.hypot(e.last.x-p.x,e.last.y-p.y)>4) continue;
         const a=Math.atan2(e.y-p.y,e.x-p.x), k=1-d/13, R0=20; g.save(); g.translate(PX,PY); g.rotate(a); g.globalAlpha=(.35+.5*k)*(.7+.3*Math.sin(now/120+d)); g.fillStyle=e.mut?`rgb(${MUTCOL[e.mut]})`:"#e0482f"; g.beginPath(); g.moveTo(R0+7,0); g.lineTo(R0,-4); g.lineTo(R0+2,0); g.lineTo(R0,4); g.fill(); g.restore(); g.globalAlpha=1; } } }
+    // the Custodian's rocket salvo: red circles where it'll land
+    for(const M of S.marks||[]){ const X=M.x*TS+12-cx, Y=M.y*TS+12-cy, ph=(now%400)/400; g.strokeStyle=`rgba(255,40,20,${.6+.4*Math.sin(now/90)})`; g.lineWidth=1.4; g.beginPath(); g.arc(X,Y,1.5*TS,0,6.283); g.stroke(); g.fillStyle=`rgba(255,30,10,${.12+.1*ph})`; g.beginPath(); g.arc(X,Y,1.5*TS*(M.t>1?ph:.3+ph*.7),0,6.283); g.fill(); R(g,X-4,Y,9,1,"#ff3a20"); R(g,X,Y-4,1,9,"#ff3a20"); }
+    // wanted raiders: a gold skull
+    for(const e of S.ents){ if(!e.wanted||!e.alive||!VIS[Sim.idx(S,e.x,e.y)]) continue; const r=rp[e.id]; if(!r) continue; const X=Math.round(r.x)-cx+12, Y=Math.round(r.y)-cy-34+Math.sin(now/260);
+      R(g,X-3,Y,7,5,"#e8b048"); R(g,X-2,Y+5,5,2,"#e8b048"); R(g,X-2,Y+1.5,2,2,"#140806"); R(g,X+1,Y+1.5,2,2,"#140806"); g.font="bold 5px monospace"; g.textAlign="center"; g.fillStyle="#000"; g.fillText("WANTED",X+1,Y-1.5); g.fillStyle="#ffd060"; g.fillText("WANTED",X+.5,Y-2); g.textAlign="left"; }
+    // close to death: the edges of your vision go red and pulse with your heartbeat
+    if(p&&p.alive&&lowHealth(p)){ const k=lowHealth(p), beat=Math.pow(Math.max(0,Math.sin(now/(k>1?260:380))),6); const gr=g.createRadialGradient(view.fw/2,view.fh/2,Math.min(view.fw,view.fh)*.25,view.fw/2,view.fh/2,Math.max(view.fw,view.fh)*.7); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(1,`rgba(140,0,0,${.25+.25*beat+(k>1?.15:0)})`); g.fillStyle=gr; g.fillRect(0,0,view.fw,view.fh); }
     // sneaking: a hooded-eye marker over your head
     if(p&&p.alive&&p.sneak){ const r=rp[p.id]; if(r){ const X=Math.round(r.x)-cx+12, Y=Math.round(r.y)-cy-14; g.globalAlpha=.85; R(g,X-4,Y,9,1,"#cfc6b0"); R(g,X-3,Y+1,7,1,"#cfc6b0"); R(g,X-1,Y+1,3,1.4,"#1a1712"); R(g,X-4,Y+3,9,.8,"rgba(207,198,176,.5)"); g.globalAlpha=1; } }
   }
@@ -1675,6 +1700,8 @@ function drawUI(g,cx,cy,now){
   if(evFlash>0){ g.fillStyle=`rgba(255,40,20,${evFlash*.25})`; g.fillRect(0,0,view.fw,view.fh); evFlash=Math.max(0,evFlash-.03); }
   MARKS=MARKS.filter(m=>now-m.t0<220); for(const m of MARKS){ const a=1-(now-m.t0)/220, X=m.x-cx, Y=m.y-cy, s=3+ (1-a)*2; g.strokeStyle=`rgba(255,255,255,${a})`; g.lineWidth=1; g.beginPath(); for(const [dx,dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ g.moveTo(X+dx*s,Y+dy*s); g.lineTo(X+dx*(s+2.5),Y+dy*(s+2.5)); } g.stroke(); }
   FLOATS=FLOATS.filter(f=>now-f.t0<900); g.textAlign="center"; for(const f of FLOATS){ const t=(now-f.t0)/900, X=f.x-cx, Y=f.y-cy-t*12; g.font=`bold ${f.big?7:5.5}px monospace`; g.globalAlpha=Math.min(1,(1-t)*2); g.fillStyle="#000"; g.fillText(f.txt,X+.5,Y+.5); g.fillStyle=f.col; g.fillText(f.txt,X,Y); } g.globalAlpha=1; g.textAlign="left";
+  { const m=S.bossBot&&S.ents.find(e=>e.id===S.bossBot&&e.alive); if(m&&m.woke&&VIS[Sim.idx(S,m.x,m.y)]){ const f=Sim.LIMBS.reduce((a,l)=>a+Math.max(0,m.hp[l]),0)/Sim.LIMBS.reduce((a,l)=>a+m.max[l],0), w=Math.min(110,view.fw-40), bx=(view.fw-w)/2, by=view.fh*.2;
+      R(g,bx-1,by-1,w+2,4,"#000"); R(g,bx,by,w,2,"#1a1a1e"); R(g,bx,by,w*f,2,"#e8b048"); R(g,bx,by,w*f,.6,"#fff0b0"); g.fillStyle="#e8d8c0"; g.font="5px serif"; g.textAlign="center"; g.fillText("THE CUSTODIAN",view.fw/2,by-2); g.textAlign="left"; } }
   { const m=S.boss&&S.ents.find(e=>e.id===S.boss&&e.alive); if(m&&m.aware&&VIS[Sim.idx(S,m.x,m.y)]){ const f=Sim.LIMBS.reduce((a,l)=>a+Math.max(0,m.hp[l]),0)/Sim.LIMBS.reduce((a,l)=>a+m.max[l],0), w=Math.min(110,view.fw-40), bx=(view.fw-w)/2, by=view.fh*.2;
       R(g,bx-1,by-1,w+2,4,"#000"); R(g,bx,by,w,2,"#2a0806"); R(g,bx,by,w*f,2,"#c22a1a"); R(g,bx,by,w*f,.6,"#ff6a4a"); g.fillStyle="#e8d8c0"; g.font="5px serif"; g.textAlign="center"; g.fillText("THE MATRIARCH",view.fw/2,by-2); g.textAlign="left"; } }
   const corners=(tx,ty,c)=>{ const x=tx*TS-cx, y=ty*TS-cy; for(const [a,b,dx,dy] of [[0,0,1,1],[23,0,-1,1],[0,23,1,-1],[23,23,-1,-1]]){ for(let s=0;s<4;s++){ R(g,x+a+dx*s,y+b,1,1,c); R(g,x+a,y+b+dy*s,1,1,c); } } };
@@ -1697,9 +1724,10 @@ function drawUI(g,cx,cy,now){
 let fxForS=null;
 function render(now){
   if(!S) return;
-  if(fxForS!==S){ fxForS=S; FLY=[]; BRASS=[]; HOLES=[]; MARKS=[]; FLOATS=[]; }
+  if(fxForS!==S){ fxForS=S; FLY=[]; BRASS=[]; HOLES=[]; MARKS=[]; FLOATS=[]; killcam=null; { const cd=$("card"); if(cd&&!(S.mode==="raid"&&S.turn<=2)){ cd.hidden=true; cd.classList.remove("show"); } } if(S.mode==="raid"&&S.turn<=2&&introFor!==S){ introFor=S; raidIntro(); } }
+  if(S.mode==="raid"&&typeof Snd!=="undefined"){ const me1=me(), lh=lowHealth(me1); if(lh&&now>hbNext){ hbNext=now+(lh>1?650:950); Snd.play("heartbeat"); } }
   if(fpsAuto&&!LOWFX&&S.mode==="raid"&&document.visibilityState==="visible"){ if(!fpsT0){ fpsT0=now; fpsN=0; } fpsN++; if(now-fpsT0>6000){ const fps=fpsN*1000/(now-fpsT0); fpsT0=now; fpsN=0; if(fps<26) setLowFx(true,true); } }
-  const dt=Math.min(.05,(now-lastT)/1000); lastT=now; const p=viewEnt();
+  const dt=Math.min(.05,(now-lastT)/1000)*(killcam&&now-killcam.t0<1400?.25:1); lastT=now; const p=viewEnt();
   for(const e of S.ents){ const tx=e.x*TS, ty=e.y*TS, r=rp[e.id]||(rp[e.id]={x:tx,y:ty});
     if(Math.abs(r.x-tx)>72||Math.abs(r.y-ty)>72){ r.x=tx; r.y=ty; } const step=dt*TS*8; r.x+=Math.max(-step,Math.min(step,tx-r.x)); r.y+=Math.max(-step,Math.min(step,ty-r.y)); }
   const pr=rp[p.id]||rp[PID], fw=view.fw, fh=view.fh, mw=S.W*TS, mh=S.H*TS;
@@ -1856,7 +1884,7 @@ function afterChange(){
   Sim.bind(S); document.body.dataset.scene=S.mode==="ship"?"ship":"raid";
   const p=viewEnt(); VIS=Sim.fov(S,p); if(typeof shareVision==="function") shareVision();
   const k=tileKey(); if(k!==staticKey){ staticKey=k; buildStatic(); }
-  if(mapOpen&&now-mapLast>250){ if(S.mode!=="raid") toggleMap(false); else drawTacMap(); }
+  if(mapOpen&&performance.now()-mapLast>250){ if(S.mode!=="raid") toggleMap(false); else drawTacMap(); }
   computeLights(); processFx(); if(typeof harvestChat==="function") harvestChat();
   if(target&&!targetable(target.x,target.y)) target=null;
   renderPanels();
@@ -1923,6 +1951,7 @@ function objectives0(){ if(!S||S.mode!=="raid") return []; const p=me(), out=[],
     if(J.type==="rescue"){ const r=S.ents.find(e=>e.rescue===J.id); o.hint=J.done?"Rescued.":!r||!r.alive?"They didn't make it.":r.stranded?"Stranded somewhere aboard. Find them and press F beside them.":`${r.name} is following you. Get them to the shuttle pad alive.`; o.to=null; o.item=r?r.name:null; }
     if(J.type==="sabotage"){ let c=null; for(let i=0;i<S.tiles.length;i++) if(S.tiles[i].t==="console"){ c={x:i%S.W,y:(i/S.W)|0}; break; } o.hint=J.done?"Worm uploaded. Get out.":"Find the station's main power relay and press F beside it to upload the worm."; o.to=null; }
     out.push(o); }
+  for(const o of S.side||[]){ const D=Sim.SIDES[o.id]; if(D) out.push({k:"side",opt:true,title:`Optional: ${D.t}`,hint:`${D.d}${D.n?` ${Math.min(o.prog|0,D.n)}/${D.n}.`:""} +${D.cr} cr if you get out.`,done:!!o.done}); }
   if(S.ev&&S.ev.on&&!S.ev.done&&S.ev.type==="meltdown") out.unshift({k:"meltdown",title:"Get out before the core breaches",hint:`The reactor goes critical in ${Math.max(0,S.ev.end-S.turn)} turns. Everyone still aboard dies.`,done:false});
   // getting out
   const pads=[]; for(let i=0;i<S.tiles.length;i++) if(S.tiles[i].t==="extract") pads.push({x:i%S.W,y:(i/S.W)|0});
@@ -2009,6 +2038,8 @@ function describe(x,y){
     else if(e&&e.kind==="husk"){ const hurt=Sim.LIMBS.filter(l=>e.hp[l]<e.max[l]).length; s=`<b>Husk</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub=hurt?"Wounded":"Unharmed"; }
     if(e&&e.kind==="husk"&&e.mut){ s=s.replace("<b>",`<b style="color:rgb(${MUTCOL[e.mut]})">${Sim.MUTS[e.mut].n} `); sub=`Mutated: ${Sim.MUTS[e.mut].d}${sub?" · "+sub:""}`; }
     if(e&&e.type==="nest"){ s=`<b style="color:#c8603a">Husk nest</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub="Births stalkers while anything living is near. Fire works wonders"; }
+    if(e&&e.type==="custodian"){ s=`<b style="color:#e8b048">THE CUSTODIAN</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub=e.woke?"Security mech. Burst fire, crushing fists, and a rocket salvo: get out of the red circles":"Folded in its maintenance cradle. Don't wake it unless you mean it"; }
+    if(e&&e.wanted){ s=`<b style="color:#ffd060">WANTED · ${e.name}</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub="Concord bounty target. Kill them and get out alive to collect"; }
     if(e&&e.nemesis){ s=`<b style="color:#ff6a4a">YOUR NEMESIS · ${e.name}</b> · ${Math.round(Sim.hitChance(S,p,x,y)*100)}% to hit`; sub=`Level ${e.nemesis}. Killed you before. Carrying your gear`; }
     if(e&&e.kind==="pet"){ s="<b>Rivet</b> · the ship's cat"; sub="F to give a scratch behind the ears"; }
     const its=S.items.filter(it=>it.x===x&&it.y===y); if(its.length) sub=(sub?sub+" · ":"")+its.map(q=>`<span style="color:${rarCol(q)}">${Items.name(q)}</span>`).join(", ");
@@ -2103,6 +2134,7 @@ document.addEventListener("keydown",e=>{
   if(k==="j"){ toggleObjectives(); return; }
   if(k==="v"&&S.mode==="raid"){ strike(); return; }
   if(k==="c"&&S.mode==="raid"){ send({type:"sneak"}); return; }
+  if(k==="h"&&S.mode==="raid"){ quickHeal(); return; }
   if(k==="n"&&S.mode==="raid"){ toggleMap(); return; }
   if(k==="m"&&typeof Snd!=="undefined"){ const on=Snd.toggle(); note(on?"Sound on.":"Sound muted. Press M to turn it back on."); return; }
   if(k==="i"||k==="tab"){ e.preventDefault(); if(typeof openPanel==="function") openPanel("inventory"); return; }
@@ -2161,7 +2193,7 @@ $("dr-new").onclick=()=>armAbandon($("dr-new"),"Abandon run");
 $("b-fire").onclick=fire; $("b-int").onclick=()=>send({type:"interact"}); $("b-get").onclick=()=>send({type:"pickup"});
 $("b-wait").onclick=()=>send({type:"wait"}); $("b-ext").onclick=()=>send({type:"extract"});
 $("b-air").onclick=()=>{ overlay=!overlay; renderPanels(); };
-$("b-map").onclick=()=>toggleMap(); $("b-sneak").onclick=()=>send({type:"sneak"}); if($("t-map")) $("t-map").onclick=()=>toggleMap(); if($("t-sneak")) $("t-sneak").onclick=()=>send({type:"sneak"});
+$("b-map").onclick=()=>toggleMap(); if($("t-heal")) $("t-heal").onclick=()=>quickHeal(); if($("b-heal")) $("b-heal").onclick=()=>quickHeal(); $("b-sneak").onclick=()=>send({type:"sneak"}); if($("t-map")) $("t-map").onclick=()=>toggleMap(); if($("t-sneak")) $("t-sneak").onclick=()=>send({type:"sneak"});
 $("tmap-x").onclick=()=>toggleMap(false); $("tmap").addEventListener("pointerdown",ev=>{ if(ev.target.id==="tmap") toggleMap(false); });
 $("tmap-c").addEventListener("pointerup",ev=>{ const cv=$("tmap-c"), r=cv.getBoundingClientRect(), sc=+cv.dataset.sc||4, x=Math.floor((ev.clientX-r.left)/sc), y=Math.floor((ev.clientY-r.top)/sc); if(typeof inSquad==="function"&&inSquad()&&typeof sendPing==="function"){ sendPing(x,y); drawTacMap(); } });
 function toggleLight(){ if(!S) return; const p=me(); if(!p||!p.light){ toast("No light equipped. Put a flashlight in your Light slot from your kit."); return; }
@@ -2173,3 +2205,27 @@ $("b-new").onclick=()=>armAbandon($("b-new"),"Abandon");
 function setMode(m){ mode=m; document.body.dataset.mode=m; try{ localStorage.setItem("hb-mode",m); }catch(e){} target=null; hover=null; stopTravel(); camInit=false; resize(); if(S) renderPanels(); }
 
 $("obj-h").onclick=toggleObjectives; if($("t-obj")) $("t-obj").onclick=toggleObjectives;
+
+// =================== CINEMATICS: the prologue, docking cards, extraction and death cards ===================
+function showCard(o){ const el=$("card"); if(!el) return; el.className=`ccard ${o.tone||""}`; el.innerHTML=`<div class="bar top"></div><div class="bar bot"></div><div class="cc-in"><div class="cc-k">${esc(o.kicker||"")}</div><div class="cc-t">${esc(o.title||"")}</div>${(o.lines||[]).map(l=>`<div class="cc-l">${esc(l)}</div>`).join("")}${o.tip?`<div class="cc-tip">${esc(o.tip)}</div>`:""}</div>`;
+  el.hidden=false; void el.offsetWidth; el.classList.add("show"); clearTimeout(showCard.t); showCard.t=setTimeout(()=>{ el.classList.remove("show"); setTimeout(()=>{ el.hidden=true; },600); },o.dur||2600); }
+const TIPS=["Sneak (C) to get close. Hit an unaware enemy from behind for a silent takedown.","H uses the right med for what's wrong with you.","Press N for the tactical map.","Raiders only see as far as you do. Lights off in the dark makes you a ghost.","A welding torch on a door buys you time at the shuttle pad.","Shoot volatile husks from range. Never up close.","Tripwires show up when you get close. Disarm them for a free tripmine.","Optional objectives pay out only if you get out alive.","Nests keep birthing stalkers. Fire is the fastest cure.","Vents break pursuit. Stalkers know that too."];
+function raidIntro(){ const t=S.tierN|0, cond=[`Threat ${"▲".repeat(Math.max(1,t))}${"△".repeat(Math.max(0,3-t))}`,S.power?"Station power: ON":"Station power: DEAD"]; if(S.ents.some(e=>e.nemesis)) cond.push("Your nemesis is aboard"); else if(S.ents.some(e=>e.wanted)) cond.push("A Concord wanted target is aboard");
+  for(const o of S.side||[]) cond.push("Optional · "+Sim.SIDES[o.id].t);
+  showCard({kicker:"Docking",title:S.site,lines:cond,tip:TIPS[(Math.random()*TIPS.length)|0],dur:3400}); if(typeof Snd!=="undefined"){ Snd.play("door"); } }
+// the prologue: five painted scenes and a few lines, shown once (and from the menu any time)
+function playPrologue(done){ const el=$("cine"), cv=$("cine-c"), tx=$("cine-t"); if(!el||!cv){ if(done) done(); return; } const g=cv.getContext("2d"); cv.width=320; cv.height=180; el.hidden=false; let i=0, t0=performance.now(), live=true;
+  const stars=Array.from({length:120},(_,k)=>({x:(k*73)%320,y:(k*131)%180,z:1+(k%3)}));
+  const sky=(t,red)=>{ g.fillStyle="#030306"; g.fillRect(0,0,320,180); const gr=g.createRadialGradient(220,70,5,220,70,140); gr.addColorStop(0,`rgba(${red?150:40},${red?20:30},${red?20:60},.55)`); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,0,320,180); for(const s0 of stars){ g.fillStyle=s0.z>2?"#cfc6b0":"#5a5a6a"; g.fillRect((s0.x-t*s0.z*3+640)%320,s0.y,1,1); } };
+  const station=(x,y,sc,lit)=>{ g.fillStyle="#1a1c22"; g.fillRect(x-30*sc,y-4*sc,60*sc,8*sc); g.fillRect(x-6*sc,y-20*sc,12*sc,40*sc); g.fillRect(x-18*sc,y-12*sc,36*sc,4*sc); g.fillStyle="#2a2e36"; g.fillRect(x-30*sc,y-4*sc,60*sc,2*sc); for(let k=0;k<8;k++){ g.fillStyle=k<lit?"#ffd070":"#2a1a10"; g.fillRect(x-26*sc+k*7*sc,y-1*sc,2*sc,2*sc); } };
+  const S5=[
+    {txt:"It started with a song.",draw:t=>{ sky(t,true); station(240,70,.5,8); }},
+    {txt:"The Iron Choir. A signal from the deep lanes. Every station that heard it went quiet, one light at a time.",draw:t=>{ sky(t,true); const lit=Math.max(0,8-Math.floor(t*1.8)); station(160,90,1.4,lit); for(let k=0;k<4;k++){ const r=((t*40+k*30)%120); g.strokeStyle=`rgba(255,60,40,${Math.max(0,1-r/120)})`; g.beginPath(); g.arc(160,90,r,0,6.283); g.stroke(); } }},
+    {txt:"Their crews didn't die. Not all the way.",draw:t=>{ g.fillStyle="#08070a"; g.fillRect(0,0,320,180); const fl=Math.random()<.9?1:.2; for(let k=0;k<6;k++){ const w=320-k*48, h=180-k*28; g.strokeStyle=`rgba(80,70,60,${(.6-k*.08)*fl})`; g.strokeRect((320-w)/2,(180-h)/2,w,h); }
+      g.fillStyle=`rgba(255,180,90,${.25*fl})`; g.fillRect(150,20,20,4); for(let k=0;k<3;k++){ const x=110+k*50+Math.sin(t*2+k)*4, y=96+k%2*6, s0=1+(t*.08); g.fillStyle="#0a0505"; g.fillRect(x,y-30*s0,14*s0,30*s0); g.fillRect(x+3*s0,y-38*s0,8*s0,8*s0); g.fillStyle="#ff3a20"; g.fillRect(x+5*s0,y-35*s0,1.5,1.5); g.fillRect(x+8*s0,y-35*s0,1.5,1.5); } }},
+    {txt:"Now the dead drift in their thousands, holds still full. Somebody has to strip them.",draw:t=>{ sky(t,false); station(250,95,1.8,0); const sx=40+t*32, sy=120-t*6; g.fillStyle="#6a6458"; g.beginPath(); g.moveTo(sx+14,sy); g.lineTo(sx-8,sy-6); g.lineTo(sx-8,sy+6); g.fill(); g.fillStyle=`rgba(120,190,255,${.6+.3*Math.sin(t*20)})`; g.fillRect(sx-14,sy-2,6,4); }},
+    {txt:"You fly the Ninefold Lark. Board the dead. Strip them bare. Get out alive.",draw:t=>{ sky(t,true); g.fillStyle="#e8dcc0"; g.font="bold 30px serif"; g.textAlign="center"; g.globalAlpha=Math.min(1,t/1.5); g.fillText("HULLBREACH",160,96); g.globalAlpha=1; g.textAlign="left"; }}];
+  const end=()=>{ if(!live) return; live=false; el.hidden=true; el.onclick=null; $("cine-skip").onclick=null; if(done) done(); };
+  el.onclick=e=>{ if(e.target.id==="cine-skip") return; i++; t0=performance.now(); if(i>=S5.length) end(); }; $("cine-skip").onclick=e=>{ e.stopPropagation(); end(); };
+  const loop=now=>{ if(!live) return; const t=Math.max(0,(now-t0)/1000); if(t>6.5){ i++; t0=now; if(i>=S5.length) return end(); } const sc=S5[i]; sc.draw(Math.min(t,6.5)); const n=Math.floor(t*38); const want=sc.txt.slice(0,n); if(tx.textContent!==want) tx.textContent=want; requestAnimationFrame(loop); };
+  if(typeof Snd!=="undefined"){ Snd.play("roar"); } requestAnimationFrame(loop); }

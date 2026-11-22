@@ -145,6 +145,7 @@ const Items = (() => {
     inckit:   { k: "tool", name: "Incendiary rounds (12)", value: 160, desc: "Use with a gun in hand: the next 12 shots are incendiary. Hits can set the target's tile ablaze. Murder on nests." },
     hpkit:    { k: "tool", name: "Hollow-points (12)", value: 120, desc: "Use with a gun in hand: the next 12 shots are hollow-points. +25% damage and a sure bleed on flesh, but weaker against armour." },
     lazarus:  { k: "tool", name: "Lazarus injector", value: 950, rar: 1, desc: "An auto-injector over the heart. The first time you'd die, it drags you back with a sliver of health. One use." },
+    custcore: { k: "val", name: "Custodian core", value: 900, desc: "The still-warm reactor heart of a security mech. Worth a fortune to the right buyer." },
     mutagen:  { k: "val", name: "Mutagen gland", value: 240, desc: "Cut from a mutated husk. Research outfits pay well and ask nothing." },
     datalog:  { k: "key", name: "Data log", value: 0, desc: "A recovered log. Bring it home to add it to your codex." },
     jobitem:  { k: "key", name: "Contract cargo", value: 0, desc: "What you were sent for. Get it to your shuttle." },

@@ -107,7 +107,7 @@ const Sim = (() => {
   // mutated elites: a husk that's gone wrong in a worse way than the rest
   const MUTS={armored:{n:"Armored",d:"bone plating: takes a quarter less damage, far more health"},volatile:{n:"Volatile",d:"swollen with gas: bursts when it dies"},swift:{n:"Swift",d:"moves twice as fast"},regen:{n:"Regenerating",d:"its wounds close as you watch"},venom:{n:"Venomous",d:"every hit starts an infection"},shrieker:{n:"Shrieking",d:"its scream wakes the whole station"}};
   // station security: run on station power
-  const BTYPES={turret:{name:"turret",hp:{head:12,torso:30,larm:14,rarm:14,lleg:14,rleg:14},dmg:[5,9],range:7,acc:.72,still:1},
+  const BTYPES={custodian:{name:"Custodian",hp:{head:70,torso:200,larm:80,rarm:80,lleg:90,rleg:90},dmg:[7,12],range:8,acc:.62,burst:2,boss:1},turret:{name:"turret",hp:{head:12,torso:30,larm:14,rarm:14,lleg:14,rleg:14},dmg:[5,9],range:7,acc:.72,still:1},
     drone:{name:"security drone",hp:{head:8,torso:16,larm:8,rarm:8,lleg:8,rleg:8},dmg:[3,6],range:5,acc:.65}};
   const HIT_W = [["head",9],["torso",41],["larm",13],["rarm",13],["lleg",12],["rleg",12]];
   const FULL = 101; // kPa
@@ -198,7 +198,9 @@ const Sim = (() => {
     s.tierN=(opts.gen&&opts.gen.tier)||1;
     if(G) placeSecurity(s,opts.gen.tier||1,opts.gen.kind||"",opts.gen.kind==="hive"?"choir":opts.gen.kind==="outpost"?"marshal":null);
     if(G&&opts.factions&&opts.factions.nemesis) spawnNemesis(s,opts.gen.tier||1,opts.factions.nemesis);
+    if(G&&opts.factions&&opts.factions.wanted) spawnNemesis(s,opts.gen.tier||1,{...opts.factions.wanted,lvl:2},opts.factions.wanted.id);
     if(G){ spawnRaiders(s,opts.gen.tier||1,opts.mods||{},opts.factions); if(opts.factions&&opts.factions.hire) spawnHire(s,opts.gen.tier||1,opts.factions.hire); }
+    if(G) setupSides(s);
     say(s,`Shuttle docked at ${s.site}. Station is silent. ${s.power?"Lights are on.":"No power. Emergency lights only."}`,"info");
     say(s,"Your suit reads a full atmosphere outside the visor. Magboots engaged.","air");
     return s;
@@ -262,6 +264,16 @@ const Sim = (() => {
     if(!near||h.t<9) return; const kids=s.ents.filter(q=>q.alive&&q.mom===h.id).length; if(kids>=4) return; const sp=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dx,dy])=>[h.x+dx,h.y+dy]).find(([x,y])=>free(s,x,y)); if(!sp) return;
     h.t=0; const c=addHusk(s,sp[0],sp[1],chance(s,.7)?"stalker":"husk"); c.mom=h.id; c.aware=true; const q=players(s).filter(z=>z.alive).sort((a,b)=>Math.hypot(a.x-h.x,a.y-h.y)-Math.hypot(b.x-h.x,b.y-h.y))[0]; if(q) c.last={x:q.x,y:q.y};
     fx(s,{type:"shriek",x:h.x,y:h.y,id:h.id}); if(anyPlayerSees(s,h.x,h.y)) say(s,"The nest splits along a seam and something wet crawls out, already hunting.","bad"); else if(q&&Math.hypot(q.x-h.x,q.y-h.y)<8) say(s,"Something tears and squelches nearby. Then claws on the deck.","warn"); }
+  // side objectives: two optional jobs per raid that pay a bonus if you get out
+  const SIDES={power:{t:"Get the lights back on",d:"Restore main power at the relay console.",cr:150,xp:30},search:{t:"Leave nothing behind",d:"Search 8 containers.",n:8,cr:120,xp:25},elite:{t:"Mutant sample",d:"Kill a mutated husk.",cr:200,xp:40},
+    nest:{t:"Burn the nest",d:"Destroy a husk nest.",cr:220,xp:45},hack:{t:"Pull the logs",d:"Hack the station's security network.",cr:140,xp:30},cache:{t:"Treasure hunter",d:"Find a hidden wall cache.",cr:160,xp:30},
+    quiet:{t:"In and out",d:"Make 2 silent takedowns.",n:2,cr:180,xp:40},custodian:{t:"Scrap the Custodian",d:"Destroy the security mech.",cr:600,xp:120},disarm:{t:"Clear the wires",d:"Disarm a tripwire.",cr:130,xp:30}};
+  function setupSides(s){ const pool=[]; if(!s.power&&s.tiles.some(t=>t.t==="console")) pool.push("power"); pool.push("search","quiet"); if(s.ents.some(e=>e.mut)) pool.push("elite"); if(s.ents.some(e=>e.type==="nest")) pool.push("nest"); if(s.tiles.some(t=>t.t==="prop"&&t.kind==="desk")) pool.push("hack"); if(s.tiles.some(t=>t.cache)) pool.push("cache"); if(s.bossBot) pool.push("custodian","custodian"); if((s.traps||[]).length) pool.push("disarm");
+    s.side=[]; for(let k=0;k<2&&pool.length;k++){ const id=pool.splice(ri(s,0,pool.length-1),1)[0]; for(let j=pool.length-1;j>=0;j--) if(pool[j]===id) pool.splice(j,1); s.side.push({id,done:0,prog:0}); } }
+  function sideTick(s){ if(!s.side) return; const ps=players(s), T=k=>ps.reduce((a,q)=>a+((q.tally&&q.tally[k])|0),0), K=k=>ps.reduce((a,q)=>a+((q.tally&&q.tally.k&&q.tally.k[k])|0),0);
+    for(const o of s.side){ if(o.done) continue; const D=SIDES[o.id]; let v=0;
+      if(o.id==="power") v=s.power?1:0; if(o.id==="search") v=T("searches"); if(o.id==="elite") v=K("elite"); if(o.id==="nest") v=K("nest"); if(o.id==="hack") v=T("hacks"); if(o.id==="cache") v=T("caches"); if(o.id==="quiet") v=T("takedowns"); if(o.id==="custodian") v=K("custodian"); if(o.id==="disarm") v=T("disarms");
+      o.prog=v; if(v>=(D.n||1)){ o.done=1; say(s,`Side objective done: ${D.t}. +${D.cr} cr if you get out.`,"good"); fx(s,{type:"levelup"}); } } }
   function mutate(s,tier,mods){ const P=(tier>=3?.18:tier===2?.11:.06)*((mods&&mods.elite)||1), keys=Object.keys(MUTS);
     for(const h of s.ents){ if(h.kind!=="husk"||h.type==="matriarch"||h.type==="nest"||h.mut||!chance(s,P)) continue; h.mut=keys[ri(s,0,keys.length-1)];
       if(h.mut==="armored") for(const l of LIMBS){ h.hp[l]=Math.round(h.hp[l]*1.6); h.max[l]=h.hp[l]; } } }
@@ -357,7 +369,10 @@ const Sim = (() => {
         if(spot){ const m=addHusk(s,spot[0],spot[1],"matriarch"); m.lurk=1; s.boss=m.id; } } }
   }
   // turrets watch doors and corridors near security, armouries and vaults; drones patrol
-  function placeSecurity(s,tier,kind,owner){ const p0=players(s)[0]; if(!p0) return; const rs=(s.rooms||[]).filter(r=>r[0]&&!/Docking/.test(r[0])&&Math.hypot((r[1]+r[3])/2-p0.x,(r[2]+r[4])/2-p0.y)>12);
+  function placeCustodian(s,tier,kind){ if(s.boss||tier<2) return; const P=(tier>=3?.35:.15)+(kind==="outpost"||kind==="research"?.25:0)+((s.mods&&s.mods.custodian)?1:0); if(!chance(s,P)) return;
+    const rs=(s.rooms||[]).filter(r=>r[0]&&!/Docking|corridor|shaft|hall/i.test(r[0])).sort((a,b)=>(b[0]==="Vault"?999:/Security|Armory|Engineering/.test(b[0])?50:0)+(b[3]-b[1])*(b[4]-b[2])-((a[0]==="Vault"?999:/Security|Armory|Engineering/.test(a[0])?50:0)+(a[3]-a[1])*(a[4]-a[2]))); const p0=players(s)[0];
+    for(const rm of rs){ if(p0&&Math.hypot((rm[1]+rm[3])/2-p0.x,(rm[2]+rm[4])/2-p0.y)<14) continue; const c=[(rm[1]+rm[3])>>1,(rm[2]+rm[4])>>1]; for(let d=0;d<4;d++) for(let dy=-d;dy<=d;dy++) for(let dx=-d;dx<=d;dx++){ const x=c[0]+dx,y=c[1]+dy; if(walk(tileAt(s,x,y))&&!entAt(s,x,y)){ const b=addBot(s,x,y,"custodian",null); s.bossBot=b.id; return; } } } }
+  function placeSecurity(s,tier,kind,owner){ placeCustodian(s,tier,kind); const p0=players(s)[0]; if(!p0) return; const rs=(s.rooms||[]).filter(r=>r[0]&&!/Docking/.test(r[0])&&Math.hypot((r[1]+r[3])/2-p0.x,(r[2]+r[4])/2-p0.y)>12);
     const want=r=>/Security|Armory|Vault|Captain/.test(r[0])?3:/corridor/i.test(r[0])?1:kind==="hive"?2:.4;
     let nT=(kind==="hive"||kind==="outpost"?ri(s,3,5):ri(s,0,2)+(tier>=2?1:0)), nD=(kind==="hive"?ri(s,2,3):kind==="outpost"?ri(s,1,2):chance(s,.3+tier*.15)?1:0);
     const pickRoom=()=>{ let t=rs.reduce((a,r)=>a+want(r),0)*rand(s); for(const r of rs){ if((t-=want(r))<0) return r; } return rs[0]; };
@@ -445,6 +460,7 @@ const Sim = (() => {
     if(e.kind==="player"&&e.alive&&!/Vaporised/.test(String(cause))){ const li=(e.inv||[]).findIndex(q=>q.d==="lazarus"); if(li>=0){ e.inv.splice(li,1); for(const l of ["head","torso"]) e.hp[l]=Math.max(e.hp[l],Math.round(e.max[l]*.35)); e.blood=Math.max(e.blood,45); e.bleed={}; e.stimT=Math.max(e.stimT|0,6); e.downed=false; e.lazarus=(e.lazarus|0)+1;
         fx(s,{type:"lazarus",id:e.id,x:e.x,y:e.y}); const c0=CTX; CTX=e.id; say(s,"Your heart stops. Then the Lazarus injector slams a needle into it. You gasp back to life, shaking.","good"); CTX=c0; return; } }
     if(e.kind==="player"&&ATK){ const A=s.ents.find(q=>q.id===ATK&&q.kind==="raider"); if(A) e.nemSrc={name:A.name,fac:A.fac,look:A.look,w1:A.w1||null,head:A.head||null,armor:A.armor||null,was:A.nemesis?1:0}; }
+    if(e.wanted&&ATK&&s.ents.some(q=>q.id===ATK&&q.kind==="player")){ s.wantedDown=e.wanted; say(s,`${e.name} is dead. The Concord bounty is yours if you get out alive.`,"good"); }
     if(e.nemesis&&isPid(s,ATK)){ s.nemesisDown=ATK; say(s,`${e.name} is dead. Your nemesis won't be hunting you anymore. Search the body: your gear is on it.`,"good"); }
     e.alive=false; bleedDecal(s,e.x,e.y,3); fx(s,{type:"die",id:e.id,x:e.x,y:e.y});
     if(e.kind==="player"){ s.cause=cause; e.cause=cause; const lh=(e.hits||[]).slice(-1)[0]; e.killer=lh?lh.by:String(cause||""); const c0=CTX; CTX=e.id; say(s,`You die. ${cause}`,"bad"); CTX=c0; }
@@ -456,6 +472,7 @@ const Sim = (() => {
       if(anyPlayerSees(s,e.x,e.y)) say(s,`${e.name} of the ${FACTIONS[e.fac].name} goes down. Search the body with F.`,isPid(s,ATK)?"good":"info");
       if(m) rsay(s,m,"ally_down",{n:e.name},true); if(ATK&&s.ents.some(q=>q.id===ATK&&q.kind==="raider")){ const k=s.ents.find(q=>q.id===ATK); if(k&&k.alive) rsay(s,k,"kill"); }
       if(C&&isPid(s,ATK)){ setAtt(s,e.crew,"hostile"); addRep(s,e.fac,C.hired?-15:-12); s.kills[e.fac]=(s.kills[e.fac]||0)+1; for(const [f2,F2] of Object.entries(FACTIONS)) if(F2.foes.includes(e.fac)) addRep(s,f2,3); } }
+    else if(e.kind==="bot"&&e.type==="custodian"){ fx(s,{type:"explode",x:e.x,y:e.y,big:1}); for(const c of ["weapon","armor","val","val","throw"]) spawnItem(s,Items.roll(()=>rand(s),4,c),e.x,e.y); spawnItem(s,{d:"core",r:0,n:3},e.x,e.y); spawnItem(s,{d:"custcore",r:0},e.x,e.y); s.marks=[]; if(isPid(s,ATK)){ const P=s.ents.find(q=>q.id===ATK); P.tally=P.tally||{}; P.tally.k=P.tally.k||{}; P.tally.k.custodian=(P.tally.k.custodian|0)+1; gainXP(s,ATK,140); } say(s,"The Custodian staggers, sparks pouring from its chest, and crashes to the deck. Its eye dims to nothing.","good"); }
     else if(e.kind==="bot"){ fx(s,{type:"explode",x:e.x,y:e.y,small:1}); spawnItem(s,{d:chance(s,.5)?"circ":"parts",r:0,n:1},e.x,e.y); if(anyPlayerSees(s,e.x,e.y)) say(s,`The ${e.name} sparks, shudders and dies.`,"good"); }
     else { const T0=HT(e);
       if(e.type==="nest"){ spawnItem(s,{d:"mutagen",r:0},e.x,e.y); spawnItem(s,Items.roll(()=>rand(s),(s.tierN|0)+1,pickS(s,["val","weapon","med","armor"])),e.x,e.y); if(anyPlayerSees(s,e.x,e.y)) say(s,"The nest ruptures in a gush of black fluid. Whatever was growing in it won't hatch now.","good"); fx(s,{type:"roar",x:e.x,y:e.y}); return; }
@@ -583,7 +600,7 @@ const Sim = (() => {
     if(!s.power&&opt!=="map"){ say(s,"No power: the security network is dead. Only the cached map is readable.","warn"); return false; }
     s.hacked[opt]=1; p.busy=Math.max(p.busy,1); p.tally=p.tally||{}; p.tally.hacks=(p.tally.hacks|0)+1; gainXP(s,p.id,4); fx(s,{type:"robot",x:p.x,y:p.y});
     if(opt==="map"){ for(const q of players(s)) for(let i=0;i<s.tiles.length;i++) if(s.tiles[i].t!=="space") q.seen[i]=1; say(s,"You pull the station schematics off the terminal. Every deck is on your map now.","good"); }
-    else if(opt==="turrets"){ let n=0; for(const b of s.ents) if(b.kind==="bot"&&b.alive&&!(b.owner&&String(b.owner).startsWith("p:"))){ b.hackedOff=true; b.off=1; n++; } say(s,n?`Security override accepted. ${n} turret${n>1?"s and drones":""} shut down.`:"No security units on this network.","good"); }
+    else if(opt==="turrets"){ let n=0; for(const b of s.ents) if(b.kind==="bot"&&b.alive&&b.type!=="custodian"&&!(b.owner&&String(b.owner).startsWith("p:"))){ b.hackedOff=true; b.off=1; n++; } say(s,n?`Security override accepted. ${n} turret${n>1?"s and drones":""} shut down.`:"No security units on this network.","good"); }
     else if(opt==="vault"){ let n=0; for(const t of s.tiles) if(t.t==="door"&&t.locked){ t.locked=false; n++; } say(s,n?"Maglocks released. The vault door's status light turns green.":"No maglocks on this network.","good"); }
     else return false;
     return true; }
@@ -825,7 +842,7 @@ const Sim = (() => {
 
   // ---------- world resolution ----------
   function endTurn(s){
-    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); trapTick(s); nemTick(s);
+    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); trapTick(s); nemTick(s); marksTick(s); sideTick(s);
     for(const p of players(s)) if(p.alive&&p.downed&&--p.downT<=0){ CTX=p.id; kill(s,p,"Bled out before help arrived."); }
     CTX=null;
     s.turn++;
@@ -1216,11 +1233,11 @@ const Sim = (() => {
     }
   }
   // your nemesis: the raider who killed you last time, wearing your gear, and looking for you
-  function spawnNemesis(s,tier,N){ const p0=players(s)[0]; if(!p0||!FACTIONS[N.fac]) return; const T=farTiles(s,16).filter(([x,y])=>tileAt(s,x,y).t==="floor"&&!entAt(s,x,y)&&roomName(x,y)); if(!T.length) return;
-    const [x,y]=T[ri(s,0,T.length-1)], id="cn", lvl=Math.max(1,Math.min(5,N.lvl|0)); s.crews=s.crews||{}; s.crews[id]={id,fac:N.fac,att:"hostile",met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:999,home:[x,y],nemesis:1};
+  function spawnNemesis(s,tier,N,wantedId){ const p0=players(s)[0]; if(!p0||!FACTIONS[N.fac]) return; const T=farTiles(s,16).filter(([x,y])=>tileAt(s,x,y).t==="floor"&&!entAt(s,x,y)&&roomName(x,y)); if(!T.length) return;
+    const [x,y]=T[ri(s,0,T.length-1)], id=wantedId?"cw":"cn", lvl=Math.max(1,Math.min(5,N.lvl|0)); s.crews=s.crews||{}; s.crews[id]={id,fac:N.fac,att:"hostile",met:{},warn:{},enemy:{},follow:null,followT:0,goal:null,leave:false,born:s.turn,stay:999,home:[x,y],nemesis:1};
     const used=new Set(), r=makeRaider(s,N.fac,Math.max(tier,2),x,y,id,true,used); r.name=String(N.name||r.name).slice(0,24); if(N.look) r.look={...N.look}; for(const k of ["w1","head","armor"]) if(N[k]&&Items.def(N[k].d)) r[k]={d:N[k].d,r:N[k].r|0};
     { const t=r.w1&&ST(r.w1)&&ST(r.w1).ammo; if(t) r.ammo[t]=(r.ammo[t]|0)+Items.AMMO[t].stack*3; }
-    for(const l of LIMBS){ r.hp[l]=Math.round(r.hp[l]*(1.2+.15*lvl)); r.max[l]=r.hp[l]; } r.nemesis=lvl; r.trait="veteran"; r.inv=(N.items||[]).filter(it=>it&&Items.def(it.d)).slice(0,4).map(it=>({...it,id:s.nextId++})).concat(r.inv).slice(0,Math.max(4,r.cap)); s.ents.push(r);
+    for(const l of LIMBS){ r.hp[l]=Math.round(r.hp[l]*(1.2+.15*lvl)); r.max[l]=r.hp[l]; } if(wantedId){ r.wanted=wantedId; } else r.nemesis=lvl; r.trait="veteran"; r.inv=(N.items||[]).filter(it=>it&&Items.def(it.d)).slice(0,4).map(it=>({...it,id:s.nextId++})).concat(r.inv).slice(0,Math.max(4,r.cap)); s.ents.push(r);
     const sp=[[1,0],[-1,0],[0,1],[0,-1]].map(([a,b])=>[x+a,y+b]).find(([a,b])=>tileAt(s,a,b).t==="floor"&&!entAt(s,a,b)); if(sp&&lvl>=2) s.ents.push(makeRaider(s,N.fac,tier,sp[0],sp[1],id,false,used)); }
   function nemTick(s){ const r=s.ents.find(e=>e.nemesis&&e.alive); if(!r) return; const q=players(s).filter(z=>z.alive).sort((a,b)=>Math.hypot(a.x-r.x,a.y-r.y)-Math.hypot(b.x-r.x,b.y-r.y))[0]; if(!q) return;
     if(!r.taunt&&s.turn>=4){ r.taunt=1; s.log.push({t:s.turn,msg:pickS(s,[`You again. I kept your ${r.w1?nm(r.w1).toLowerCase():"things"}. Come and take it back.`,`I know you're aboard. I can smell you. Same as last time.`,`Back for more? Nobody comes back twice from ${r.name}.`]),kind:"chat",from:r.id,who:r.name,fac:r.fac,att:"hostile",pid:null}); fx(s,{type:"speech",id:r.id,x:r.x,y:r.y}); }
@@ -1439,7 +1456,16 @@ const Sim = (() => {
     if(e.kind==="bot") return !!(e.owner&&String(e.owner).startsWith("p:"))&&botHostile(s,b,players(s)[0]||e);
     if(e.kind==="player"){ if(!b.owner) return true; const rp=(s.factionRep||{})[b.owner]|0; return rp<0||!!(s.crews&&Object.values(s.crews).some(C=>C.fac===b.owner&&C.att==="hostile"&&!C.hired)); }
     if(e.kind==="raider") return e.fac!==b.owner&&(!b.owner||(FACTIONS[b.owner].foes||[]).includes(e.fac)||(crewOf(s,e)&&crewOf(s,e).att==="hostile"&&!b.owner)); return false; }
-  function bots(s){ for(const b of s.ents){ if(b.kind!=="bot"||!b.alive) continue; const B=BTYPES[b.type];
+  function custodian(s,b){ const B=BTYPES.custodian; if(b.stun>0){ b.stun--; return; }
+    const ts=s.ents.filter(e=>botHostile(s,b,e)&&Math.hypot(e.x-b.x,e.y-b.y)<=B.range+.5&&los(s,b.x,b.y,e.x,e.y)).sort((a,c)=>Math.hypot(a.x-b.x,a.y-b.y)-Math.hypot(c.x-b.x,c.y-b.y)), t=ts[0];
+    if(t&&!b.woke){ b.woke=1; fx(s,{type:"roar",x:b.x,y:b.y}); fx(s,{type:"robot",x:b.x,y:b.y}); say(s,"\"INTRUDER. CUSTODIAL PROTOCOL ENGAGED.\" Something huge unfolds from its maintenance cradle, servos screaming.","bad"); b.salvo=s.turn+3; return; }
+    if(t){ b.last={x:t.x,y:t.y}; const d=Math.max(Math.abs(t.x-b.x),Math.abs(t.y-b.y));
+      if(d<=1){ face(b,t.x-b.x,t.y-b.y); ATK=b.id; fx(s,{type:"stomp",x:t.x,y:t.y}); const l=pickLimb(s), c0=CTX; if(t.kind==="player"){ CTX=t.id; say(s,`The Custodian's fist slams into your ${LNAME[l]}!`,"bad"); } damage(s,t,l,ri(s,14,22),.4,"Crushed by the Custodian."); if(t.alive&&chance(s,.4)){ t.busy=Math.max(t.busy|0,1); if(t.kind==="player") say(s,"You're thrown across the deck!","bad"); } CTX=c0; ATK=null; return; }
+      if(s.turn>=(b.salvo|0)){ b.salvo=s.turn+6; s.marks=s.marks||[]; for(const q of ts.slice(0,2)) s.marks.push({x:q.x,y:q.y,t:2,by:b.id}); fx(s,{type:"robot",x:b.x,y:b.y}); say(s,"The Custodian's shoulder pods snap open. Red targeting lasers paint the deck. MOVE.","bad"); return; }
+      for(let k=0;k<B.burst&&t.alive;k++) botShoot(s,b,t); return; }
+    if(b.last&&s.turn%2===0){ const st=stepToward(s,b,b.last.x,b.last.y); if(st&&free(s,st[0],st[1])){ face(b,st[0]-b.x,st[1]-b.y); b.x=st[0]; b.y=st[1]; } else b.last=null; if(b.last&&b.x===b.last.x&&b.y===b.last.y) b.last=null; } }
+  function marksTick(s){ if(!s.marks||!s.marks.length) return; for(const M of s.marks.slice()){ if(--M.t>0) continue; s.marks=s.marks.filter(q=>q!==M); const a0=ATK; ATK=M.by; blast(s,M.x,M.y,{r:1.5,dmg:[12,20],fire:.6}); ATK=a0; } }
+  function bots(s){ for(const b of s.ents){ if(b.kind!=="bot"||!b.alive) continue; const B=BTYPES[b.type]; if(b.type==="custodian"){ custodian(s,b); continue; }
       if(b.hackedOff){ b.off=1; continue; }
       if(b.batt!=null){ if(--b.batt<=0){ b.alive=false; b.spent=true; fx(s,{type:"robot",x:b.x,y:b.y}); if(anyPlayerSees(s,b.x,b.y)) say(s,"The field sentry's battery dies with a falling whine.","info"); continue; } }
       else if(!s.power){ if(!b.off){ b.off=1; if(anyPlayerSees(s,b.x,b.y)) say(s,`The ${b.name} powers down.`,"info"); } continue; }
@@ -1501,10 +1527,10 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); mix((s.charges||[]).length); mix((s.traps||[]).length+"/"+(s.mines||[]).length); mix("g"+(s.gas?s.gas.length:0)); for(const e of s.ents) if(e.spec) mix("sp"+e.id+e.spec.n); for(const e of s.ents) if(e.type==="nest") mix("n"+e.id+(e.t|0)); for(const e of s.ents) if(e.sneak) mix("s"+e.id+(e.snk|0)); { let w=0; for(const t of s.tiles) if(t.sealed) w++; mix("w"+w); } if(s.ev) mix(s.ev.type+s.ev.on+(s.ev.done?1:0)); for(const e of s.ents) if(e.rad) mix("r"+e.id+Math.round(e.rad*4)); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
+    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); mix((s.charges||[]).length); mix((s.traps||[]).length+"/"+(s.mines||[]).length); mix("g"+(s.gas?s.gas.length:0)); mix("m"+(s.marks?s.marks.length:0)); for(const o of s.side||[]) mix(o.id+o.done+o.prog); for(const e of s.ents) if(e.spec) mix("sp"+e.id+e.spec.n); for(const e of s.ents) if(e.type==="nest") mix("n"+e.id+(e.t|0)); for(const e of s.ents) if(e.sneak) mix("s"+e.id+(e.snk|0)); { let w=0; for(const t of s.tiles) if(t.sealed) w++; mix("w"+w); } if(s.ev) mix(s.ev.type+s.ev.on+(s.ev.done?1:0)); for(const e of s.ents) if(e.rad) mix("r"+e.id+Math.round(e.rad*4)); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 
-  return {canExtract,MUTS,FACTIONS,HTYPES,BTYPES,botHostile,intentOf,gearOf,STARTER,VALUABLES,MAPS,bind,hash,normLo,gun,newGame,act,fov,canSee,hitChance,roomName,lootValue,tileAt,entAt,idx,los,walk,LIMBS,LNAME};
+  return {SIDES,canExtract,MUTS,FACTIONS,HTYPES,BTYPES,botHostile,intentOf,gearOf,STARTER,VALUABLES,MAPS,bind,hash,normLo,gun,newGame,act,fov,canSee,hitChance,roomName,lootValue,tileAt,entAt,idx,los,walk,LIMBS,LNAME};
 })();
 // ============================== SIM END ==============================

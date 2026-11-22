@@ -280,6 +280,20 @@ body[data-scene="ship"] .obj{display:none!important}
 .recap.nem{border-color:#7a1a12;background:rgba(90,10,6,.3)}
 .vr-wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}.vr-wrap canvas{width:300px;height:375px;image-rendering:pixelated;border:4px solid #1a1a1e;box-shadow:0 0 0 1px #3a3a44,0 0 30px rgba(90,255,140,.15);touch-action:none;background:#020804}.vr-side{flex:1;min-width:200px}
 body[data-mode="touch"] .vr-wrap canvas{width:min(84vw,300px);height:auto;aspect-ratio:4/5}
+.ccard{position:fixed;inset:0;z-index:70;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .5s}
+.ccard[hidden]{display:none}.ccard.show{opacity:1}
+.ccard .bar{position:absolute;left:0;right:0;height:11vh;background:#000;transition:transform .6s cubic-bezier(.2,.8,.2,1)}.ccard .bar.top{top:0;transform:translateY(-100%)}.ccard .bar.bot{bottom:0;transform:translateY(100%)}.ccard.show .bar{transform:none}
+.ccard .cc-in{display:flex;flex-direction:column;align-items:center;gap:2px;border-top:1px solid rgba(200,96,58,.5);border-bottom:1px solid rgba(200,96,58,.5);background:rgba(4,3,3,.94)!important;text-align:center;padding:16px 26px;background:radial-gradient(ellipse at center,rgba(0,0,0,.72),rgba(0,0,0,0) 70%);max-width:92vw}
+.ccard .cc-k{font:600 12px var(--f-num);letter-spacing:.35em;text-transform:uppercase;color:#c8603a}.ccard .cc-t{font-family:var(--f-display);font-size:clamp(34px,7vw,64px);color:#f2e8d0;text-shadow:0 2px 0 #000,0 0 24px rgba(200,40,20,.45);line-height:1.05;margin:4px 0 8px}
+.ccard .cc-l{font:500 14px/1.45 var(--f-body,sans-serif);color:#cfc6b0;letter-spacing:.02em}.ccard .cc-tip{margin-top:12px;font-size:13px;color:#a89c88;font-style:italic}
+.ccard.good .cc-t{text-shadow:0 2px 0 #000,0 0 24px rgba(90,220,120,.45)}.ccard.good .cc-k{color:#7adf8a}.ccard.bad .cc-t{color:#ff7a5a}.ccard.gold .cc-t{color:#ffe0a0;text-shadow:0 2px 0 #000,0 0 30px rgba(255,190,80,.6)}.ccard.gold .cc-k{color:#e8b048}
+.cine{position:fixed;inset:0;z-index:80;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}.cine[hidden]{display:none}
+.cine canvas{width:min(96vw,calc(70vh*16/9));aspect-ratio:16/9;image-rendering:pixelated}.cine-t{min-height:4.5em;max-width:min(90vw,760px);margin-top:18px;text-align:center;font:500 clamp(15px,2.2vw,20px)/1.5 var(--f-body,serif);color:#e8dcc0;letter-spacing:.02em}
+#cine-skip{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px}.cine-hint{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#5a5448}
+.wanted-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 8px}.poster{background:#c8b890;color:#2a2018;padding:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.6);transform:rotate(-1deg);display:flex;flex-direction:column;gap:2px}.poster:nth-child(2){transform:rotate(1.2deg)}
+.poster .pw{font-family:var(--f-display);font-size:22px;color:#5a1a12;letter-spacing:.1em}.poster b{font-size:14px}.poster span{font-size:11px}.poster .pr{margin-top:4px;font:700 16px var(--f-num);color:#5a1a12}.poster.got{opacity:.55;filter:grayscale(.6)}.poster.got .pr{color:#2a6a2a}
+.bones{display:flex;gap:24px;margin:10px 0}.bones>div{display:flex;flex-direction:column;align-items:center;gap:2px}.bones span{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#a89c88}.bones b{font-size:44px;line-height:1;color:#f2e8d0}.bones i{font-size:12px;color:#cfc6b0}
+.enc-ch button.on{border-color:#e8b048;color:#ffe0a0}
 .tmap{position:fixed;inset:0;z-index:60;background:rgba(4,3,3,.82);display:flex;align-items:center;justify-content:center;padding:12px}
 .tmap[hidden]{display:none}
 .tm-box{background:#0c0a09;border:1px solid #5a2a20;box-shadow:0 0 0 1px #000,0 10px 40px rgba(0,0,0,.7);padding:10px 12px;max-width:100%;max-height:100%;display:flex;flex-direction:column;gap:8px}
@@ -641,6 +655,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
       <button id="m-play" class="menu-main">Board the <span id="m-ship">Lark</span></button>
       <button id="m-crew">Crew &amp; squads</button>
       <button id="m-ward">Wardrobe</button>
+      <button id="m-pro">Prologue</button>
       <button id="m-mode">Controls: mouse &amp; keys</button>
       <div class="menu-row"><button id="m-sound">Sound: 80%</button><button id="m-music">Music: on</button><button id="m-gfx">Graphics: high</button></div>
     </nav>
@@ -649,6 +664,8 @@ body[data-mode="touch"] .iv-body{min-height:300px}
 </div>
 <div class="hub-toast" id="h-toast" role="status" hidden></div>
 <div class="evb" id="evb" hidden></div>
+<div class="ccard" id="card" hidden></div>
+<div class="cine" id="cine" hidden><canvas id="cine-c"></canvas><div class="cine-t" id="cine-t"></div><button id="cine-skip" class="plain">Skip</button><div class="cine-hint">tap to continue</div></div>
 <div class="tmap" id="tmap" hidden><div class="tm-box"><div class="tm-head"><b>Tactical map</b><span class="tm-sub">What you've explored. Hacked schematics fill in the rest.</span><button id="tmap-x" class="plain">Close <span class="key">N</span></button></div><div class="tm-scroll"><canvas id="tmap-c"></canvas></div><div class="tm-leg"></div></div></div>
 <div class="obj" id="obj" hidden><button class="obj-h" id="obj-h" aria-expanded="true"><b>Objectives</b><span id="obj-n"></span><i id="obj-tg">▾</i></button><div id="obj-body"></div></div>
 <div class="tut" id="tut" hidden><div class="tut-h"><b id="tut-title">Field training</b><button id="tut-skip" class="plain">Skip</button></div><div id="tut-body"></div></div>
@@ -669,7 +686,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
     <div class="panel mission">
       <div class="m-head"><span class="m-eye">Mission</span><b id="r-site">Relay KS-9</b></div>
       <div class="contract" id="contract"></div>
-      <div class="btns"><button id="b-air" class="plain" title="Show air pressure and wind (T)"><span class="key">T</span>Air</button><button id="b-map" class="plain" title="Tactical map (N)"><span class="key">N</span>Map</button><button id="b-sneak" class="plain" title="Sneak: harder to spot, slower (C)"><span class="key">C</span>Sneak</button><button id="b-help" class="plain" title="Controls">?</button><button id="b-new" class="plain">Abandon</button></div>
+      <div class="btns"><button id="b-air" class="plain" title="Show air pressure and wind (T)"><span class="key">T</span>Air</button><button id="b-map" class="plain" title="Tactical map (N)"><span class="key">N</span>Map</button><button id="b-heal" class="plain" title="Quick heal: uses the right med (H)"><span class="key">H</span>Heal</button><button id="b-sneak" class="plain" title="Sneak: harder to spot, slower (C)"><span class="key">C</span>Sneak</button><button id="b-help" class="plain" title="Controls">?</button><button id="b-new" class="plain">Abandon</button></div>
     </div>
     <div class="panel crew-cards" id="crew-cards" hidden></div>
   </div>
@@ -715,7 +732,7 @@ body[data-mode="touch"] .iv-body{min-height:300px}
     <div class="t-row">
       <div class="t-mon"><div class="fig" id="tfig"></div></div>
       <div class="t-vit" id="tvit"></div>
-      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-obj" aria-label="Objectives">Goals</button><button id="t-map" aria-label="Map">Map</button><button id="t-sneak" aria-label="Sneak">Sneak</button><button id="t-chat" class="sq-only talk" aria-label="Talk">Talk</button></div>
+      <div class="t-menu"><button id="t-bag" aria-label="Kit">Kit</button><button id="t-light" aria-label="Light">Light</button><button id="t-obj" aria-label="Objectives">Goals</button><button id="t-map" aria-label="Map">Map</button><button id="t-sneak" aria-label="Sneak">Sneak</button><button id="t-heal" aria-label="Quick heal">Heal</button><button id="t-chat" class="sq-only talk" aria-label="Talk">Talk</button></div>
     </div>
     <div class="t-ticker" id="tick" role="button" aria-label="Open comms log"></div>
     <div class="t-crew" id="tcrew" hidden></div>
