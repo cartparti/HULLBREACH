@@ -2152,6 +2152,7 @@ screen.addEventListener("pointerup",ev=>{
   if(!S||S.status!=="playing"||ev.button===2) return;
   const {x,y}=tileAt(ev), p=me(); if(x<0||y<0||x>=S.W||y>=S.H) return;
   const d=Math.abs(x-p.x)+Math.abs(y-p.y), e=Sim.entAt(S,x,y);
+  if(S.mode==="raid"&&d===0&&p.alive&&Sim.canExtract(S,p)){ send({type:"extract"}); return; }
   if(S.mode==="ship"){ const t=S.tiles[Sim.idx(S,x,y)];
     if(t.t==="terminal"){ if(d===1){ send({type:"move",dx:x-p.x,dy:y-p.y}); return; }
       let best=null; for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]){ const pth=pathTo(x+dx,y+dy); if(pth&&(!best||pth.length<best.length)) best=pth; }
