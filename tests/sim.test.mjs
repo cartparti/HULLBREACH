@@ -539,4 +539,12 @@ test("bloaters burst into a gas cloud that fades; quick kills make streaks; coff
   const A = Sim.newGame(5, { ...LO }, { map: "ks9" }), Bc = Sim.newGame(5, { ...LO, coffee: 1 }, { map: "ks9" }); assert.ok(Sim.hitChance(Bc, playerOf(Bc), playerOf(Bc).x + 6, playerOf(Bc).y) > Sim.hitChance(A, playerOf(A), playerOf(A).x + 6, playerOf(A).y) || Sim.hitChance(A, playerOf(A), playerOf(A).x + 6, playerOf(A).y) >= .95, "coffee");
 });
 
+test("smoke grenades block every line of sight through the cloud, then clear", () => {
+  const s = Sim.newGame(5, { ...LO, inv: [{ d: "smoke", r: 0 }] }, { map: "ks9" }), p = playerOf(s); s.ents = s.ents.filter((e) => e.kind === "player"); p.x = 20; p.y = 13; for (const t of s.tiles) if (t.t === "door") t.open = true;
+  const dir = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => [1, 2, 3, 4, 5].every((k) => Sim.walk(Sim.tileAt(s, 20 + dx * k, 13 + dy * k)))); assert.ok(dir, "a straight corridor");
+  const far = [20 + dir[0] * 5, 13 + dir[1] * 5]; assert.ok(Sim.los(s, 20, 13, far[0], far[1]));
+  assert.ok(Sim.act(s, "p1", { type: "throw", index: 0, x: 20 + dir[0] * 2, y: 13 + dir[1] * 2 })); assert.ok(!Sim.los(s, 20, 13, far[0], far[1]), "smoke blocks sight");
+  for (let i = 0; i < 10; i++) Sim.act(s, "p1", { type: "wait" }); assert.ok(Sim.los(s, 20, 13, far[0], far[1]), "smoke clears");
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

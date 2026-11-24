@@ -404,7 +404,7 @@ const Sim = (() => {
     return pts;
   }
   function los(s,x0,y0,x1,y1){
-    const pts=line(x0,y0,x1,y1); for(let i=0;i<pts.length-1;i++){ if(!clear(tileAt(s,pts[i][0],pts[i][1]))) return false; } return true;
+    const pts=line(x0,y0,x1,y1), sm=s.smoke; for(let i=0;i<pts.length-1;i++){ if(!clear(tileAt(s,pts[i][0],pts[i][1]))) return false; if(sm&&i>0&&sm[idx(s,pts[i][0],pts[i][1])]) return false; } return true;
   }
   const sightR=s=>s.power?8:4;
   // everyone sees the same distance; only sniper rifles and scoped guns see a few tiles further
@@ -699,6 +699,9 @@ const Sim = (() => {
     if(!(los(s,p.x,p.y,x,y)&&clear(tileAt(s,x,y)))&&!(x===p.x&&y===p.y)){ say(s,"No clear throw to that spot.","info"); return false; }
     const st=ST(it); p.inv.splice(i,1); face(p,x-p.x,y-p.y);
     fx(s,{type:"throw",x0:p.x,y0:p.y,x1:x,y1:y,d:it.d}); say(s,`You throw the ${nm(it)}.`,"warn");
+    if(st.smoke){ s.smoke=s.smoke||{}; const R=Math.ceil(st.smoke); let n=0; for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){ const xx=x+dx, yy=y+dy; if(Math.hypot(dx,dy)>st.smoke||!inb(s,xx,yy)) continue; const t=tileAt(s,xx,yy); if(t.t==="wall"||t.t==="space"||t.t==="window") continue; s.smoke[idx(s,xx,yy)]=8; n++; }
+      for(const h of s.ents) if((h.kind==="husk"||h.kind==="raider")&&h.alive&&h.last&&Math.hypot(h.last.x-x,h.last.y-y)<=4){ h.last=null; if(h.kind==="husk") h.search=3; }
+      fx(s,{type:"smoke",x,y}); say(s,"The canister hisses and the corridor vanishes in thick grey smoke.","good"); return true; }
     if(st.noise){ for(const h of s.ents) if(h.kind==="husk"&&h.alive&&Math.hypot(h.x-x,h.y-y)<=st.noise){ h.aware=true; h.last={x,y}; } fx(s,{type:"decoy",x,y}); say(s,"The noisemaker shrieks. Every husk in earshot turns toward it.","good"); return true; }
     if(st.stunr&&!st.blast){ let n=0; for(const h of s.ents) if(h.kind==="husk"&&h.alive&&Math.hypot(h.x-x,h.y-y)<=st.stunr){ h.stun=Math.max(h.stun|0,st.stun); n++; } fx(s,{type:"flare",x,y}); say(s,n?`A flash and a bang. ${n} husk${n>1?"s":""} reel, stunned.`:"A flash and a bang. Nothing caught in it.","good"); return true; }
     if(st.blast) { blast(s,x,y,{r:st.blast,dmg:st.dmg,fire:st.fire,stun:st.stun,pull:st.pull}); return true; }
@@ -844,7 +847,7 @@ const Sim = (() => {
 
   // ---------- world resolution ----------
   function endTurn(s){
-    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); if(s.gasEnd&&s.turn>=s.gasEnd&&s.gas&&s.gas.length&&!(s.ev&&s.ev.type==="gas"&&s.ev.on&&!s.ev.done)){ s.gas=s.gas.slice(0,Math.max(0,s.gas.length-5)); if(!s.gas.length) s.gasEnd=0; } trapTick(s); nemTick(s); marksTick(s); sideTick(s);
+    if(s.mode==="raid") trapTick(s); atmos(s); fireStep(s); wind(s); husks(s); raiders(s); bots(s); vitals(s); chargeTick(s); eventTick(s); if(s.smoke){ for(const k of Object.keys(s.smoke)) if(--s.smoke[k]<=0) delete s.smoke[k]; } if(s.gasEnd&&s.turn>=s.gasEnd&&s.gas&&s.gas.length&&!(s.ev&&s.ev.type==="gas"&&s.ev.on&&!s.ev.done)){ s.gas=s.gas.slice(0,Math.max(0,s.gas.length-5)); if(!s.gas.length) s.gasEnd=0; } trapTick(s); nemTick(s); marksTick(s); sideTick(s);
     for(const p of players(s)) if(p.alive&&p.downed&&--p.downT<=0){ CTX=p.id; kill(s,p,"Bled out before help arrived."); }
     CTX=null;
     s.turn++;
@@ -1529,7 +1532,7 @@ const Sim = (() => {
     mix(s.turn); mix(s.rng); mix(s.status); mix(s.power?1:0);
     for(const e of s.ents) mix(`${e.id}${e.x},${e.y}${e.alive?1:0}${LIMBS.map(l=>e.hp[l]).join("")}${e.blood}${e.ammo?JSON.stringify(e.ammo):""}${e.stun|0}${e.acted?1:0}${e.food!=null?Math.round(e.food)+'/'+Math.round(e.water):''}${e.sev?Object.keys(e.sev).join(''):''}${e.lightOff?'o':''}${e.flee|0}${e.search|0}${e.downed?"d"+e.downT:""}${(e.inv||[]).length}`);
     for(const it of s.items) mix(`${it.id}${it.x},${it.y}`);
-    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); mix((s.charges||[]).length); mix((s.traps||[]).length+"/"+(s.mines||[]).length); mix("g"+(s.gas?s.gas.length:0)); mix("m"+(s.marks?s.marks.length:0)); for(const o of s.side||[]) mix(o.id+o.done+o.prog); for(const e of s.ents) if(e.spec) mix("sp"+e.id+e.spec.n); for(const e of s.ents) if(e.type==="nest") mix("n"+e.id+(e.t|0)); for(const e of s.ents) if(e.sneak) mix("s"+e.id+(e.snk|0)); { let w=0; for(const t of s.tiles) if(t.sealed) w++; mix("w"+w); } if(s.ev) mix(s.ev.type+s.ev.on+(s.ev.done?1:0)); for(const e of s.ents) if(e.rad) mix("r"+e.id+Math.round(e.rad*4)); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
+    mix(Object.keys(s.fire).join(",")); for(const k of Object.keys(s.crews||{})){ const C=s.crews[k]; mix(k+C.att+(C.leave?1:0)+(C.follow||"")+C.followT); } for(const e of s.ents) if(e.acid) mix("a"+e.id+e.acid); mix((s.charges||[]).length); mix((s.traps||[]).length+"/"+(s.mines||[]).length); mix("g"+(s.gas?s.gas.length:0)); mix("sm"+(s.smoke?Object.keys(s.smoke).length:0)); mix("m"+(s.marks?s.marks.length:0)); for(const o of s.side||[]) mix(o.id+o.done+o.prog); for(const e of s.ents) if(e.spec) mix("sp"+e.id+e.spec.n); for(const e of s.ents) if(e.type==="nest") mix("n"+e.id+(e.t|0)); for(const e of s.ents) if(e.sneak) mix("s"+e.id+(e.snk|0)); { let w=0; for(const t of s.tiles) if(t.sealed) w++; mix("w"+w); } if(s.ev) mix(s.ev.type+s.ev.on+(s.ev.done?1:0)); for(const e of s.ents) if(e.rad) mix("r"+e.id+Math.round(e.rad*4)); for(const J of s.jobs||[]) mix(J.id+(J.done?1:0)+J.prog); for(const e of s.ents) if(e.kind==="player") mix(`${e.xp|0}${e.inf|0}${Object.keys(e.frac||{}).join("")}`); for(const e of s.ents) if(e.kind==="raider") mix(`${e.surr?1:0}${e.flee|0}${e.avoid|0}${e.inv.length}${e.act}`); let d=0,sr=0; for(const t of s.tiles){ if(t.t==="door"&&t.open) d++; if(t.searched) sr++; } mix(d); mix(sr);
     return (h>>>0).toString(36); }
   function lootValue(p){ return p.inv.reduce((a,i)=>a+Items.value(i),0); }
 

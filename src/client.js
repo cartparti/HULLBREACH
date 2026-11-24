@@ -1316,6 +1316,7 @@ function soundFx(f){ if(typeof Snd==="undefined") return; const at=(x,y,r,v)=>({
     case "plant": Snd.play("beep",at(f.x,f.y,12)); break;
     case "vent": Snd.play("vent",at(f.x,f.y,14)); break;
     case "reload": Snd.play("bolt",at(f.x,f.y,8)); break;
+    case "smoke": Snd.play("breach",at(f.x,f.y,14,.5)); break;
     case "lazarus": Snd.play("heal"); Snd.play("levelup"); break;
     case "spot": if(f.pid===PID) Snd.play("tick"); break;
     case "disarm": Snd.play("tick",at(f.x,f.y,10)); break;
@@ -1676,6 +1677,9 @@ function drawUI(g,cx,cy,now){
       g.strokeStyle=`rgba(${c},${ph})`; g.lineWidth=1; g.beginPath(); g.ellipse(X,Y+21,9,3.4,0,0,6.283); g.stroke(); glow(X,Y+8,14,`rgba(${c},${.22*ph})`);
       const hy=Y-(e.type==="brute"?14:8)-Math.sin(now/300)*1; R(g,X-2,hy,5,1,`rgb(${c})`); R(g,X-1,hy+1,3,1,`rgb(${c})`); R(g,X,hy+2,1,1,`rgb(${c})`);
       if(e.mut==="volatile"&&((now/160)|0)%3===0) glow(X,Y+10,9,"rgba(255,160,60,.35)"); if(e.mut==="regen"&&((now/90+e.y)|0)%7===0) R(g,X-6+((now/37)|0)%12,Y+4-((now/50)|0)%8,1,1,"#9aff9a"); }
+    // smoke: thick grey clouds that nothing sees through
+    if(S.smoke){ for(const k of Object.keys(S.smoke)){ const i=+k; if(!p.seen[i]) continue; const x=i%S.W, y=(i/S.W)|0, X=x*TS-cx, Y=y*TS-cy; if(X<-24||Y<-24||X>view.fw||Y>view.fh) continue; const left=S.smoke[k], a=Math.min(1,left/3)*.75;
+        g.fillStyle=`rgba(150,150,145,${a*.75})`; g.fillRect(X,Y,TS,TS); for(let q=0;q<3;q++){ g.fillStyle=`rgba(${185+q*15},${185+q*15},${180+q*15},${a*.55})`; g.beginPath(); g.arc(X+12+Math.sin(now/800+x*1.7+q*2)*6,Y+12+Math.cos(now/950+y*1.3+q)*5,6+q*1.5,0,6.283); g.fill(); } } }
     // toxic gas: a rolling green fog on the tiles it has reached
     if(S.gas&&S.gas.length){ for(const i of S.gas){ if(!p.seen[i]) continue; const x=i%S.W, y=(i/S.W)|0, X=x*TS-cx, Y=y*TS-cy; if(X<-24||Y<-24||X>view.fw||Y>view.fh) continue; const a=(VIS[i]?.22:.1)+.06*Math.sin(now/700+x*1.3+y*.7);
         g.fillStyle=`rgba(120,200,60,${a})`; g.fillRect(X,Y,TS,TS); g.fillStyle=`rgba(170,240,90,${a*.7})`; g.beginPath(); g.arc(X+12+Math.sin(now/900+x)*5,Y+12+Math.cos(now/1100+y)*4,7,0,6.283); g.fill(); } }
