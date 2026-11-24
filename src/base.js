@@ -25,7 +25,7 @@ function fixProfile(p){ const d=newProfile(); d.ship.opKey=todayKey(); if(!p) re
   p.ammo=p.ammo||{}; p.mats=p.mats||{}; if(p.food==null) p.food=80; if(p.water==null) p.water=80; if(!p.gotLight){ p.gotLight=1; p.stash.push(mk({d:"flashlight"})); } p.look={...d.look,...(p.look||{})}; if(p.look.fh==null){ const old=+p.look.f|0; p.look.fh=[0,1,3,5,0,0][old]||0; p.look.fm=[0,0,0,0,1,2][old]||0; } p.unlocks={cloak:[],visor:[],crest:[],...(p.unlocks||{})};
   p.life=p.life&&typeof p.life==="object"?p.life:{}; p.codex=p.codex&&typeof p.codex==="object"?p.codex:{}; p.medals=p.medals&&typeof p.medals==="object"?p.medals:{}; p.mastery=p.mastery&&typeof p.mastery==="object"?p.mastery:{}; p.records=p.records&&typeof p.records==="object"?p.records:{}; p.implants=p.implants&&typeof p.implants==="object"?p.implants:{}; p.arcade=p.arcade&&typeof p.arcade==="object"?p.arcade:{best:0,day:0};
   p.rep=p.rep&&typeof p.rep==="object"?p.rep:{}; p.xp=p.xp|0; p.perks=p.perks&&typeof p.perks==="object"?p.perks:{}; p.injury=p.injury||{frac:{},inf:0}; if(p.hire&&!(p.hire.fac in Sim.FACTIONS)) p.hire=null;
-  p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); p.ship.opKey=todayKey(); return p; }
+  const hadHull=p.ship&&p.ship.hull!=null; p.ship=p.ship&&World.loc(p.ship.loc)?{...World.newShip(),...p.ship}:World.newShip(); if(!hadHull&&p.ship&&(p.stats&&p.stats.raids>0)) p.ship.hull=4; p.ship.hull=Math.max(1,Math.min(4,p.ship.hull|0||1)); p.ship.opKey=todayKey(); return p; }
 function checkMail(){ const k=todayKey(); if(!profile||profile.mail===k) return; profile.mail=k; const pool=[["bandage","medkit","ration"],["ammo_pistol","ammo_rifle","ammo_shell"],["apkit","hpkit","tripmine"],["o2","stim","waterflask"]], got=[];
   for(const P of pool){ const d=P[Math.floor(Math.random()*P.length)]; if(!Items.def(d)) continue; const D=Items.def(d), it=mk({d}); if(D.k==="ammo"){ const t=D.ammo; profile.ammo[t]=(profile.ammo[t]|0)+Items.AMMO[t].stack; got.push(Items.AMMO[t].name); } else { World.grant(profile,it); got.push(Items.name(it)); } }
   profile.credits+=50; save(); setTimeout(()=>toast(`Concord mail: a daily care package is in your stash. ${got.join(", ")} and 50 cr.`),1200); }
@@ -145,8 +145,8 @@ const FLAVOR={
   fridge:[["The fridge hums. Inside: rations, a jar of something, and a note that says DON'T.","You take a cold flask out, think better of it, put it back."],"raids the galley fridge"],
 };
 let flavorCD=0;
-function onFlavor(kind){ if(kind==="bed"){ const I=profile.injury||{frac:{},inf:0}; if(Object.keys(I.frac||{}).length||I.inf){ openPanel("rest"); return; } } if(kind==="coffee"){ const d=ship().day|0; if(profile.coffee!==d){ profile.coffee=d; save(); toast("Black, scalding, perfect. Caffeinated: +3% to hit for the first 80 turns of your next raid."); return; } } if(kind==="arcade"&&!(typeof inSquad==="function"&&inSquad()&&false)){ openPanel("arcade"); return; }
-  const F=FLAVOR[kind]; if(!F) return; const lines=F[0]; toast(lines[(Math.random()*lines.length)|0]);
+function onFlavor(kind){ if(kind==="bed"){ const I=profile.injury||{frac:{},inf:0}; if(Object.keys(I.frac||{}).length||I.inf){ openPanel("rest"); return; } } let buffed=false; if(kind==="coffee"){ const d=ship().day|0; if(profile.coffee!==d){ profile.coffee=d; save(); buffed=true; } } if(kind==="arcade"&&!(typeof inSquad==="function"&&inSquad()&&false)){ openPanel("arcade"); return; }
+  const F=FLAVOR[kind]; if(!F) return; const lines=F[0]; toast(buffed?"Black, scalding, perfect. Caffeinated: +3% to hit for the first 80 turns of your next raid.":lines[(Math.random()*lines.length)|0]);
   if(typeof inSquad==="function"&&inSquad()&&Number.isFinite(arguments[1])) emit({t:"fx",kind,x:arguments[1],y:arguments[2]});
   if(F[1]&&typeof inSquad==="function"&&inSquad()&&Date.now()-flavorCD>3000){ flavorCD=Date.now(); emit({t:"chat",m:F[1]}); }
 }
@@ -157,7 +157,7 @@ function adjacentFixture(){ const p=me(); for(const [dx,dy] of [[0,-1],[1,0],[-1
 const TERM_HINT={bar:"Galley bar · eat and drink",workbench:"Fabricator · craft gear, upgrade the ship",wardrobe:"Wardrobe · change your look",navtable:"Star map · choose where to fly",helm:"Pilot console · choose where to fly",rack:"Loadout rack · choose your kit",stash:"Stash locker · your gear",records:"Crew log · service history",board:"Job board · the crew's contracts",airlock:"Airlock · dock or board"};
 function renderShipHud(){
   const L=here(), sh=ship(), sec=World.SECTORS.find(s=>s.id===L.sector), docked=L.type!=="derelict", cs=sh.contracts.length;
-  $("s-ship").textContent=sh.name;
+  $("s-ship").textContent=`${sh.name} · ${HULLS[hullLvl()].name}`;
   if(warp){ $("s-loc").innerHTML=`<b>In transit</b><span>Jumping to ${L.name}</span>`; $("s-prompt").innerHTML=""; return; }
   $("s-loc").innerHTML=`<b>${L.name}</b><span>${sec.name} · ${docked?`<span class="dock">Docked</span>`:`<span class="warn">Holding beside a derelict</span>`}</span><span>${cs?`${cs} active contract${cs>1?"s":""}`:"No active contracts"}${World.siteContract(sh,L.id)?" · <span class=\"dock\">contract target</span>":""}</span>`;
   $("s-res").innerHTML=`<span>Credits</span><span style="color:var(--brass)">${profile.credits}</span><span>Fuel</span><span style="color:${sh.fuel<2?"var(--blood2)":"inherit"}">${sh.fuel}/${sh.fuelMax}</span><span>Day</span><span>${sh.day}</span><span>Food</span><span style="color:${profile.food<25?"var(--blood2)":"inherit"}">${Math.round(profile.food)}</span><span>Water</span><span style="color:${profile.water<25?"var(--blood2)":"inherit"}">${Math.round(profile.water)}</span><span>Crew</span><span>${inSquad()?Net.roster.length:1}/4${inSquad()?" · "+Net.code.toUpperCase():""}</span>`;
@@ -326,7 +326,7 @@ const TUT=[
 function tutTick(){ const el=$("tut"); if(!el||!profile||!S) return; if(!$("panel").hidden){ el.hidden=true; return; } profile.tut=profile.tut||{got:[],done:false,ship:false};
   const T=profile.tut;
   if(S.mode==="ship"){ if(T.ship||profile.stats.raids>0||!$("menu").hidden){ el.hidden=true; return; } $("tut-title").textContent="Aboard the Lark"; el.hidden=false;
-    const html=`<ol><li class="now">Walk to the <b>airlock</b> (bottom middle) to board a derelict. Relay KS-9 is a good first target.</li><li>The <b>bridge</b> (right) has the star map and the hologram: call factions for work, gear and hired guns.</li><li>The <b>fabricator</b> crafts gear, fits attachments and installs ship systems.</li><li>Your <b>stash</b> and <b>loadout rack</b> build the kit you take in.</li></ol>`; if($("tut-body")._h!==html){ $("tut-body").innerHTML=html; $("tut-body")._h=html; } return; }
+    const html=`<ol><li class="now">Walk to the <b>airlock</b> to board a derelict. Relay KS-9 is a good first target.</li><li>The <b>bridge</b> (right) has the star map. Bigger hulls add a hologram to call factions for work, gear and hired guns.</li><li>The <b>fabricator</b> crafts gear, fits attachments, installs ship systems and refits your hull into a bigger ship.</li><li>Your <b>stash</b> and <b>loadout rack</b> build the kit you take in.</li></ol>`; if($("tut-body")._h!==html){ $("tut-body").innerHTML=html; $("tut-body")._h=html; } return; }
   if(T.done||S.mode!=="raid"||!$("menu").hidden){ el.hidden=true; return; }
   const p=me(); if(!p) return; let changed=false; for(const st of TUT) if(!T.got.includes(st.id)){ try{ if(st.ok(p)){ T.got.push(st.id); changed=true; } }catch(e){} }
   if(T.got.length>=TUT.length){ T.done=true; el.hidden=true; save(); toast("Training complete. The rest you'll learn the hard way."); if(typeof Snd!=="undefined") Snd.play("levelup"); return; }
@@ -463,6 +463,15 @@ const SHIPUP={
   tanks:{name:"Fuel tanks",max:2,cost:[{scrap:5,parts:2,credits:250},{scrap:6,parts:3,credits:400}],desc:["+2 fuel capacity.","+2 more fuel capacity."]},
 };
 const upLvl=k=>((ship().up||{})[k])|0;
+// the hull itself: start in a cramped skiff and grow into the full Lark, one refit at a time
+const HULLS=[null,
+  {name:"Skiff",map:"ship1",d:"Four cramped rooms: a bunk by the engine, the hold and airlock, a galley with the fabricator, and a two-seat bridge."},
+  {name:"Cutter",map:"ship2",cost:{credits:1500,scrap:12,parts:4,circ:2},d:"A real engine room with a reactor, bunks for the whole crew, a wardrobe and the logbook terminal, a proper galley, a storage bay, and a hologram comms deck on the bridge to call factions and hire guns. Rivet the cat moves in."},
+  {name:"Corvette",map:"ship3",cost:{credits:3500,scrap:20,parts:10,circ:6},d:"Adds an armory with weapon racks, a break room with the job board, an arcade and vending machine, an infirmary, a brig and a bathroom."},
+  {name:"Frigate",map:"ship",cost:{credits:7000,scrap:30,parts:16,circ:10,core:2},d:"The full Ninefold Lark: the biggest hold and quarters, a second bridge seat for every crewmate, and a trophy wall for your medals."}];
+const hullLvl=()=>Math.max(1,Math.min(4,ship().hull|0||1)), shipMap=()=>HULLS[hullLvl()].map;
+function viewHull(){ const h=hullLvl(), nx=HULLS[h+1], lead=!inSquad()||Net.host;
+  return `<div class="panel h-card span12"><div class="h-eyebrow">Hull · ${HULLS[h].name} (${h}/4)</div><p class="risk">${esc(HULLS[h].d)}</p>${nx?`<div class="panel shop-row"><div class="slot"><span class="num" style="font-size:15px;color:var(--brass)">${h+1}</span></div><div class="nm"><b>Refit to a ${nx.name}</b><span>${esc(nx.d)} · ${costHTML(nx.cost)}</span></div><span></span>${lead?`<button data-act="hullup" ${canPay(nx.cost)?"":"disabled"}>Refit</button>`:`<span class="risk">Squad leader only</span>`}</div>`:`<p class="risk good">The biggest hull there is. She's everything a contractor could want.</p>`}</div>`; }
 let fabTab="weapon";
 function eatDrink(food,water,heal){ profile.food=Math.max(0,Math.min(100,profile.food+(food||0))); profile.water=Math.max(0,Math.min(100,profile.water+(water||0))); }
 function travelHunger(days){ if(!profile) return; const hy=upLvl("hydro"), f=hy>=2?.15:hy?.5:1; profile.food=Math.max(0,profile.food-1.5*days*f); profile.water=Math.max(0,profile.water-2*days*f);
@@ -483,6 +492,7 @@ function viewWorkbench(){
       const fitted=guns.filter(g=>g.m).map(g=>`<div class="cm-row">${slotHTML(g)}<div class="cm-t">${nmHTML(g)}<span>${esc(Items.statLine(g))}</span></div><button class="plain" data-act="unfit:${g.uid}">Strip it</button></div>`).join("");
       const avail=mods.map(m=>{ const opts=guns.filter(g=>!g.m&&Items.modFits(Items.def(m.d).mod,g)).slice(0,4); return `<div class="cm-row">${slotHTML(m)}<div class="cm-t">${nmHTML(m)}<span>${esc(Items.def(m.d).desc)}</span></div><div class="bar-row" style="flex-wrap:wrap;justify-content:flex-end;gap:4px">${opts.map(g=>`<button class="plain" data-act="fit:${m.uid}:${g.uid}">Fit to ${esc(Items.name(g))}</button>`).join("")||`<span class="risk">No gun in your stash takes it</span>`}</div></div>`; }).join("");
       return (fitted+avail)||`<p class="risk">Craft scopes, suppressors, laser sights and chokes in the Gear tab, then fit them to guns in your stash here. Pros in the field sometimes carry them too.</p>`; })()}</div>
+    ${viewHull()}
     <div class="panel h-card span12"><div class="h-eyebrow">Ship systems</div><div class="shop">${Object.entries(SHIPUP).map(([k,U])=>{ const n=upLvl(k), c=U.cost[n];
       return `<div class="panel shop-row"><div class="slot"><span class="num" style="font-size:15px;color:var(--brass)">${n}/${U.max}</span></div><div class="nm"><b>${U.name}</b><span>${esc(n<U.max?U.desc[n]:U.desc[U.max-1])}${c?` · ${costHTML(c)}`:" · Installed"}</span></div><span></span>${c?(canUp?`<button class="plain" data-act="shipup:${k}" ${canPay(c)?"":"disabled"}>Install</button>`:`<span class="risk">Leader only</span>`):`<span class="risk good">Done</span>`}</div>`; }).join("")}</div></div>
     <div class="panel h-card span12"><div class="chips">${tabs.map(([k,n])=>`<button data-act="fabtab:${k}" aria-pressed="${fabTab===k}">${n}</button>`).join("")}</div><div class="shop" style="margin-top:8px">${recipes}</div></div>
@@ -859,6 +869,7 @@ $("p-body").addEventListener("click",e=>{
     case "dropjob": { if(inSquad()&&!Net.host) break; profile.ship.jobs=(profile.ship.jobs||[]).filter(q=>q.id!==x); toast("Job dropped."); save(); if(inSquad()) hostBroadcastShip(false); break; }
     case "hack": send({type:"hack",opt:x}); closePanel(); return;
     case "logtab": logTab=x; break;
+    case "hullup": { const h=hullLvl(), nx=HULLS[h+1]; if(!nx||!canPay(nx.cost)||(inSquad()&&!Net.host)) break; pay(nx.cost); profile.ship.hull=h+1; save(); closePanel(); toast(`The refit crews finish overnight. Welcome aboard your new ${nx.name}.`); if(typeof Snd!=="undefined") Snd.play("levelup"); if(inSquad()) hostBroadcastShip(true); else boardShip(); return; }
     case "sellall": { const L=salvageList(); if(!L.length) break; const v=L.reduce((a,it)=>a+Math.round(Items.value(it)*.5),0); profile.stash=profile.stash.filter(it=>!L.includes(it)); profile.credits+=v; toast(`The broker takes ${L.length} item${L.length===1?"":"s"} off your hands. +${v} cr.`); if(typeof Snd!=="undefined") Snd.play("pickup"); save(); break; }
     case "rest": doRest(); break;
     case "rename": { if(inSquad()&&!Net.host){ toast("Only the squad leader can rename the ship."); break; } const v=String(($("ship-nm")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,24); if(v){ profile.ship.name=v; save(); if(inSquad()) hostBroadcastShip(false); toast(`She's the ${v} now.`); if(S&&S.mode==="ship") renderShipHud(); } break; }
@@ -923,7 +934,7 @@ function boardShipCrew(crew){ setTimeout(()=>{ try{ checkMail(); }catch(e){} },0
   const raidOver=S&&S.mode==="raid"; if(raidOver&&!Net.settled) settlePersonal();
   PID=crewKey();
   crew=crew.map(c=>c.id===PID?{...c,loadout:shipLoadout()}:c);
-  S=Sim.newGame((Math.random()*2**32)>>>0,null,{map:"ship",mode:"ship",crew});
+  S=Sim.newGame((Math.random()*2**32)>>>0,null,{map:shipMap(),mode:"ship",crew,pet:hullLvl()>=2});
   if(inSquad()) for(const q of Net.roster){ const e=S.ents.find(x=>x.id===q.key); if(e&&q.key!==PID&&typeof q.x==="number"){ e.x=q.x; e.y=q.y; } }
   rp={}; parts=[]; camInit=false; staticKey=""; target=null; stopTravel(); spectating=false; Net.ready=false; Net.readyLo=null; resize(); afterChange();
   if(inSquad()){ squadPresence(); netShipMoved(); }

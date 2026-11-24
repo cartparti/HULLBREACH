@@ -176,7 +176,7 @@ const World = (() => {
       if(type==="sabotage"){ j.title=`Silence the Choir on ${site.name}`; j.brief=`Get to ${site.name}'s main power relay and upload our worm. It'll set the Choir's song back by weeks.`; }
       out.push(j); }
     return out; }
-  function newShip(){ return {v:1,name:"Ninefold Lark",loc:"ninefold",fuel:6,fuelMax:8,day:1,contracts:[],done:[],log:[],fab:1}; }
+  function newShip(){ return {v:1,name:"Ninefold Lark",hull:1,loc:"ninefold",fuel:6,fuelMax:8,day:1,contracts:[],done:[],log:[],fab:1}; }
   const regionOf=l=>{ const s=SECTORS.find(q=>q.id===(l&&l.sector)); return s?s.region:"arm"; };
   function travelCost(ship,to){ const a=loc(ship.loc), b=loc(to); if(!a||!b||a.id===b.id) return 0; return a.sector===b.sector?1:regionOf(a)===regionOf(b)?3:6; }
   function siteContract(ship,site){ return ship.contracts.find(c=>CONTRACTS[c].site===site)||null; }

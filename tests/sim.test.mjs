@@ -547,4 +547,17 @@ test("smoke grenades block every line of sight through the cloud, then clear", (
   for (let i = 0; i < 10; i++) Sim.act(s, "p1", { type: "wait" }); assert.ok(Sim.los(s, 20, 13, far[0], far[1]), "smoke clears");
 });
 
+test("every ship hull boards a crew of four, every terminal and seat is reachable, the cat moves in from the Cutter up", () => {
+  for (const [map, pet] of [["ship1", false], ["ship2", true], ["ship3", true], ["ship", true]]) {
+    const crew = ["p1", "p2", "p3", "p4"].map((id) => ({ id, name: id, loadout: {} })), s = Sim.newGame(7, null, { map, mode: "ship", crew, pet });
+    assert.equal(s.ents.filter((e) => e.kind === "player").length, 4, map + " crew"); assert.equal(!!s.ents.find((e) => e.kind === "pet"), pet, map + " cat");
+    const p = playerOf(s), W = s.W, seen = new Set([p.y * W + p.x]), q = [p.y * W + p.x];
+    while (q.length) { const c = q.pop(), x = c % W, y = (c / W) | 0; for (const [dx, dy] of N4) { const j = (y + dy) * W + x + dx, t = s.tiles[j]; if (!t || seen.has(j)) continue; if (["floor", "door", "seat"].includes(t.t)) { seen.add(j); q.push(j); } } }
+    const kinds = new Set(); s.tiles.forEach((t, i) => { if (t.t === "terminal") { kinds.add(t.kind); const x = i % W, y = (i / W) | 0; assert.ok(N4.some(([dx, dy]) => seen.has((y + dy) * W + x + dx)), `${map}: ${t.kind} unreachable`); } if (t.t === "seat") assert.ok(seen.has(i), `${map}: seat unreachable`); });
+    for (const k of ["navtable", "helm", "rack", "stash", "airlock", "workbench", "bar", "board"]) assert.ok(kinds.has(k), `${map} has ${k}`);
+    if (map !== "ship1") for (const k of ["comms", "wardrobe", "records"]) assert.ok(kinds.has(k), `${map} has ${k}`);
+    for (let i = 0; i < 30; i++) { const d = N4[i % 4]; Sim.act(s, "p1", { type: "move", dx: d[0], dy: d[1] }); }
+  }
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);
