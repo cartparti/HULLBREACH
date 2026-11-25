@@ -560,4 +560,10 @@ test("every ship hull boards a crew of four, every terminal and seat is reachabl
   }
 });
 
+test("loot on the deck is sparse and spread out; most of it is in containers", () => {
+  let deck = 0, boxed = 0; for (let k = 0; k < 20; k++) { const s = Sim.newGame(9100 + k, null, { gen: { tier: 1 + (k % 3) } }); const it = s.items.filter((i) => !["blackbox", "keycard"].includes(i.d)); deck += it.length; for (const t of s.tiles) if (t.loot) boxed += t.loot.length;
+    for (let i = 0; i < it.length; i++) for (let j = i + 1; j < it.length; j++) assert.ok(Math.max(Math.abs(it[i].x - it[j].x), Math.abs(it[i].y - it[j].y)) >= 5, "deck items at least 5 tiles apart"); }
+  assert.ok(boxed > deck * 3, `containers ${boxed} vs deck ${deck}`);
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ", some failed" : ""}`);

@@ -2,7 +2,7 @@
 // Personal save (credits, stash, ammo, materials, looks, stats, kit) + the
 // crew ship (World ship state). Signed-in players save to db at
 // data/users/<id>/save.
-const SAVE_V=2, KIT_SLOTS=["w1","w2","melee","head","armor","legs","acc","light","pack"], SLOT_NAME={w1:"Primary",w2:"Secondary",melee:"Melee",head:"Helmet",armor:"Chest",legs:"Legs",acc:"Accessory",light:"Light",pack:"Pack"};
+const SAVE_V=3, KIT_SLOTS=["w1","w2","melee","head","armor","legs","acc","light","pack"], SLOT_NAME={w1:"Primary",w2:"Secondary",melee:"Melee",head:"Helmet",armor:"Chest",legs:"Legs",acc:"Accessory",light:"Light",pack:"Pack"};
 const ISSUED={}; // nothing is issued: you start in your clothes and find or craft the rest
 const EMPTY_TXT={w1:"No gun",w2:"A second gun. Swap with R or the swap button.",melee:"Bare hands and a wrench",head:`Bare head · ${Items.CLOTHES_O2} O₂ rebreather`,armor:"Just your shirt",legs:"Just your trousers",acc:"Nothing. Find scarves, capes, charms, lamps and stranger things",light:"No light. Derelicts are very dark",pack:`No pack · ${Items.POCKETS} slots from pockets and belt`};
 let mapRegion=null;
@@ -188,7 +188,7 @@ const PANELS={
   bones:{eye:"Galley",title:()=>"Bones",view:viewBones},
   juke:{eye:"Galley",title:()=>"Jukebox",view:viewJuke},
   arcade:{eye:"Break room",title:()=>"VOID RUNNER",view:viewArcade},
-  debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":"Raid lost",view:viewDebrief},
+  debrief:{eye:"Debrief",title:()=>profile.last&&profile.last.win?"Back aboard":profile.last&&profile.last.dead?"Killed in action":"Raid lost",view:viewDebrief},
 };
 // ---------- searching a dead (or surrendered) raider ----------
 function lootBody(){ return S&&S.mode==="raid"?S.ents.find(e=>e.id===panelSub&&(e.kind==="raider"||e.kind==="remains")&&!e.extracted&&(!e.alive||e.surr)):null; }
@@ -745,7 +745,7 @@ function viewDeploy(L){
   else intel=`<p class="risk">Install a scanner array at the fabricator to see what's aboard before you board.</p>`;
   let squadHTML, btn;
   if(!inSquad()){ squadHTML=`<p>Going in solo.</p><p class="risk">Use the Crew button to open a squad. Up to four contractors share this ship, its contracts and its raids.</p>`;
-    btn=`<button class="deploy-btn" data-act="deploy">Board ${L.name}</button>`; }
+    btn=`<button class="deploy-btn" data-act="deploy">Board ${L.name}</button><p class="risk bad">Death is permanent. If you die aboard, this contractor's career ends and you start over. Sealing yourself in the shuttle (Abandon) keeps you alive.</p>`; }
   else { const allReady=Net.roster.every(q=>q.ready||q.key===Net.myKey);
     squadHTML=`<div class="squad">${Net.roster.map(q=>`<div class="${q.key===Net.myKey?"me":""}"><b>${nameOf(q.key)}</b><span>${q.key===(Net.host?Net.myKey:Net.setup&&Net.setup.hostKey)?"Leader":q.ready?"Ready":"Not ready"}</span></div>`).join("")}${"<div>Open berth</div>".repeat(Math.max(0,4-Net.roster.length))}</div>
       <p class="risk">Everyone boards together and takes turns as one crew. The station moves once every living contractor has acted.</p>`;
@@ -798,8 +798,9 @@ function viewDebrief(){ const Lr=profile.last; if(!Lr) return "<p>No raid to rep
     ${Lr.contract?`<p class="risk good">Contract complete: ${Lr.contract.title}. ${Lr.contract.reward} cr paid to the crew.${Lr.contract.bonus?` Bonus: <b style="color:${Lr.contract.bonus.c}">${esc(Lr.contract.bonus.n)}</b>.`:""}</p>`:""}
     ${Lr.win?`<p>Brought home ${Lr.items.length} item${Lr.items.length===1?"":"s"} worth about ${Lr.value} cr. Everything is in the stash locker.</p>${Lr.items.length?`<ul>${Lr.items.slice(0,12).map(li).join("")}${Lr.items.length>12?`<li>and ${Lr.items.length-12} more</li>`:""}</ul>`:""}
       ${Lr.ammo&&Object.keys(Lr.ammo).length?`<div class="h-eyebrow">Ammo recovered</div>${ammoChips(Lr.ammo)}`:""}${Lr.mats&&MAT_T.some(t=>Lr.mats[t])?`<div class="h-eyebrow" style="margin-top:6px">Materials</div>${matChips(Lr.mats)}`:""}`
+      :Lr.dead?`<div class="recap"><div class="h-eyebrow" style="color:var(--blood2)">Permadeath</div><p><b>${esc(Lr.cause||"You did not come back.")}</b></p><p>Your contractor is dead, and everything they owned went with them: credits, stash, ship, skills, all of it.${Lr.career?` Their career: ${Lr.career.raids} raid${Lr.career.raids===1?"":"s"}, ${Lr.career.extracts} extraction${Lr.career.extracts===1?"":"s"}, level ${Lr.career.level}, ${Lr.career.days} day${Lr.career.days===1?"":"s"} in the black.`:""}</p><p class="risk">A new contractor signs on at Hangar Ninefold with a cramped Skiff, a starter kit and 500 cr.</p></div>`
       :`<p>${Lr.cause||"You did not come back."} ${Lr.kit==="custom"?"Your custom kit is gone.":"You went in on the starter kit, so your stash is untouched."}</p>`}
-    ${Lr.xp?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
+    ${Lr.xp&&!Lr.dead?`<p class="risk ${Lr.xp.up?"good":""}">+${Lr.xp.got} XP${Lr.win?"":` (half of ${Lr.xp.full}: you didn't make it out)`}.${Lr.xp.up?` <b>Level ${Lr.xp.level}!</b> Spend your perk point in Skills.`:""}</p>`:""}
     ${Lr.failed&&Lr.failed.length?`<div class="h-eyebrow" style="color:var(--blood2)">Failed</div>${Lr.failed.map(f=>`<p class="risk bad">${esc(f.title)}: ${esc(f.who)} ${f.rep?`pulled the job. Standing ${f.rep}.`:`pulled the contract and kept a ${f.fee} cr cancellation fee. They won't offer it again for ${f.days} days.`}</p>`).join("")}`:""}
     ${Lr.recap?`<div class="recap"><div class="h-eyebrow" style="color:var(--blood2)">What happened</div><p><b>Killed by ${esc(Lr.recap.killer||"something in the dark")}</b> on turn ${Lr.recap.turns}. You put down ${Lr.recap.kills} and dealt ${Lr.recap.dealt} damage.</p>${Lr.recap.hits.length?`<ol class="hits">${Lr.recap.hits.map(h=>`<li><span>T${h.t}</span> ${esc(h.by)} · ${esc(Sim.LNAME[h.l]||h.l)} <b>−${h.d}</b></li>`).join("")}</ol>`:""}<p class="risk">${esc(Lr.recap.tip)}</p></div>`:""}
     ${Lr.nemesis&&Lr.nemesis.made?`<div class="recap nem"><div class="h-eyebrow" style="color:var(--blood2)">${Lr.nemesis.lvl>1?"Your nemesis grows stronger":"A nemesis is born"}</div><p><b>${esc(Lr.nemesis.name)}</b> of the ${esc(Sim.FACTIONS[Lr.nemesis.fac].name)}${Lr.nemesis.lvl>1?` killed you again. They're level ${Lr.nemesis.lvl} now: tougher, better equipped, and they travel with friends.`:" killed you, and they'll remember it."}${Lr.nemesis.took.length?` They took your ${Lr.nemesis.took.map(esc).join(", ")}.`:""} They'll turn up on your raids. Kill them to take it all back.</p></div>`:""}
@@ -1070,6 +1071,8 @@ function settlePersonal(){
     if((LF.k.elite|0)>=10) give("mutant"); if((LF.k.custodian|0)>=1) give("giant"); if((LF.wanted|0)>=3) give("law"); if((LF.k.nest|0)>=10) give("exterm"); if(rep.nemesis&&rep.nemesis.killed) give("vengeance"); if((LF.disarms|0)>=10) give("sapper"); if((LF.dailies|0)>=5) give("dailies"); if(Object.values(profile.mastery).some(v=>(v|0)>=MAST_T[5])) give("master");
     if([...profile.stash,...(win?p.inv:[])].some(it=>Items.rarOf(it)>=4)) give("legend");
     rep.medals=earn; }
+  // permadeath: dying ends this contractor's career. Abandoning (sealing yourself in the shuttle) is not death
+  rep.dead=!win&&!p.flags.abandoned;
   // experience: kept in full when you get out, half when you don't
   { const before=levelOf(profile.xp), base=Math.round(((p.xp|0)+(win?40:0)+(rep.contract?60:0))*(p.morale?1.1:1)), got=win?base:Math.floor(base/2); profile.xp=(profile.xp|0)+got; rep.xp={got,full:base,level:levelOf(profile.xp),up:levelOf(profile.xp)>before}; }
   // injuries come home with you, unless the ship's medbay patches you up
@@ -1078,7 +1081,11 @@ function settlePersonal(){
   rep.standing=[]; for(const [f,n] of Object.entries(S.repd||{})){ if(!n) continue; const was=profile.rep[f]|0; profile.rep[f]=Math.max(-100,Math.min(100,was+n)); rep.standing.push({f,n}); }
   { const k=S.kills||{}, b=((k.reaver|0)+(k.blacksun|0)+(k.choir|0)); if(b&&(profile.rep.marshal|0)>=0){ const pay=b*40; profile.credits+=pay; rep.bounty={n:b,pay}; } }
   if(p.food!=null){ profile.food=win?p.food:Math.max(25,p.food); profile.water=win?p.water:Math.max(25,p.water); }
-  profile.active=null; profile.last=rep; save();
+  profile.active=null; profile.last=rep;
+  if(rep.dead){ const old=profile, fresh=fixProfile(null); fresh.seenPro=1; fresh.tut=old.tut; fresh.welcomed=true; fresh.updated=Date.now();
+    rep.career={raids:old.stats.raids|0,extracts:old.stats.extracts|0,earned:old.stats.earned|0,level:levelOf(old.xp|0),days:old.ship&&old.ship.day|0,hull:old.ship&&old.ship.hull|0};
+    rep.remains=0; rep.secured=[]; rep.insured=[]; fresh.last=rep; profile=fresh; }
+  save();
 }
 function returnToBase(){
   if(!S||S.mode!=="raid") return;

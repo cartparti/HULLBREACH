@@ -258,6 +258,13 @@ const Gen = (() => {
       const n = c === "[" ? ri(2, 3) : R() < .3 ? 2 : 1, items = [], t = tier + (c === "[" || m.type === "vault" ? 1 : 0);
       for (let i = 0; i < n; i++) { const cat = R() < .35 && ROOMBIAS[m.type] && c !== "j" && c !== "0" ? ROOMBIAS[m.type] : pick(BOX[c]); items.push(Items.roll(R, t, cat)); }
       caches.push({ x, y, items }); }
+    // loot on the deck is rare and spread out: most of it is tucked into the room's containers, the rest thinned
+    { const KEEP = new Set(["blackbox", "keycard"]), deck = [];
+      for (const l of loot.slice()) { if (KEEP.has(l.item.d)) continue;
+        if (R() < .35 && !deck.some((f) => Math.max(Math.abs(f.x - l.x), Math.abs(f.y - l.y)) < 5)) { deck.push(l); continue; }
+        loot.splice(loot.indexOf(l), 1);
+        const m = meta.find((q) => l.x > q.x0 && l.x < q.x1 && l.y > q.y0 && l.y < q.y1), box = m ? caches.filter((c) => c.x > m.x0 && c.x < m.x1 && c.y > m.y0 && c.y < m.y1 && c.items.length < 3) : [];
+        if (box.length && R() < .75) box[Math.floor(R() * box.length)].items.push(l.item); } }
     return { rows: G.map((r) => r.join("")), rooms, spawn, loot, husks, decals, fires, caches, size: [W, H] };
   }
   return { station };

@@ -1019,7 +1019,7 @@ function drawTacMap(){ const el=$("tmap"); if(!el||!S||S.mode!=="raid") return; 
   for(const r of S.rooms||[]){ if(!r[0]) continue; let seen=false; for(let y=r[2];y<=r[4]&&!seen;y++)for(let x=r[1];x<=r[3];x++) if(p.seen[Sim.idx(S,x,y)]){ seen=true; break; } if(!seen) continue;
     const cx=(r[1]+r[3]+1)/2*sc, cy=(r[2]+r[4]+1)/2*sc; g.fillStyle="rgba(0,0,0,.55)"; const w=g.measureText(r[0]).width+6; g.fillRect(cx-w/2,cy-6,w,12); g.fillStyle="#cfc6b0"; g.fillText(r[0],cx,cy); }
   for(const T0 of S.traps||[]) if(T0.seen[PID]){ g.strokeStyle="#ff3a20"; g.lineWidth=1.5; const X=T0.x*sc, Y=T0.y*sc; g.beginPath(); g.moveTo(X,Y); g.lineTo(X+sc,Y+sc); g.moveTo(X+sc,Y); g.lineTo(X,Y+sc); g.stroke(); }
-  for(const e of S.ents){ if(!e.alive||!VIS||!VIS[Sim.idx(S,e.x,e.y)]) continue; if(e.kind==="husk"||(e.kind==="raider"&&attOf(e)==="hostile")||(e.kind==="bot"&&Sim.botHostile(S,e,p))){ g.fillStyle=e.mut?`rgb(${MUTCOL[e.mut]})`:"#e0482f"; g.beginPath(); g.arc(e.x*sc+sc/2,e.y*sc+sc/2,Math.max(2,sc*.4),0,6.283); g.fill(); } }
+  for(const e of []){ if(!e.alive||!VIS||!VIS[Sim.idx(S,e.x,e.y)]) continue; if(e.kind==="husk"||(e.kind==="raider"&&attOf(e)==="hostile")||(e.kind==="bot"&&Sim.botHostile(S,e,p))){ g.fillStyle=e.mut?`rgb(${MUTCOL[e.mut]})`:"#e0482f"; g.beginPath(); g.arc(e.x*sc+sc/2,e.y*sc+sc/2,Math.max(2,sc*.4),0,6.283); g.fill(); } }
   const crew=S.ents.filter(e=>e.kind==="player");
   crew.forEach((e,ci)=>{ if(!e.alive&&!e.downed) return; const X=e.x*sc+sc/2, Y=e.y*sc+sc/2, c=crew.length>1?CREW_COL[ci%4]:"#f2e8d0";
     if(e.id===PID){ const f=e.face||[0,1], a=Math.atan2(f[1],f[0]); g.save(); g.translate(X,Y); g.rotate(a); g.fillStyle=c; g.beginPath(); g.moveTo(sc*1.1,0); g.lineTo(-sc*.7,-sc*.7); g.lineTo(-sc*.35,0); g.lineTo(-sc*.7,sc*.7); g.fill(); g.restore();
@@ -1369,7 +1369,7 @@ function processFx(){
       case "bash": if(vis()){ spawn(8,cpx(f.x),cpx(f.y),{col:["#6a5f50","#3a332a"],speed:35,life:.5}); shake=Math.max(shake,1.2); } break;
       case "alarm": shake=Math.max(shake,3); evFlash=1; break;
       case "takedown": splat(cpx(f.x),cpx(f.y)+6,16); if(f.id) atkT[f.id]=now; shake=Math.max(shake,2); break;
-      case "noise": { const X=cpx(f.x), Y=cpx(f.y), pp=me(); if(pp&&Math.hypot(f.x-pp.x,f.y-pp.y)<=f.r+10&&(VIS[Sim.idx(S,f.x,f.y)]||Math.hypot(f.x-pp.x,f.y-pp.y)<=f.r)) rings.push({x:X,y:Y,t:0,dur:.75,col:f.x===pp.x&&f.y===pp.y?"230,225,205":"255,170,80",r0:4,r1:f.r*TS}); break; }
+      case "noise": { const pp=me(); if(pp&&f.x===pp.x&&f.y===pp.y) rings.push({x:cpx(f.x),y:cpx(f.y),t:0,dur:.75,col:"230,225,205",r0:4,r1:f.r*TS}); break; } // only your own noise: you never see where anything else is
       case "streak": if(f.id===PID){ FLOATS.push({x:cpx(f.x),y:cpx(f.y)-14,t0:now,txt:["","","DOUBLE KILL","TRIPLE KILL","RAMPAGE","MASSACRE"][Math.min(5,f.n)],big:1}); shake=Math.max(shake,2); } break;
       case "lazarus": rings.push({x:cpx(f.x),y:cpx(f.y),t:0,dur:.6,col:"140,255,170",r0:2,r1:60}); shake=Math.max(shake,4); if(f.id===PID){ hurtFlash=0; } break;
       case "pet": heartT[f.id]=now; if(f.pid===PID&&typeof onPet==="function") onPet(); break;
@@ -1687,16 +1687,6 @@ function drawUI(g,cx,cy,now){
     for(const e of S.ents){ if(!e.nemesis||!e.alive||!VIS[Sim.idx(S,e.x,e.y)]) continue; const r=rp[e.id]; if(!r) continue; const X=Math.round(r.x)-cx+12, Y=Math.round(r.y)-cy-34+Math.sin(now/260)*1;
       R(g,X-3,Y,7,5,"#e0482f"); R(g,X-2,Y+5,5,2,"#e0482f"); R(g,X-2,Y+1.5,2,2,"#140806"); R(g,X+1,Y+1.5,2,2,"#140806"); R(g,X,Y+5,1,1,"#140806"); glow(X+.5,Y+3,8,"rgba(255,60,40,.45)");
       g.font="bold 5px monospace"; g.textAlign="center"; g.fillStyle="#000"; g.fillText("NEMESIS",X+1,Y-1.5); g.fillStyle="#ff6a4a"; g.fillText("NEMESIS",X+.5,Y-2); g.textAlign="left"; }
-    // sound sense: you can hear husks hunting you before you see them
-    if(p&&p.alive){ const r0=rp[p.id]; if(r0){ const PX=Math.round(r0.x)-cx+12, PY=Math.round(r0.y)-cy+10; for(const e of S.ents){ if(e.kind!=="husk"||!e.alive||!e.aware||e.type==="nest"||VIS[Sim.idx(S,e.x,e.y)]) continue; const d=Math.hypot(e.x-p.x,e.y-p.y); if(d>12||!e.last||Math.hypot(e.last.x-p.x,e.last.y-p.y)>4) continue;
-        const a=Math.atan2(e.y-p.y,e.x-p.x), k=1-d/13, R0=20; g.save(); g.translate(PX,PY); g.rotate(a); g.globalAlpha=(.35+.5*k)*(.7+.3*Math.sin(now/120+d)); g.fillStyle=e.mut?`rgb(${MUTCOL[e.mut]})`:"#e0482f"; g.beginPath(); g.moveTo(R0+7,0); g.lineTo(R0,-4); g.lineTo(R0+2,0); g.lineTo(R0,4); g.fill(); g.restore(); g.globalAlpha=1; } } }
-    // the Custodian's rocket salvo: red circles where it'll land
-    for(const M of S.marks||[]){ const X=M.x*TS+12-cx, Y=M.y*TS+12-cy, ph=(now%400)/400; g.strokeStyle=`rgba(255,40,20,${.6+.4*Math.sin(now/90)})`; g.lineWidth=1.4; g.beginPath(); g.arc(X,Y,1.5*TS,0,6.283); g.stroke(); g.fillStyle=`rgba(255,30,10,${.12+.1*ph})`; g.beginPath(); g.arc(X,Y,1.5*TS*(M.t>1?ph:.3+ph*.7),0,6.283); g.fill(); R(g,X-4,Y,9,1,"#ff3a20"); R(g,X,Y-4,1,9,"#ff3a20"); }
-    // wanted raiders: a gold skull
-    for(const e of S.ents){ if(!e.wanted||!e.alive||!VIS[Sim.idx(S,e.x,e.y)]) continue; const r=rp[e.id]; if(!r) continue; const X=Math.round(r.x)-cx+12, Y=Math.round(r.y)-cy-34+Math.sin(now/260);
-      R(g,X-3,Y,7,5,"#e8b048"); R(g,X-2,Y+5,5,2,"#e8b048"); R(g,X-2,Y+1.5,2,2,"#140806"); R(g,X+1,Y+1.5,2,2,"#140806"); g.font="bold 5px monospace"; g.textAlign="center"; g.fillStyle="#000"; g.fillText("WANTED",X+1,Y-1.5); g.fillStyle="#ffd060"; g.fillText("WANTED",X+.5,Y-2); g.textAlign="left"; }
-    // close to death: the edges of your vision go red and pulse with your heartbeat
-    if(p&&p.alive&&lowHealth(p)){ const k=lowHealth(p), beat=Math.pow(Math.max(0,Math.sin(now/(k>1?260:380))),6); const gr=g.createRadialGradient(view.fw/2,view.fh/2,Math.min(view.fw,view.fh)*.25,view.fw/2,view.fh/2,Math.max(view.fw,view.fh)*.7); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(1,`rgba(140,0,0,${.25+.25*beat+(k>1?.15:0)})`); g.fillStyle=gr; g.fillRect(0,0,view.fw,view.fh); }
     // sneaking: a hooded-eye marker over your head
     if(p&&p.alive&&p.sneak){ const r=rp[p.id]; if(r){ const X=Math.round(r.x)-cx+12, Y=Math.round(r.y)-cy-14; g.globalAlpha=.85; R(g,X-4,Y,9,1,"#cfc6b0"); R(g,X-3,Y+1,7,1,"#cfc6b0"); R(g,X-1,Y+1,3,1.4,"#1a1712"); R(g,X-4,Y+3,9,.8,"rgba(207,198,176,.5)"); g.globalAlpha=1; } }
   }
@@ -2069,7 +2059,8 @@ function renderEnd(){
   let head;
   if(p.extracted){ const bb=p.inv.some(i=>i.d==="blackbox"), v=Sim.lootValue(p);
     head=`<h3 class="win">Extracted</h3><div>${bb?"The black box is aboard.":"You made it out."}</div><ul>${p.inv.map(i=>`<li style="color:${rarCol(i)}">${Items.name(i)} · ${Items.value(i)} cr</li>`).join("")||"<li>No salvage</li>"}</ul><div><b style="color:var(--brass)">${v} cr</b> hauled in ${S.turn} turns.</div><div class="note">Everything you carried goes into your ship's stash.</div>`; }
-  else head=`<h3 class="lose">Lost to the void</h3><div>${p.cause||S.cause||"You died."}</div><div class="note">Your kit and everything you carried stays behind. Turn ${S.turn}.</div>`;
+  else if(p.flags&&p.flags.abandoned) head=`<h3 class="lose">Contract abandoned</h3><div>${p.cause||"You sealed yourself in the shuttle."}</div><div class="note">You live, but your kit and everything you carried stays behind. Turn ${S.turn}.</div>`;
+  else head=`<h3 class="lose">Killed in action</h3><div>${p.cause||S.cause||"You died."}</div><div class="note">Death is permanent. This contractor's career is over: back aboard, a new one takes their place. Turn ${S.turn}.</div>`;
   let foot;
   if(!over) foot=`<div class="note">${left} crewmate${left>1?"s are":" is"} still aboard. The raid ends when everyone is out.</div><button id="b-spec" class="plain">Spectate crew</button>`;
   else if(!squad||Net.host) foot=`<button id="b-again" class="danger plain">${squad?"Return the crew to the ship":"Return to ship"}</button>`;
@@ -2216,7 +2207,7 @@ $("obj-h").onclick=toggleObjectives; if($("t-obj")) $("t-obj").onclick=toggleObj
 function showCard(o){ const el=$("card"); if(!el) return; el.className=`ccard ${o.tone||""}`; el.innerHTML=`<div class="bar top"></div><div class="bar bot"></div><div class="cc-in"><div class="cc-k">${esc(o.kicker||"")}</div><div class="cc-t">${esc(o.title||"")}</div>${(o.lines||[]).map(l=>`<div class="cc-l">${esc(l)}</div>`).join("")}${o.tip?`<div class="cc-tip">${esc(o.tip)}</div>`:""}</div>`;
   el.hidden=false; void el.offsetWidth; el.classList.add("show"); clearTimeout(showCard.t); showCard.t=setTimeout(()=>{ el.classList.remove("show"); setTimeout(()=>{ el.hidden=true; },600); },o.dur||2600); }
 const TIPS=["Sneak (C) to get close. Hit an unaware enemy from behind for a silent takedown.","H uses the right med for what's wrong with you.","Press N for the tactical map.","Raiders only see as far as you do. Lights off in the dark makes you a ghost.","A welding torch on a door buys you time at the shuttle pad.","Shoot volatile husks from range. Never up close.","Tripwires show up when you get close. Disarm them for a free tripmine.","Optional objectives pay out only if you get out alive.","Nests keep birthing stalkers. Fire is the fastest cure.","Vents break pursuit. Stalkers know that too."];
-function raidIntro(){ const t=S.tierN|0, cond=[`Threat ${"▲".repeat(Math.max(1,t))}${"△".repeat(Math.max(0,3-t))}`,S.power?"Station power: ON":"Station power: DEAD"]; if(S.ents.some(e=>e.nemesis)) cond.push("Your nemesis is aboard"); else if(S.ents.some(e=>e.wanted)) cond.push("A Concord wanted target is aboard");
+function raidIntro(){ const t=S.tierN|0, cond=[`Threat ${"▲".repeat(Math.max(1,t))}${"△".repeat(Math.max(0,3-t))}`,S.power?"Station power: ON":"Station power: DEAD","Death is permanent"]; if(S.ents.some(e=>e.nemesis)) cond.push("Your nemesis is aboard"); else if(S.ents.some(e=>e.wanted)) cond.push("A Concord wanted target is aboard");
   for(const o of S.side||[]) cond.push("Optional · "+Sim.SIDES[o.id].t);
   showCard({kicker:"Docking",title:S.site,lines:cond,tip:TIPS[(Math.random()*TIPS.length)|0],dur:3400}); if(typeof Snd!=="undefined"){ Snd.play("door"); } }
 // the prologue: five painted scenes and a few lines, shown once (and from the menu any time)
